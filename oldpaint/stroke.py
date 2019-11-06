@@ -1,14 +1,22 @@
 from collections import deque
 
 from .picture import LongPicture
-from .rect import Rectangle
 
 
-def make_stroke(overlay, event_queue, brush=LongPicture(size=(1, 1))):
+def make_stroke(layer, event_queue, brush=LongPicture(size=(1, 1)), color=None):
+
+    """
+    This function will consume events on the given queue until it receives
+    a mouse_up event. It's expected to be running in a thread.
+
+    It returns all the points it received and the smallest rectangle that covers
+    all the changes it has made to the layer.
+    """
 
     points = deque()
-    brush.clear((0, 0, *brush.size), 6 + 255*2**24)
-    total_rect = Rectangle()
+    total_rect = None
+    if color is not None:
+        brush.clear((0, 0, *brush.size), color + 255*2**24)
 
     while True:
         event_type, args = event_queue.get()
@@ -17,11 +25,12 @@ def make_stroke(overlay, event_queue, brush=LongPicture(size=(1, 1))):
         elif event_type == "mouse_drag":
             pos, button, modifiers = args
             if not points:
-                rect = overlay.draw_line(pos, pos, brush=brush)
+                rect = layer.draw_line(pos, pos, brush=brush)
             else:
                 prev_pos = points[-1]
-                rect = overlay.draw_line(prev_pos, pos, brush=brush)
-            total_rect = total_rect.unite(rect)
+                rect = layer.draw_line(prev_pos, pos, brush=brush)
+            if rect:
+                total_rect = rect.unite(total_rect)
             points.append(pos)
 
     return points, total_rect

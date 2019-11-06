@@ -3,7 +3,7 @@ from functools import lru_cache
 from itertools import chain
 from queue import Queue
 
-from euclid3 import Matrix4, Vector3
+from euclid3 import Matrix4
 import pyglet
 from pyglet import gl
 
@@ -44,31 +44,33 @@ class OldpaintWindow(pyglet.window.Window):
         self.executor = ThreadPoolExecutor(max_workers=1)
         self.mouse_event_queue = None
 
-        self.stroke = None
-        self.pan = None
+        # Keep track of what we're looking at
         self.offset = (0, 0)
         self.zoom = 0
+
+        self.stroke = None
+
+    # === Event handlers ===
+    # These are pyglet event callbacks
 
     def on_mouse_press(self, x, y, button, modifiers):
         if button in (pyglet.window.mouse.LEFT,
                       pyglet.window.mouse.RIGHT):
             self.mouse_event_queue = Queue()
-            self.stroke = self.executor.submit(make_stroke, self.overlay, self.mouse_event_queue)
-        else:
-            self.pan = (x, y)
+            color = (self.stack.palette.foreground if button == pyglet.window.mouse.LEFT
+                     else self.stack.palette.background)
+            stroke = self.executor.submit(make_stroke, self.overlay, self.mouse_event_queue, color=color)
+            stroke.add_done_callback(self._finish_stroke)
 
     def on_mouse_release(self, x, y, button, modifiers):
-        if self.stroke:
+        if self.mouse_event_queue:
             self.mouse_event_queue.put(("mouse_up", (self._to_image_coords(x, y), button, modifiers)))
-            points, rect = self.stroke.result()
-            self.stroke = None
-        elif self.pan:
-            self.pan = None
+            self.mouse_event_queue = None
 
     def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
-        if self.stroke:
+        if self.mouse_event_queue:
             self.mouse_event_queue.put(("mouse_drag", (self._to_image_coords(x, y), button, modifiers)))
-        elif self.pan:
+        else:
             ox, oy = self.offset
             self.offset = ox + dx, oy + dy
 
@@ -149,6 +151,16 @@ class OldpaintWindow(pyglet.window.Window):
     def on_resize(self, w, h):
         return pyglet.event.EVENT_HANDLED  # Work around pyglet internals
 
+    # === Other callbacks ===
+
+    def _finish_stroke(self, stroke):
+        # Since this is a callback, stroke is a Future and is guaranteed to be finished.
+        points, rect = stroke.result()
+        print("stroke finished", rect)
+        # TODO here we should handle undo history etc
+
+    # === Helper functions ===
+
     @lru_cache(1)
     def _get_empty_texture(self, stack):
         texture = Texture(stack.size, unit=1)
@@ -171,8 +183,7 @@ class OldpaintWindow(pyglet.window.Window):
         "Convert window coordinates to image coordinates."
         w, h = self.stack.size
         ww, wh = self.get_size()
-        zoom = self.zoom
-        scale = 2 ** zoom
+        scale = 2 ** self.zoom
         ox, oy = self.offset
         ix = (x - (ww / 2 + ox)) / scale + w / 2
         iy = -(y - (wh / 2 + oy)) / scale + h / 2
@@ -182,11 +193,10 @@ class OldpaintWindow(pyglet.window.Window):
         "Convert image coordinates to window coordinates"
         w, h = self.stack.size
         ww, wh = self.get_size()
-        zoom = self.zoom
-        scale = 2 ** zoom
+        scale = 2 ** self.zoom
         ox, oy = self.offset
-        wx = scale * (x - w/2) + ww/2 + ox
-        wy = -(scale * (y - h/2) - wh/2 - oy)
+        wx = scale * (x - w / 2) + ww / 2 + ox
+        wy = -(scale * (y - h / 2) - wh / 2 - oy)
         return wx, wy
 
 
