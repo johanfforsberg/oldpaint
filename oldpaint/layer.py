@@ -31,27 +31,31 @@ class Layer:
         return cls(load_png(path))
 
     def draw_line(self, *args, set_dirty=True, **kwargs):
-        rect = draw_line(self.pic, *args, **kwargs)
-        if rect and set_dirty:
-            self.dirty = rect.unite(self.dirty)
+        with self.lock:
+            rect = draw_line(self.pic, *args, **kwargs)
+            if rect and set_dirty:
+                self.dirty = rect.unite(self.dirty)
         return rect
 
     def draw_ellipse(self, *args, set_dirty=True, **kwargs):
-        rect = draw_ellipse(self.pic, *args, **kwargs)
-        if rect and set_dirty:
-            self.dirty = rect.unite(self.dirty)
+        with self.lock:
+            rect = draw_ellipse(self.pic, *args, **kwargs)
+            if rect and set_dirty:
+                self.dirty = rect.unite(self.dirty)
         return rect
 
     def draw_rectangle(self, *args, set_dirty=True, **kwargs):
-        rect = draw_rectangle(self.pic, *args, **kwargs)
-        if rect and set_dirty:
-            self.dirty = rect.unite(self.dirty)
+        with self.lock:
+            rect = draw_rectangle(self.pic, *args, **kwargs)
+            if rect and set_dirty:
+                self.dirty = rect.unite(self.dirty)
         return rect
 
     def draw_fill(self, *args, set_dirty=True, **kwargs):
-        rect = draw_fill(self.pic, *args, **kwargs)
-        if rect and set_dirty:
-            self.dirty = rect.unite(self.dirty)
+        with self.lock:
+            rect = draw_fill(self.pic, *args, **kwargs)
+            if rect and set_dirty:
+                self.dirty = rect.unite(self.dirty)
         return rect
 
     @property
@@ -84,14 +88,15 @@ class Layer:
         return self.pic.crop(*rect.points)
 
     def blit(self, pic, rect, set_dirty=True, mask=True):
-        if isinstance(pic, LongPicture):
-            if isinstance(self.pic, LongPicture):
-                self.pic.paste(pic, rect.x, rect.y, mask)
+        with self.lock:
+            if isinstance(pic, LongPicture):
+                if isinstance(self.pic, LongPicture):
+                    self.pic.paste(pic, rect.x, rect.y, mask)
+                else:
+                    self.pic.paste_long(pic, rect.x, rect.y, mask)
             else:
-                self.pic.paste_long(pic, rect.x, rect.y, mask)
-        else:
-            self.pic.paste(pic, rect.x, rect.y, mask)
-        self.dirty = rect.unite(self.dirty)
+                self.pic.paste(pic, rect.x, rect.y, mask)
+            self.dirty = rect.unite(self.dirty)
 
     def __hash__(self):
         return hash((id(self), self.size))
