@@ -4,7 +4,7 @@ from itertools import chain
 from pyglet.window import mouse
 
 
-DEFAULT_COLORS = [
+DEFAULT_COLORS = (
     (170,170,170,0),(255,255,255,255),(101,101,101,255),(223,223,223,255),(207,48,69,255),
     (223,138,69,255),(207,223,69,255),(138,138,48,255),(48,138,69,255),(69,223,69,255),
     (69,223,207,255),(48,138,207,255),(138,138,223,255),(69,48,207,255),(207,48,207,255),
@@ -12,7 +12,7 @@ DEFAULT_COLORS = [
     (178,178,178,255),(170,170,170,255),(146,146,146,255),(130,130,130,255),(113,113,113,255),
     (113,113,113,255),(101,101,101,255),(81,81,81,255),(65,65,65,255),(48,48,48,255),
     (32,32,32,255),(32,32,32,255),(243,0,0,255)
-];
+);
 
 
 class Palette:
@@ -22,7 +22,7 @@ class Palette:
 
     def __init__(self, colors=None, transparency=None):
         # self.colors = (list(zip(*[map(int, colors)] * 3)) if colors
-        self.colors = colors or DEFAULT_COLORS + [(0, 0, 0, 255)] * (256 - len(DEFAULT_COLORS))
+        self.colors = colors or DEFAULT_COLORS + tuple([(0, 0, 0, 255)] * (256 - len(DEFAULT_COLORS)))
         assert len(self.colors) == 256, f"Bad number of colors: {len(self.colors)}"
         # self.transparency = transparency
         self.foreground = 1
@@ -38,7 +38,8 @@ class Palette:
 
     @lru_cache(maxsize=1)
     def get_rgba(self):
-        return [self.get_as_float(i) for i in range(256)]
+        # TODO this will be cached forever
+        return tuple(self.get_as_float(i) for i in range(256))
 
     @lru_cache(maxsize=256)
     def get_as_float(self, index):
