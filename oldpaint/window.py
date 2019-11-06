@@ -77,11 +77,10 @@ class OldpaintWindow(pyglet.window.Window):
 
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
         ox, oy = self.offset
-        oxi, oyi = self._to_image_coords(self.offset)
-        scale = 2 ** self.zoom
-        x, y = self._to_image_coords((x, y))
-
-        # self.offset = ox -
+        ix, iy = self._to_image_coords(x, y)
+        self.zoom += scroll_y
+        x2, y2 = self._to_window_coords(ix, iy)
+        self.offset = (ox + (x - x2)), (oy + (y - y2))
 
     @try_except_log
     def on_draw(self):
@@ -170,20 +169,25 @@ class OldpaintWindow(pyglet.window.Window):
 
     def _to_image_coords(self, x, y):
         "Convert window coordinates to image coordinates."
-        stack_size = self.stack.size
-        window_size = self.get_size()
+        w, h = self.stack.size
+        ww, wh = self.get_size()
         zoom = self.zoom
-        offset = self.offset
-        ivm = make_view_matrix_inverse(window_size, stack_size, zoom, offset)
-        w, h = window_size
-        w2, h2 = w / 2, h / 2
-        ox, oy = offset
-        # TODO why do we need to put in the offset here?
-        ix, iy, _ = ivm * Vector3((x - w2 - ox) / w2, (y - h2 - oy) / h2, 0)
-        iw, ih = stack_size
-        ix = int(ix * iw + iw / 2)
-        iy = int(ih - (iy * ih + ih / 2))
+        scale = 2 ** zoom
+        ox, oy = self.offset
+        ix = (x - (ww / 2 + ox)) / scale + w / 2
+        iy = -(y - (wh / 2 + oy)) / scale + h / 2
         return ix, iy
+
+    def _to_window_coords(self, x, y):
+        "Convert image coordinates to window coordinates"
+        w, h = self.stack.size
+        ww, wh = self.get_size()
+        zoom = self.zoom
+        scale = 2 ** zoom
+        ox, oy = self.offset
+        wx = scale * (x - w/2) + ww/2 + ox
+        wy = -(scale * (y - h/2) - wh/2 - oy)
+        return wx, wy
 
 
 @lru_cache(1)
