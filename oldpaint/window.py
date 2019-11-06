@@ -30,9 +30,9 @@ class OldpaintWindow(pyglet.window.Window):
         super().__init__(**kwargs, resizable=True, vsync=False)
 
         size = (640, 480)
-        self.stack = Stack(size, layers=[Layer(Picture(size))])
+        self.stack = Stack(size, layers=[Layer(Picture(size)), Layer(Picture(size))])
+        self.overlay = Layer(LongPicture(size))  # A temporary drawing layer
 
-        self.overlay = Layer(LongPicture(size))
         self.offscreen_buffer = FrameBuffer(size, textures=dict(color=Texture(size, unit=0)))
         self.vao = VertexArrayObject()
 
@@ -41,6 +41,7 @@ class OldpaintWindow(pyglet.window.Window):
         self.copy_program = Program(VertexShader("glsl/copy_vert.glsl"),
                                     FragmentShader("glsl/copy_frag.glsl"))
 
+        # All the drawing will happen in a thread, managed by this executor
         self.executor = ThreadPoolExecutor(max_workers=1)
         self.mouse_event_queue = None
 
@@ -84,6 +85,18 @@ class OldpaintWindow(pyglet.window.Window):
         x2, y2 = self._to_window_coords(ix, iy)
         self.offset = (ox + (x - x2)), (oy + (y - y2))
 
+    def on_key_press(self, symbol, modifiers):
+        if symbol == pyglet.window.key.UP:
+            self.stack.next_layer()
+        elif symbol == pyglet.window.key.DOWN:
+            self.stack.prev_layer()
+        if symbol == pyglet.window.key.E:
+            self.stack.palette.foreground += 1
+        elif symbol == pyglet.window.key.D:
+            self.stack.palette.foreground -= 1
+        else:
+            super().on_key_press(symbol, modifiers)
+
     @try_except_log
     def on_draw(self):
 
@@ -101,7 +114,9 @@ class OldpaintWindow(pyglet.window.Window):
             overlay_texture = self._get_overlay_texture(overlay)
 
             if overlay.dirty and overlay.lock.acquire(timeout=0.05):
-                # While we have the lock, the layer won't be changed, so we can safely copy part of it.
+                # Since we're drawing in a separate thread, we need to be very careful
+                # when accessing the overlay, otherwise we can get nasty problems.
+                # While we have the lock, the thread won't draw, so we can safely copy data.
                 rect = overlay.dirty
                 subimage = overlay.get_subimage(rect)
                 data = (gl.GLuint * rect.area())(*subimage.data)
@@ -123,16 +138,17 @@ class OldpaintWindow(pyglet.window.Window):
                                            gl.GL_RED, gl.GL_UNSIGNED_BYTE, data)
 
                     layer.dirty = None
-                    layer.lock.release()  # Allow layer to change again.
+                    layer.lock.release()
 
                 with layer_texture:
                     if layer == stack.current:
-                        with overlay_texture:  # overlay_texture:
-                            gl.glUniform4fv(1, 256, (gl.GLfloat*(4*256))(*chain.from_iterable(stack.palette)))
+                        # The overlay is combined with the layer
+                        with overlay_texture:
+                            gl.glUniform4fv(1, 256, self._get_colors(stack.palette.get_rgba()))
                             gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
                     else:
                         with self._get_empty_texture(stack):
-                            gl.glUniform4fv(1, 256, (gl.GLfloat*(4*256))(*chain.from_iterable(stack.palette)))
+                            gl.glUniform4fv(1, 256, self._get_colors(stack.palette.get_rgba()))
                             gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 
         window_size = self.get_size()
@@ -157,9 +173,16 @@ class OldpaintWindow(pyglet.window.Window):
         # Since this is a callback, stroke is a Future and is guaranteed to be finished.
         points, rect = stroke.result()
         print("stroke finished", rect)
+        self.stack.current.blit(self.overlay.get_subimage(rect), rect)
+        self.overlay.clear(rect)
         # TODO here we should handle undo history etc
 
     # === Helper functions ===
+
+    @lru_cache(1)
+    def _get_colors(self, colors):
+        colors = chain.from_iterable(colors)
+        return (gl.GLfloat*(4*256))(*colors)
 
     @lru_cache(1)
     def _get_empty_texture(self, stack):

@@ -163,10 +163,8 @@ class Stack:
     def __repr__(self):
         return f"ImageStack(size={self.size}, layers={self.layers}, current={self.get_index()})"
 
-    def end_stroke(self, rect):
-        changed_part = self.overlay.get_subimage(rect)
-        self.current.blit(changed_part, rect)
-        self.overlay.clear(rect)
+    def end_stroke(self, change, rect):
+        self.current.blit(change, rect)
 
     # def do_stroke(self, *event):
     #     if self.stroke:
