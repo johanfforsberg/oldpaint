@@ -23,6 +23,9 @@ from .picture import Picture, LongPicture
 BG_COLOR = (gl.GLfloat * 4)(0.5, 0.5, 0.5, 1)
 ZERO_COLOR = (gl.GLfloat * 4)(0, 0, 0, 0)
 
+MIN_ZOOM = -2
+MAX_ZOOM = 5
+
 
 class OldpaintWindow(pyglet.window.Window):
 
@@ -87,9 +90,9 @@ class OldpaintWindow(pyglet.window.Window):
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
         ox, oy = self.offset
         ix, iy = self._to_image_coords(x, y)
-        self.zoom += scroll_y
+        self.zoom = max(min(self.zoom + scroll_y, MAX_ZOOM), MIN_ZOOM)
         x2, y2 = self._to_window_coords(ix, iy)
-        self.offset = (ox + (x - x2)), (oy + (y - y2))
+        self.offset = ox + (x - x2), oy + (y - y2)
 
     def on_key_press(self, symbol, modifiers):
         if symbol == pyglet.window.key.UP:
@@ -176,7 +179,7 @@ class OldpaintWindow(pyglet.window.Window):
 
             self._draw_mouse_cursor()
 
-        gl.glFinish()  # No double buffering, to minimize latency
+        gl.glFinish()  # No double buffering, to minimize latency (does this work?)
 
     def on_resize(self, w, h):
         return pyglet.event.EVENT_HANDLED  # Work around pyglet internals
