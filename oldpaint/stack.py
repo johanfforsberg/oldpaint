@@ -134,16 +134,19 @@ class Stack:
 
     def undo(self):
         if self.undos:
-            stroke = self.undos.pop()
-            logging.info("Undoing %r", stroke)
-            stroke.undo()
-            self.redos.append(stroke)
+            layer, rect, undo_data = self.undos.pop()
+            redo_data = layer.get_subimage(rect)
+            self.redos.append((layer, rect, redo_data))
+            layer.blit(undo_data, rect)
+            return rect
 
     def redo(self):
         if self.redos:
-            stroke = self.redos.pop()
-            stroke.undo()
-            self.undos.append(stroke)
+            layer, rect, redo_data = self.redos.pop()
+            undo_data = layer.get_subimage(rect)
+            self.undos.append((layer, rect, undo_data))
+            layer.blit(redo_data, rect)
+            return rect
 
     def make_brush(self, rect=None, layer=None):
         rect = rect or self.selection
@@ -163,31 +166,11 @@ class Stack:
     def __repr__(self):
         return f"ImageStack(size={self.size}, layers={self.layers}, current={self.get_index()})"
 
-    def end_stroke(self, change, rect):
-        self.current.blit(change, rect)
-
-    # def do_stroke(self, *event):
-    #     if self.stroke:
-    #         self.stroke.handle_mouse_move(*event)
-
-    # def end_stroke(self, *event):
-    #     if self.stroke:
-    #         self.stroke.handle_end_stroke(*event)
-    #         self.stroke = None
-
-    # def begin_stroke(self, tool, *event):
-    #     if self.stroke:
-    #         logger.warning("Trying to start a stroke while a stroke is already in progress...")
-    #         return
-    #     brush = self.brushes.current
-    #     stroke = tool(self, brush, event)
-    #     assert self.layers, "Sorry, can't paint without layers"
-    #     self.stroke = stroke
-    #     if issubclass(tool, Stroke):
-    #         self.undos.append(stroke)
-    #         self.redos.clear()
-
-    #     Thread(target=stroke.run).start()
+    def update(self, new_data, rect, layer=None):
+        layer = layer or self.current
+        prev_data = layer.get_subimage(rect)
+        self.undos.append((layer, rect, prev_data))
+        layer.blit(new_data, rect)
 
     def __iter__(self):
         return iter(self.layers)

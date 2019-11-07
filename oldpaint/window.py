@@ -8,9 +8,10 @@ import pyglet
 from pyglet import gl
 
 from ugly.framebuffer import FrameBuffer
+from ugly.glutil import gl_matrix, load_png
 from ugly.shader import Program, VertexShader, FragmentShader
-from ugly.texture import Texture, ByteTexture
-from ugly.util import try_except_log
+from ugly.texture import Texture, ByteTexture, ImageTexture
+from ugly.util import try_except_log, enabled
 from ugly.vao import VertexArrayObject
 
 from .stack import Stack
@@ -40,7 +41,6 @@ class OldpaintWindow(pyglet.window.Window):
                                     FragmentShader("glsl/palette_frag.glsl"))
         self.copy_program = Program(VertexShader("glsl/copy_vert.glsl"),
                                     FragmentShader("glsl/copy_frag.glsl"))
-
         # All the drawing will happen in a thread, managed by this executor
         self.executor = ThreadPoolExecutor(max_workers=1)
         self.mouse_event_queue = None
@@ -50,6 +50,11 @@ class OldpaintWindow(pyglet.window.Window):
         self.zoom = 0
 
         self.stroke = None
+
+        # Mouse cursor setup
+        size, image = load_png("icons/cursor.png")
+        self.mouse_texture = ImageTexture(image, size)
+        self.mouse_position = None
 
     # === Event handlers ===
     # These are pyglet event callbacks
@@ -69,6 +74,7 @@ class OldpaintWindow(pyglet.window.Window):
             self.mouse_event_queue = None
 
     def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
+        self._update_cursor(x, y)
         if self.mouse_event_queue:
             self.mouse_event_queue.put(("mouse_drag", (self._to_image_coords(x, y), button, modifiers)))
         else:
@@ -76,7 +82,7 @@ class OldpaintWindow(pyglet.window.Window):
             self.offset = ox + dx, oy + dy
 
     def on_mouse_motion(self, x, y, dx, dy):
-        pass
+        self._update_cursor(x, y)
 
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
         ox, oy = self.offset
@@ -94,6 +100,12 @@ class OldpaintWindow(pyglet.window.Window):
             self.stack.palette.foreground += 1
         elif symbol == pyglet.window.key.D:
             self.stack.palette.foreground -= 1
+
+        elif symbol == pyglet.window.key.Z:
+            self.stack.undo()
+        elif symbol == pyglet.window.key.Y:
+            self.stack.redo()
+
         else:
             super().on_key_press(symbol, modifiers)
 
@@ -162,6 +174,8 @@ class OldpaintWindow(pyglet.window.Window):
             gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
             gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 
+            self._draw_mouse_cursor()
+
         gl.glFinish()  # No double buffering, to minimize latency
 
     def on_resize(self, w, h):
@@ -173,7 +187,7 @@ class OldpaintWindow(pyglet.window.Window):
         # Since this is a callback, stroke is a Future and is guaranteed to be finished.
         points, rect = stroke.result()
         print("stroke finished", rect)
-        self.stack.current.blit(self.overlay.get_subimage(rect), rect)
+        self.stack.update(self.overlay.get_subimage(rect), rect)
         self.overlay.clear(rect)
         # TODO here we should handle undo history etc
 
@@ -221,6 +235,61 @@ class OldpaintWindow(pyglet.window.Window):
         wx = scale * (x - w / 2) + ww / 2 + ox
         wy = -(scale * (y - h / 2) - wh / 2 - oy)
         return wx, wy
+
+    def _over_image(self, x, y):
+        ix, iy = self._to_image_coords(x, y)
+        w, h = self.stack.size
+        return 0 <= ix < w and 0 <= iy < h
+
+    def _update_cursor(self, x, y):
+        over_image = self._over_image(x, y)
+        self.set_mouse_visible(not over_image)
+        if over_image:
+            self.mouse_position = x, y
+        else:
+            self.mouse_position = None
+
+    def _draw_mouse_cursor(self):
+        """ If the mouse is over the image, draw a cursom crosshair. """
+        if self.mouse_position is None:
+            return
+        w, h = self.get_size()
+        x, y = self.mouse_position
+        vm = self._make_cursor_view_matrix(x, y)
+        with self.mouse_texture:
+            gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)
+            gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
+            gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+            gl.glBlendFunc(gl.GL_ONE, gl.GL_ZERO)
+
+    @lru_cache(256)
+    def _make_cursor_view_matrix(self, x, y):
+
+        "Calculate a view matrix for placing the custom cursor on screen."
+
+        ww, wh = self.get_size()
+        iw, ih = self.mouse_texture.size
+
+        scale = 1
+        width = ww / iw / scale
+        height = wh / ih / scale
+        far = 10
+        near = -10
+
+        frust = Matrix4()
+        frust[:] = (2/width, 0, 0, 0,
+                    0, 2/height, 0, 0,
+                    0, 0, -2/(far-near), 0,
+                    0, 0, -(far+near)/(far-near), 1)
+
+        x -= ww // 2
+        y -= wh // 2
+        lx = x / iw / scale
+        ly = y / ih / scale
+
+        view = Matrix4().new_translate(lx, ly, 0)
+
+        return frust * view
 
 
 @lru_cache(1)
