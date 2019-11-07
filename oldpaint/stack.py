@@ -1,11 +1,8 @@
 import logging
-from threading import Thread
+from time import time
 
-#from .action import Stroke
-#from .brush import Brush, RectangleBrush, EllipseBrush
-#from .ora import load_ora
-#from .image import PillowImage
 from .layer import Layer
+from .ora import load_ora, save_ora
 from .picture import Picture, LongPicture
 from .palette import Palette
 from .util import Selectable
@@ -29,12 +26,9 @@ class Stack:
     def __init__(self, size, layers=None, palette=None):
         self.size = size
         self.layers = layers or []
-        #self.overlay = PillowImage(PILImage.new("RGBA", self.size))
-        #self.overlay = Layer(LongPicture(self.size))
         self.current = layers[0] if layers else None
         self._palette = palette if palette else Palette(transparency=0)
         self.unsaved = False
-        # self.dirty = True  # Set if there are changes that impact the final image
 
         self.undos = []
         self.redos = []
@@ -68,6 +62,9 @@ class Stack:
         palette = Palette(img.getpalette(), transparency=0)
         layers = [PillowImage(img)]
         return cls(size=size, layers=layers, palette=palette)
+
+    def save_ora(self, path):
+        save_ora(self.size, self.layers, self.palette, path)
 
     def get_index(self, layer=None):
         "Return the stack index of the given layer (or current)."

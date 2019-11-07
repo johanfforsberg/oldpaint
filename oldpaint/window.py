@@ -109,6 +109,9 @@ class OldpaintWindow(pyglet.window.Window):
         elif symbol == pyglet.window.key.Y:
             self.stack.redo()
 
+        elif symbol == pyglet.window.key.S:
+            self.stack.save_ora("/tmp/hej.ora")
+
         else:
             super().on_key_press(symbol, modifiers)
 

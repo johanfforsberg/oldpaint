@@ -32,8 +32,8 @@ def rgba_to_32bit(r, g, b, a):
     return _rgba_to_32bit((r, g, b, a))
 
 
-def load_png(path):
-    w, h, rows, info = png.Reader(path).read()
+def load_png(dest):
+    w, h, rows, info = png.Reader(dest).read()
     data = chain.from_iterable(rows)
     if info.get("palette"):
         return Picture((w, h), data), info["palette"]
@@ -41,7 +41,7 @@ def load_png(path):
         return LongPicture((w, h), data), None
 
 
-def save_png(pic, path, palette=None):
+def save_png(pic, dest, palette=None):
     w, h = pic.size
     alpha = isinstance(pic, LongPicture)
     if alpha:
@@ -49,8 +49,7 @@ def save_png(pic, path, palette=None):
     writer = png.Writer(w, h, bitdepth=8, alpha=alpha, palette=palette)
     rows = (bytearray(pic.data[offset:offset + w])
             for offset in range(0, pic.length, w))
-    with open(path, "wb") as f:
-        writer.write(f, rows)
+    writer.write(dest, rows)
 
 
 @cython.final
