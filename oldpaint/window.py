@@ -4,6 +4,7 @@ from itertools import chain
 from queue import Queue
 
 from euclid3 import Matrix4
+import imgui
 import pyglet
 from pyglet import gl
 
@@ -14,6 +15,7 @@ from ugly.texture import Texture, ByteTexture, ImageTexture
 from ugly.util import try_except_log, enabled
 from ugly.vao import VertexArrayObject
 
+from .imgui_pyglet import PygletRenderer
 from .stack import Stack
 from .stroke import make_stroke
 from .layer import Layer
@@ -25,6 +27,15 @@ ZERO_COLOR = (gl.GLfloat * 4)(0, 0, 0, 0)
 
 MIN_ZOOM = -2
 MAX_ZOOM = 5
+
+
+def no_imgui_events(f):
+    "Decorator for event callbacks that should ignore events on imgui windows."
+    def inner(*args):
+        io = imgui.get_io()
+        if not io.want_capture_mouse:
+            f(*args)
+    return inner
 
 
 class OldpaintWindow(pyglet.window.Window):
@@ -59,9 +70,12 @@ class OldpaintWindow(pyglet.window.Window):
         self.mouse_texture = ImageTexture(image, size)
         self.mouse_position = None
 
+        self.imgui_renderer = PygletRenderer(self)
+
     # === Event handlers ===
     # These are pyglet event callbacks
 
+    @no_imgui_events
     def on_mouse_press(self, x, y, button, modifiers):
         if button in (pyglet.window.mouse.LEFT,
                       pyglet.window.mouse.RIGHT):
@@ -76,6 +90,7 @@ class OldpaintWindow(pyglet.window.Window):
             self.mouse_event_queue.put(("mouse_up", (self._to_image_coords(x, y), button, modifiers)))
             self.mouse_event_queue = None
 
+    @no_imgui_events
     def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
         self._update_cursor(x, y)
         if self.mouse_event_queue:
@@ -87,6 +102,7 @@ class OldpaintWindow(pyglet.window.Window):
     def on_mouse_motion(self, x, y, dx, dy):
         self._update_cursor(x, y)
 
+    @no_imgui_events
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
         ox, oy = self.offset
         ix, iy = self._to_image_coords(x, y)
@@ -182,6 +198,28 @@ class OldpaintWindow(pyglet.window.Window):
 
             self._draw_mouse_cursor()
 
+        imgui.new_frame()
+
+        # open new window context
+        imgui.begin("Your first window!", True)
+
+        # draw text label inside of current window
+        imgui.text("Hello world!")
+
+        # close current window context
+        imgui.end()
+
+        # gl.glClearColor(1., 1., 1., 1)
+        # gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+
+        # pass all drawing comands to the rendering pipeline
+        # and close frame context
+
+        imgui.render()
+        imgui.end_frame()
+
+        self.imgui_renderer.render(imgui.get_draw_data())
+
         gl.glFinish()  # No double buffering, to minimize latency (does this work?)
 
     def on_resize(self, w, h):
@@ -249,11 +287,17 @@ class OldpaintWindow(pyglet.window.Window):
 
     def _update_cursor(self, x, y):
         over_image = self._over_image(x, y)
-        self.set_mouse_visible(not over_image)
         if over_image:
-            self.mouse_position = x, y
+            io = imgui.get_io()
+            if io.want_capture_mouse:
+                self.mouse_position = None
+                self.set_mouse_visible(True)
+            else:
+                self.mouse_position = x, y
+                self.set_mouse_visible(False)
         else:
             self.mouse_position = None
+            self.set_mouse_visible(True)
 
     def _draw_mouse_cursor(self):
         """ If the mouse is over the image, draw a cursom crosshair. """
