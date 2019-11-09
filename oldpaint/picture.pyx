@@ -4,7 +4,6 @@
 
 from cpython cimport array
 import cython
-import array
 from itertools import chain
 
 import png

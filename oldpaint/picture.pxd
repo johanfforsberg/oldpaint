@@ -1,3 +1,5 @@
+from cpython cimport array
+
 cpdef unsigned int _rgba_to_32bit((int, int, int, int) color)
 cpdef unsigned int _rgb_to_32bit((int, int, int) color)
 
@@ -6,7 +8,8 @@ cdef class Picture:
 
     cdef readonly (int, int) size
     cdef readonly int width, height, stride, length
-    cdef public unsigned char[:] data
+    # cdef public unsigned char[:] data
+    cdef public array.array data
     cdef public rect
 
     cdef int _get_offset(self, int x, int y)

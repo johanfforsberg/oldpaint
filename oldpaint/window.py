@@ -1,7 +1,9 @@
 from concurrent.futures import ThreadPoolExecutor
+import ctypes
 from functools import lru_cache
 from itertools import chain
 from queue import Queue
+from time import time
 
 from euclid3 import Matrix4
 import imgui
@@ -147,7 +149,7 @@ class OldpaintWindow(pyglet.window.Window):
             overlay = self.overlay
             overlay_texture = self._get_overlay_texture(overlay)
 
-            if overlay.dirty and overlay.lock.acquire(timeout=0.05):
+            if overlay.dirty and overlay.lock.acquire(timeout=0.03):
                 # Since we're drawing in a separate thread, we need to be very careful
                 # when accessing the overlay, otherwise we can get nasty problems.
                 # While we have the lock, the thread won't draw, so we can safely copy data.
@@ -167,12 +169,15 @@ class OldpaintWindow(pyglet.window.Window):
                 if layer.dirty and layer.lock.acquire(timeout=0.03):
                     rect = layer.dirty
                     subimage = layer.get_subimage(rect)
+                    # TODO this is really slow; there must be a way to just send the data
+                    # directly, it's all ubytes anyway.
                     data = (gl.GLubyte * rect.area())(*subimage.data)
                     gl.glTextureSubImage2D(layer_texture.name, 0, *rect.points,
                                            gl.GL_RED, gl.GL_UNSIGNED_BYTE, data)
 
                     layer.dirty = None
                     layer.lock.release()
+
 
                 with layer_texture:
                     if layer == stack.current:

@@ -46,22 +46,22 @@ class Stack:
         self.palette = palette
         self.path = path
 
-    @classmethod
-    def from_ora(cls, path):
-        layer_images = load_ora(path)
-        img = layer_images[0]
-        size = img.size
-        palette = Palette(img.getpalette(), transparency=0)
-        layers = [PillowImage(i) for i in layer_images]
-        return cls(size=size, layers=layers, palette=palette)
+    # @classmethod
+    # def from_ora(cls, path):
+    #     layer_images = load_ora(path)
+    #     img = layer_images[0]
+    #     size = img.size
+    #     palette = Palette(img.getpalette(), transparency=0)
+    #     layers = [PillowImage(i) for i in layer_images]
+    #     return cls(size=size, layers=layers, palette=palette)
 
-    @classmethod
-    def from_png(cls, path):
-        img = PILImage.open(path)
-        size = img.size
-        palette = Palette(img.getpalette(), transparency=0)
-        layers = [PillowImage(img)]
-        return cls(size=size, layers=layers, palette=palette)
+    # @classmethod
+    # def from_png(cls, path):
+    #     img = PILImage.open(path)
+    #     size = img.size
+    #     palette = Palette(img.getpalette(), transparency=0)
+    #     layers = [PillowImage(img)]
+    #     return cls(size=size, layers=layers, palette=palette)
 
     def save_ora(self, path):
         save_ora(self.size, self.layers, self.palette, path)
