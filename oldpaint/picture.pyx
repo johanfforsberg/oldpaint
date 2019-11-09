@@ -1,5 +1,7 @@
 #cython: language_level=3, boundscheck=False, wraparound=False, initializedcheck=False, cdivision=True
 
+# TODO Clean up this mess.
+
 from cpython cimport array
 import cython
 import array
