@@ -76,7 +76,7 @@ cdef class Picture:
 
         self.rect = Rectangle((0, 0), (self.width, self.height))
 
-    cdef int _get_offset(self, int x, int y):
+    cdef int _get_offset(self, int x, int y) nogil:
         return self.width * y + x
 
     cpdef get_ptr(self):
@@ -117,7 +117,7 @@ cdef class Picture:
             start += w
         return cropped
 
-    cpdef void paste(self, Picture pic, int x, int y, bint mask):
+    cpdef void paste(self, Picture pic, int x, int y, bint mask) nogil:
         cdef int w, h, y1, x1, x2, y2, offset1, offset2
         w, h = pic.size
         offset1 = 0
@@ -146,7 +146,7 @@ cdef class Picture:
         w, h = pic.size
         offset1 = 0
         offset2 = self._get_offset(x, y)
-        cdef unsigned char[:] data = memoryview(pic.data).cast(self.pixel_format)
+        cdef unsigned char[:] data = memoryview(pic.data).cast(self.pixel_format)  # TODO probably slow
         for y1 in range(h):
             y2 = y + y1
             if (y2 < 0):
@@ -167,7 +167,7 @@ cdef class Picture:
             offset1 += w
             offset2 += self.width
 
-    cpdef void clear(self, (int, int, int, int) box, unsigned int value):
+    cpdef void clear(self, (int, int, int, int) box, unsigned int value) nogil:
         cdef int x, y
         cdef int w = self.width
         cdef int x0, y0, x1, y1
@@ -286,12 +286,12 @@ cdef class LongPicture:
                     continue
                 if (x2 >= self.width):
                     break
-                #if not mask or pic.data[offset1+x1] >> 24:  # Ignore 100% transparent pixels
-                self.data[offset2+x1] = data[offset1+x1]
+                if not mask or pic.data[offset1+x1] >> 24:  # Ignore 100% transparent pixels
+                    self.data[offset2+x1] = data[offset1+x1]
             offset1 += w
             offset2 += self.width
 
-    cpdef void clear(self, (int, int, int, int) box, unsigned int value):
+    cpdef void clear(self, (int, int, int, int) box, unsigned int value) nogil:
         cdef int x, y
         cdef int w = self.width
         cdef int x0, y0, x1, y1
