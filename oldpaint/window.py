@@ -84,7 +84,8 @@ class OldpaintWindow(pyglet.window.Window):
             ]
         }
         self.tools = Selectable([])
-        self.brushes = Selectable([EllipseBrush(10, 20), EllipseBrush(3, 5)])
+        self.brushes = Selectable([EllipseBrush((3, 3)), EllipseBrush((10, 20)), ])
+
         io = imgui.get_io()
         self._font = io.fonts.add_font_from_file_ttf(
             "ttf/dpcomic.ttf", 14, io.fonts.get_glyph_ranges_latin()
@@ -114,7 +115,8 @@ class OldpaintWindow(pyglet.window.Window):
             self.mouse_event_queue = Queue()
             color = (self.stack.palette.foreground if button == pyglet.window.mouse.LEFT
                      else self.stack.palette.background)
-            self.stroke = self.executor.submit(make_stroke, self.overlay, self.mouse_event_queue, color=color)
+            self.stroke = self.executor.submit(make_stroke, self.overlay, self.mouse_event_queue, self.brushes.current,
+                                               color=color)
             self.stroke.add_done_callback(lambda s: self.executor.submit(self._finish_stroke, s))
 
     def on_mouse_release(self, x, y, button, modifiers):
@@ -132,7 +134,6 @@ class OldpaintWindow(pyglet.window.Window):
 
     @no_imgui_events
     def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
-        print("mouse")
         self._update_cursor(x, y)
         if self.mouse_event_queue:
             self.mouse_event_queue.put(("mouse_drag", (self._to_image_coords(x, y), button, modifiers)))

@@ -3,7 +3,7 @@ from collections import deque
 from .picture import LongPicture
 
 
-def make_stroke(layer, event_queue, brush=LongPicture(size=(3, 3)), color=None):
+def make_stroke(layer, event_queue, brush, color=None):
 
     """
     This function will consume events on the given queue until it receives
@@ -15,8 +15,8 @@ def make_stroke(layer, event_queue, brush=LongPicture(size=(3, 3)), color=None):
 
     points = deque()
     total_rect = None
-    if color is not None:
-        brush.clear((0, 0, *brush.size), color + 255*2**24)
+    # if color is not None:
+    #     brush.clear((0, 0, *brush.size), color + 255*2**24)
 
     last_pos = None
 
@@ -33,10 +33,10 @@ def make_stroke(layer, event_queue, brush=LongPicture(size=(3, 3)), color=None):
                 continue
 
             if not points:
-                rect = layer.draw_line(pos, pos, brush=brush)
+                rect = layer.draw_line(pos, pos, brush=brush.get_pic(color))
             else:
                 prev_pos = points[-1]
-                rect = layer.draw_line(prev_pos, pos, brush=brush)
+                rect = layer.draw_line(prev_pos, pos, brush=brush.pic)
 
             if rect:
                 total_rect = rect.unite(total_rect)
