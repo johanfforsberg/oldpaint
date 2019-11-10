@@ -22,6 +22,8 @@ from .stack import Stack
 from .stroke import make_stroke
 from .layer import Layer
 from .picture import Picture, LongPicture
+from .util import Selectable
+from . import ui
 
 
 BG_COLOR = (gl.GLfloat * 4)(0.5, 0.5, 0.5, 1)
@@ -68,11 +70,28 @@ class OldpaintWindow(pyglet.window.Window):
         self.stroke = None
 
         # Mouse cursor setup
-        size, image = load_png("icons/cursor.png")
-        self.mouse_texture = ImageTexture(image, size)
+        self.mouse_texture = ImageTexture(*load_png("icons/cursor.png"))
         self.mouse_position = None
 
+        # UI stuff
         self.imgui_renderer = PygletRenderer(self)
+        self.icons = {
+            name: ImageTexture(*load_png(f"icons/{name}.png"))
+            for name in [
+                    "brush", "ellipse", "floodfill", "line",
+                    "pencil", "picker", "points", "rectangle"
+            ]
+        }
+        self.tools = Selectable([])
+        self.brushes = Selectable([])
+        io = imgui.get_io()
+        self._font = io.fonts.add_font_from_file_ttf(
+            "ttf/dpcomic.ttf", 14, io.fonts.get_glyph_ranges_latin()
+        )
+        self.imgui_renderer.refresh_font_texture()
+
+        self.loader = None
+        self.saver = None
 
     # === Event handlers ===
     # These are pyglet event callbacks
@@ -85,7 +104,7 @@ class OldpaintWindow(pyglet.window.Window):
             color = (self.stack.palette.foreground if button == pyglet.window.mouse.LEFT
                      else self.stack.palette.background)
             stroke = self.executor.submit(make_stroke, self.overlay, self.mouse_event_queue, color=color)
-            stroke.add_done_callback(self._finish_stroke)
+            stroke.add_done_callback(lambda s: self.executor.submit(self._finish_stroke, s))
 
     def on_mouse_release(self, x, y, button, modifiers):
         if self.mouse_event_queue:
@@ -155,7 +174,7 @@ class OldpaintWindow(pyglet.window.Window):
                 # While we have the lock, the thread won't draw, so we can safely copy data.
                 rect = overlay.dirty
                 subimage = overlay.get_subimage(rect)
-                data = (gl.GLuint * rect.area())(*subimage.data)
+                data = bytes(subimage.data)  # TODO Is this making a copy?
 
                 # Now update the texture with the changed part of the layer.
                 gl.glTextureSubImage2D(overlay_texture.name, 0, *rect.points,
@@ -169,15 +188,12 @@ class OldpaintWindow(pyglet.window.Window):
                 if layer.dirty and layer.lock.acquire(timeout=0.03):
                     rect = layer.dirty
                     subimage = layer.get_subimage(rect)
-                    # TODO this is really slow; there must be a way to just send the data
-                    # directly, it's all ubytes anyway.
-                    data = (gl.GLubyte * rect.area())(*subimage.data)
+                    data = bytes(subimage.data)
                     gl.glTextureSubImage2D(layer_texture.name, 0, *rect.points,
                                            gl.GL_RED, gl.GL_UNSIGNED_BYTE, data)
 
                     layer.dirty = None
                     layer.lock.release()
-
 
                 with layer_texture:
                     if layer == stack.current:
@@ -203,29 +219,9 @@ class OldpaintWindow(pyglet.window.Window):
 
             self._draw_mouse_cursor()
 
-        imgui.new_frame()
+        self._render_gui()
 
-        # open new window context
-        imgui.begin("Your first window!", True)
-
-        # draw text label inside of current window
-        imgui.text("Hello world!")
-
-        # close current window context
-        imgui.end()
-
-        # gl.glClearColor(1., 1., 1., 1)
-        # gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-
-        # pass all drawing comands to the rendering pipeline
-        # and close frame context
-
-        imgui.render()
-        imgui.end_frame()
-
-        self.imgui_renderer.render(imgui.get_draw_data())
-
-        gl.glFinish()  # No double buffering, to minimize latency (does this work?)
+        # gl.glFinish()  # No double buffering, to minimize latency (does this work?)
 
     def on_resize(self, w, h):
         return pyglet.event.EVENT_HANDLED  # Work around pyglet internals
@@ -241,6 +237,66 @@ class OldpaintWindow(pyglet.window.Window):
         # TODO here we should handle undo history etc
 
     # === Helper functions ===
+
+    def _render_gui(self):
+
+        imgui.new_frame()
+
+        if imgui.begin_main_menu_bar():
+            if imgui.begin_menu("File", True):
+
+                clicked_quit, selected_quit = imgui.menu_item(
+                    "Quit", 'Cmd+Q', False, True
+                )
+                if clicked_quit:
+                    exit(1)
+
+                clicked_load, selected_load = imgui.menu_item("Load", "Ctrl+F", False, True)
+                if clicked_load:
+                    self.dispatch_event("on_load_file")
+
+                clicked_save, selected_save = imgui.menu_item("Save", "Ctrl+S", False, True)
+                if clicked_save:
+                    self.dispatch_event("on_save_file")
+
+                imgui.end_menu()
+            if imgui.begin_menu("Layer", True):
+                if imgui.menu_item("Flip horizontally", "H", False, True)[0]:
+                    self.stack.current.flip_horizontal()
+                if imgui.menu_item("Flip vertically", "V", False, True)[0]:
+                    self.stack.current.flip_vertical()
+                if imgui.menu_item("Clear", "V", False, True)[0]:
+                    self.stack.current.flip_vertical()
+                imgui.end_menu()
+            imgui.end_main_menu_bar()
+
+        imgui.begin("Tools", True)
+        with imgui.font(self._font):
+            # ui.render_tools(self.tools, self.icons)
+            imgui.core.separator()
+            # ui.render_brushes(self.stack.brushes, self.get_brush_preview_texture)
+        imgui.end()
+
+        ui.render_palette(self.stack.palette)
+
+        if self.loader:
+            if self.loader.done:
+                self.loader = None
+            else:
+                ui.render_open_file_dialog(self.loader)
+
+        if self.saver:
+            if self.saver.done:
+                self.saver = None
+            else:
+                ui.render_save_file_dialog(self.saver)
+
+        # ui.render_layers(self.stack, self.get_layer_preview_texture)
+
+        imgui.render()
+        imgui.end_frame()
+
+        self.imgui_renderer.render(imgui.get_draw_data())
 
     @lru_cache(1)
     def _get_colors(self, colors):

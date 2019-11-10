@@ -3,6 +3,7 @@
 # TODO Clean up this mess.
 
 from cpython cimport array
+import ctypes
 import cython
 from itertools import chain
 
@@ -77,6 +78,9 @@ cdef class Picture:
 
     cdef int _get_offset(self, int x, int y):
         return self.width * y + x
+
+    cpdef get_ptr(self):
+        return self.data.data.as_uchars
 
     cdef void set_pixel(self, int x, int y, unsigned int value):
         cdef int offset
