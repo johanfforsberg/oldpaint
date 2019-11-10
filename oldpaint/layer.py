@@ -1,4 +1,4 @@
-from threading import Lock
+from threading import RLock
 
 from .rect import Rectangle
 from .picture import Picture, LongPicture, save_png, load_png, draw_line, draw_rectangle, draw_ellipse, draw_fill
@@ -21,7 +21,7 @@ class Layer:
         self.dirty = self.rect
 
         self._visible = True
-        self.lock = Lock()
+        self.lock = RLock()
 
     def save_png(self, path, palette=None):
         save_png(self.pic, path, palette)

@@ -98,13 +98,15 @@ class OldpaintWindow(pyglet.window.Window):
 
     @no_imgui_events
     def on_mouse_press(self, x, y, button, modifiers):
+        if self.mouse_event_queue:
+            return
         if button in (pyglet.window.mouse.LEFT,
                       pyglet.window.mouse.RIGHT):
             self.mouse_event_queue = Queue()
             color = (self.stack.palette.foreground if button == pyglet.window.mouse.LEFT
                      else self.stack.palette.background)
-            stroke = self.executor.submit(make_stroke, self.overlay, self.mouse_event_queue, color=color)
-            stroke.add_done_callback(lambda s: self.executor.submit(self._finish_stroke, s))
+            self.stroke = self.executor.submit(make_stroke, self.overlay, self.mouse_event_queue, color=color)
+            self.stroke.add_done_callback(lambda s: self.executor.submit(self._finish_stroke, s))
 
     def on_mouse_release(self, x, y, button, modifiers):
         if self.mouse_event_queue:
@@ -116,7 +118,7 @@ class OldpaintWindow(pyglet.window.Window):
         self._update_cursor(x, y)
         if self.mouse_event_queue:
             self.mouse_event_queue.put(("mouse_drag", (self._to_image_coords(x, y), button, modifiers)))
-        else:
+        elif button == pyglet.window.mouse.MIDDLE:
             ox, oy = self.offset
             self.offset = ox + dx, oy + dy
 
@@ -234,6 +236,7 @@ class OldpaintWindow(pyglet.window.Window):
         print("stroke finished", rect)
         self.stack.update(self.overlay.get_subimage(rect), rect)
         self.overlay.clear(rect)
+        self.stroke = None
         # TODO here we should handle undo history etc
 
     # === Helper functions ===
