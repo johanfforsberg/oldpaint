@@ -3,7 +3,7 @@ from collections import deque
 from .picture import LongPicture
 
 
-def make_stroke(layer, event_queue, brush=LongPicture(size=(1, 1)), color=None):
+def make_stroke(layer, event_queue, brush=LongPicture(size=(3, 3)), color=None):
 
     """
     This function will consume events on the given queue until it receives

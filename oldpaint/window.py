@@ -17,6 +17,7 @@ from ugly.texture import Texture, ByteTexture, ImageTexture
 from ugly.util import try_except_log, enabled
 from ugly.vao import VertexArrayObject
 
+from .brush import EllipseBrush
 from .imgui_pyglet import PygletRenderer
 from .stack import Stack
 from .stroke import make_stroke
@@ -48,7 +49,7 @@ class OldpaintWindow(pyglet.window.Window):
 
         super().__init__(**kwargs, resizable=True, vsync=False)
 
-        size = (640, 480)
+        size = (1800, 1200)
         self.stack = Stack(size, layers=[Layer(Picture(size)), Layer(Picture(size))])
         self.overlay = Layer(LongPicture(size))  # A temporary drawing layer
 
@@ -83,7 +84,7 @@ class OldpaintWindow(pyglet.window.Window):
             ]
         }
         self.tools = Selectable([])
-        self.brushes = Selectable([])
+        self.brushes = Selectable([EllipseBrush(10, 20), EllipseBrush(3, 5)])
         io = imgui.get_io()
         self._font = io.fonts.add_font_from_file_ttf(
             "ttf/dpcomic.ttf", 14, io.fonts.get_glyph_ranges_latin()
@@ -93,8 +94,16 @@ class OldpaintWindow(pyglet.window.Window):
         self.loader = None
         self.saver = None
 
-    # === Event handlers ===
-    # These are pyglet event callbacks
+        # tablets = pyglet.input.get_tablets()
+        # if tablets:
+        #     self.tablet = tablets[0]
+        #     self.canvas = self.tablet.open(self)
+
+        #     @self.canvas.event
+        #     def on_motion(cursor, x, y, pressure, a, b):
+        #         self._update_cursor(x, y)
+        #         if self.mouse_event_queue:
+        #             self.mouse_event_queue.put(("mouse_drag", (self._to_image_coords(x, y), 0, 0)))
 
     @no_imgui_events
     def on_mouse_press(self, x, y, button, modifiers):
@@ -114,7 +123,16 @@ class OldpaintWindow(pyglet.window.Window):
             self.mouse_event_queue = None
 
     @no_imgui_events
+    def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
+        ox, oy = self.offset
+        ix, iy = self._to_image_coords(x, y)
+        self.zoom = max(min(self.zoom + scroll_y, MAX_ZOOM), MIN_ZOOM)
+        x2, y2 = self._to_window_coords(ix, iy)
+        self.offset = ox + (x - x2), oy + (y - y2)
+
+    @no_imgui_events
     def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
+        print("mouse")
         self._update_cursor(x, y)
         if self.mouse_event_queue:
             self.mouse_event_queue.put(("mouse_drag", (self._to_image_coords(x, y), button, modifiers)))
@@ -124,14 +142,6 @@ class OldpaintWindow(pyglet.window.Window):
 
     def on_mouse_motion(self, x, y, dx, dy):
         self._update_cursor(x, y)
-
-    @no_imgui_events
-    def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
-        ox, oy = self.offset
-        ix, iy = self._to_image_coords(x, y)
-        self.zoom = max(min(self.zoom + scroll_y, MAX_ZOOM), MIN_ZOOM)
-        x2, y2 = self._to_window_coords(ix, iy)
-        self.offset = ox + (x - x2), oy + (y - y2)
 
     def on_key_press(self, symbol, modifiers):
         if symbol == pyglet.window.key.UP:
@@ -221,7 +231,7 @@ class OldpaintWindow(pyglet.window.Window):
 
             self._draw_mouse_cursor()
 
-        self._render_gui()
+        # self._render_gui()
 
         # gl.glFinish()  # No double buffering, to minimize latency (does this work?)
 
@@ -277,7 +287,7 @@ class OldpaintWindow(pyglet.window.Window):
         with imgui.font(self._font):
             # ui.render_tools(self.tools, self.icons)
             imgui.core.separator()
-            # ui.render_brushes(self.stack.brushes, self.get_brush_preview_texture)
+            ui.render_brushes(self.brushes, self.get_brush_preview_texture)
         imgui.end()
 
         ui.render_palette(self.stack.palette)
@@ -437,3 +447,24 @@ def make_view_matrix(window_size, image_size, zoom, offset):
 @lru_cache(1)
 def make_view_matrix_inverse(window_size, image_size, zoom, offset):
     return make_view_matrix(window_size, image_size, zoom, offset).inverse()
+
+
+@lru_cache(32)
+def get_brush_preview_texture(brush):
+    texture = render_brush_preview_texture(brush)
+    print("create brush texture", texture)
+    return texture
+
+
+def render_brush_preview_texture(brush, colors):
+    texture = Texture(brush.size)
+    #brush.original.putpalette(self.stack.palette.get_pil_palette())  # TODO do this when palette changes
+    #brush.set_palette(self.stack.palette)
+    #rawdata = brush.original.convert("RGBA").getdata()
+    rgbdata = brush.original.as_rgba(self.stack.palette.colors, False).data
+    # TODO alpha mask
+    data = (gl.GLuint * len(rgbdata))(*rgbdata)
+    w, h = brush.size
+    gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
+    gl.glTextureSubImage2D(texture.name, 0, 0, 0, w, h, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, data)
+    return texture
