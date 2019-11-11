@@ -19,6 +19,7 @@ from ugly.vao import VertexArrayObject
 
 from .brush import EllipseBrush
 from .imgui_pyglet import PygletRenderer
+from .rect import Rectangle
 from .stack import Stack
 from .stroke import make_stroke
 from .layer import Layer
@@ -62,13 +63,12 @@ class OldpaintWindow(pyglet.window.Window):
                                     FragmentShader("glsl/copy_frag.glsl"))
         # All the drawing will happen in a thread, managed by this executor
         self.executor = ThreadPoolExecutor(max_workers=1)
+        self.stroke = None
         self.mouse_event_queue = None
 
         # Keep track of what we're looking at
         self.offset = (0, 0)
         self.zoom = 0
-
-        self.stroke = None
 
         # Mouse cursor setup
         self.mouse_texture = ImageTexture(*load_png("icons/cursor.png"))
@@ -143,6 +143,7 @@ class OldpaintWindow(pyglet.window.Window):
 
     def on_mouse_motion(self, x, y, dx, dy):
         self._update_cursor(x, y)
+        self._draw_brush_preview(x - dx, y - dy, x, y)
 
     def on_key_press(self, symbol, modifiers):
         if symbol == pyglet.window.key.UP:
@@ -245,8 +246,9 @@ class OldpaintWindow(pyglet.window.Window):
         # Since this is a callback, stroke is a Future and is guaranteed to be finished.
         points, rect = stroke.result()
         print("stroke finished", rect)
-        self.stack.update(self.overlay.get_subimage(rect), rect)
-        self.overlay.clear(rect)
+        if rect:
+            self.stack.update(self.overlay.get_subimage(rect), rect)
+            self.overlay.clear(rect)
         self.stroke = None
         # TODO here we should handle undo history etc
 
@@ -359,6 +361,22 @@ class OldpaintWindow(pyglet.window.Window):
         ix, iy = self._to_image_coords(x, y)
         w, h = self.stack.size
         return 0 <= ix < w and 0 <= iy < h
+
+    @try_except_log
+    def _draw_brush_preview(self, x0, y0, x, y):
+        if self.stroke:
+            return
+        ix0, iy0 = self._to_image_coords(x0, y0)
+        ix, iy = self._to_image_coords(x, y)
+        overlay = self.overlay
+        brush = self.brushes.current
+        bw, bh = brush.size
+        cx, cy = brush.center
+        # Clear the previous brush preview
+        old_rect = Rectangle((ix0 - cx, iy0 - cy), brush.size)
+        overlay.clear(old_rect)
+        rect = Rectangle((ix - cx, iy - cy), brush.size)
+        overlay.blit(brush.get_pic(color=self.stack.palette.foreground), rect)
 
     def _update_cursor(self, x, y):
         over_image = self._over_image(x, y)

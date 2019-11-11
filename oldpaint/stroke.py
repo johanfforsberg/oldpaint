@@ -1,8 +1,11 @@
 from collections import deque
 
+from .rect import Rectangle
 from .picture import LongPicture
+from .util import try_except_log
 
 
+@try_except_log
 def make_stroke(layer, event_queue, brush, color=None):
 
     """
@@ -20,11 +23,13 @@ def make_stroke(layer, event_queue, brush, color=None):
 
     last_pos = None
 
+    if layer.dirty:
+        layer.clear(layer.dirty)
+
     while True:
         event_type, args = event_queue.get()
-        if event_type == "mouse_up":
-            break
-        elif event_type == "mouse_drag":
+
+        if event_type == "mouse_drag":
             pos, button, modifiers = args
 
             # If the point has not actually moved to another pixel,
@@ -33,14 +38,29 @@ def make_stroke(layer, event_queue, brush, color=None):
                 continue
 
             if not points:
-                rect = layer.draw_line(pos, pos, brush=brush.get_pic(color))
+                prev_pos = pos
             else:
                 prev_pos = points[-1]
-                rect = layer.draw_line(prev_pos, pos, brush=brush.pic)
+            brush_pic = brush.get_pic(color)
+            rect = layer.draw_line(prev_pos, pos, brush=brush_pic)
 
             if rect:
                 total_rect = rect.unite(total_rect)
             points.append(pos)
             last_pos = pos
+
+        elif event_type == "mouse_up":
+            if not points:
+                # Looks like the user just clicked w/o moving the mouse.
+                # Let's just draw the brush once.
+                pos, button, modifiers = args
+                x, y = pos
+                cx, cy = brush.center
+                rect = Rectangle((x - cx, y - cy), brush.size)
+                brush_pic = brush.get_pic(color)
+                layer.blit(brush_pic, rect)
+                total_rect = rect.unite(total_rect)
+            break
+
 
     return points, total_rect
