@@ -1,28 +1,27 @@
 import abc
-#from queue import SimpleQueue, Empty
 
 from pyglet import window
 
-#from .picture import rgba_to_32bit
 from .rect import from_points, cover
-#from .util import LoggerMixin
 from .util import try_except_log
 
 
-class Action(metaclass=abc.ABCMeta):
+class Tool(metaclass=abc.ABCMeta):
 
     """
-    A "stroke" is whatever happens between pressing a mouse button
-    and releasing it, with a drawing tool.
+    Tools are various ways of mouse interaction.
+    They can draw to the image, but also inspect it or change other aspects.
     """
 
     tool = None  # Name of the tool (should correspond to an icon)
     ephemeral = False  # Ephemeral means clear the layer before each draw call
 
-    def __init__(self, brush, color, initial):
+    def __init__(self, stack, brush, color, initial):
+        self.stack = stack  # Note: normally don't draw directly to the stack, as that
+                            # will bypass the undo system.
         self.brush = brush
         self.color = color
-        self.points = [initial]  # Stores the coordinates used when drawing, e.g. for repeating
+        self.points = [initial]  # Store the coordinates used when drawing, e.g. for repeating
         self.rect = None         # The dirty rectangle covering the edit
 
     def draw(self, layer, point, buttons, modifiers):
@@ -46,11 +45,7 @@ class Action(metaclass=abc.ABCMeta):
         return self.tool
 
 
-class Stroke:
-    pass
-
-
-class PencilTool(Stroke, Action):
+class PencilTool(Tool):
 
     tool = "pencil"
     ephemeral = False
@@ -67,7 +62,7 @@ class PencilTool(Stroke, Action):
         self.draw(layer, point, buttons, modifiers)
 
 
-class PointsTool(Stroke, Action):
+class PointsTool(Tool):
 
     tool = "points"
     ephemeral = False
@@ -83,7 +78,7 @@ class PointsTool(Stroke, Action):
         self.draw(layer, point, buttons, modifiers)
 
 
-class LineTool(Stroke, Action):
+class LineTool(Tool):
 
     tool = "line"
     ephemeral = True
@@ -94,7 +89,7 @@ class LineTool(Stroke, Action):
         self.rect = layer.draw_line(p0, p1, brush=self.brush.get_pic(self.color))
 
 
-class RectangleTool(Stroke, Action):
+class RectangleTool(Tool):
 
     tool = "rectangle"
     ephemeral = True
@@ -106,7 +101,7 @@ class RectangleTool(Stroke, Action):
                                          fill=modifiers & window.key.MOD_SHIFT)
 
 
-class EllipseTool(Stroke, Action):
+class EllipseTool(Tool):
 
     tool = "ellipse"
     ephemeral = True
@@ -121,7 +116,7 @@ class EllipseTool(Stroke, Action):
                                        fill=True)
 
 
-class FillStroke(Stroke, Action):
+class FillStroke(Tool):
 
     tool = "floodfill"
 
@@ -138,7 +133,7 @@ class FillStroke(Stroke, Action):
         return True
 
 
-class Selection(Action):
+class Selection(Tool):
 
     tool = "brush"
     stroke = False
@@ -156,18 +151,18 @@ class Selection(Action):
         self.stack.selection = None
 
 
-class Picker(Action):
+class PickerTool(Tool):
 
     tool = "picker"
     stroke = False
 
-    def __init__(self, stack, brush, initial):
-        super().__init__(stack, brush, initial)
-        self.start = tuple(initial[:2])
+    def __init__(self, stack, brush, color, initial):
+        super().__init__(stack, brush, color, initial)
+        self.start = initial
         self.color = None
 
-    def finish(self, x, y, buttons, modifiers):
-        index = self.stack.current.pixel[x, y]
+    def finish(self, layer, point, buttons, modifiers):
+        index = self.stack.current.pic.get_pixel(*point)
         if buttons == window.mouse.LEFT:
             self.stack.palette.foreground = index
         elif buttons == window.mouse.RIGHT:

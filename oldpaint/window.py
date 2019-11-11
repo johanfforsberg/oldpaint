@@ -17,14 +17,14 @@ from ugly.texture import Texture, ByteTexture, ImageTexture
 from ugly.util import try_except_log, enabled
 from ugly.vao import VertexArrayObject
 
-from .action import PencilTool, PointsTool, LineTool, RectangleTool, EllipseTool
 from .brush import RectangleBrush, EllipseBrush
 from .imgui_pyglet import PygletRenderer
+from .layer import Layer
+from .picture import Picture, LongPicture
 from .rect import Rectangle
 from .stack import Stack
 from .stroke import make_stroke
-from .layer import Layer
-from .picture import Picture, LongPicture
+from .tool import PencilTool, PointsTool, LineTool, RectangleTool, EllipseTool, PickerTool
 from .util import Selectable
 from . import ui
 
@@ -84,7 +84,7 @@ class OldpaintWindow(pyglet.window.Window):
                     "pencil", "picker", "points", "rectangle"
             ]
         }
-        self.tools = Selectable([PencilTool, PointsTool, LineTool, RectangleTool, EllipseTool])
+        self.tools = Selectable([PencilTool, PointsTool, LineTool, RectangleTool, EllipseTool, PickerTool])
         self.brushes = Selectable([RectangleBrush((1, 1)), EllipseBrush((10, 20)), ])
 
         io = imgui.get_io()
@@ -116,7 +116,7 @@ class OldpaintWindow(pyglet.window.Window):
             self.mouse_event_queue = Queue()
             color = (self.stack.palette.foreground if button == pyglet.window.mouse.LEFT
                      else self.stack.palette.background)
-            tool = self.tools.current(self.brushes.current, color, self._to_image_coords(x, y))
+            tool = self.tools.current(self.stack, self.brushes.current, color, self._to_image_coords(x, y))
             self.stroke = self.executor.submit(make_stroke, self.overlay, self.mouse_event_queue, tool)
             self.stroke.add_done_callback(lambda s: self.executor.submit(self._finish_stroke, s))
 
