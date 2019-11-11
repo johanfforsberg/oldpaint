@@ -403,7 +403,7 @@ cpdef draw_line(LongPicture pic, (int, int) p0, (int, int) p1, LongPicture brush
 cpdef draw_rectangle(pic, (int, int) pos, (int, int) size, brush=None, unsigned int color=0,
                           bint fill=False, int step=1):
 
-    cdef int x0, y0, w0, h0, x, y, w, h, cols, rows, hw, hh
+    cdef int x0, y0, w0, h0, x, y, w, h, cols, rows, bw, bh, hw, hh
     x0, y0 = pos
     w0, h0 = size
 
@@ -427,10 +427,12 @@ cpdef draw_rectangle(pic, (int, int) pos, (int, int) size, brush=None, unsigned 
         draw_line(pic, (x0+w0, y0+h0), (x0, y0+h0), brush, color, step)
         draw_line(pic, (x0, y0+h0), pos, brush, color, step)
 
-    hw = brush.width // 2 if brush else 1
-    hh = brush.height // 2 if brush else 1
+    bw = brush.width if brush else 0
+    bh = brush.height if brush else 0
+    hw = bw // 2 if brush else 1
+    hh = bh // 2 if brush else 1
 
-    return pic.rect.intersect(Rectangle((x-hw, y-hh), (w + brush.width, h + brush.height)))
+    return pic.rect.intersect(Rectangle((x-hw, y-hh), (w + bw, h + bh)))
     # layer.dirty = rect.unite(layer.dirty)
     # return rect
 

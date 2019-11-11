@@ -18,7 +18,7 @@ from ugly.util import try_except_log, enabled
 from ugly.vao import VertexArrayObject
 
 from .action import PencilTool, PointsTool, LineTool, RectangleTool, EllipseTool
-from .brush import EllipseBrush
+from .brush import RectangleBrush, EllipseBrush
 from .imgui_pyglet import PygletRenderer
 from .rect import Rectangle
 from .stack import Stack
@@ -85,7 +85,7 @@ class OldpaintWindow(pyglet.window.Window):
             ]
         }
         self.tools = Selectable([PencilTool, PointsTool, LineTool, RectangleTool, EllipseTool])
-        self.brushes = Selectable([EllipseBrush((3, 3)), EllipseBrush((10, 20)), ])
+        self.brushes = Selectable([RectangleBrush((1, 1)), EllipseBrush((10, 20)), ])
 
         io = imgui.get_io()
         self._font = io.fonts.add_font_from_file_ttf(
