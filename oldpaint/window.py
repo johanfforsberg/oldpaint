@@ -145,6 +145,7 @@ class OldpaintWindow(pyglet.window.Window):
             ox, oy = self.offset
             self.offset = ox + dx, oy + dy
 
+    #@no_imgui_events
     def on_mouse_motion(self, x, y, dx, dy):
         if (x, y) == self.mouse_position:
             # The mouse hasn't actually moved; do nothing

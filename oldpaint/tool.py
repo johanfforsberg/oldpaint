@@ -75,7 +75,9 @@ class PointsTool(Tool):
                 self.rect = rect.unite(self.rect)
 
     def finish(self, layer, point, buttons, modifiers):
-        self.draw(layer, point, buttons, modifiers)
+        rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.color))
+        if rect:
+            self.rect = rect.unite(self.rect)
 
 
 class LineTool(Tool):
@@ -113,7 +115,7 @@ class EllipseTool(Tool):
         size = (int(abs(x - x0)), int(abs(y - y0)))
         self.rect = layer.draw_ellipse((x0, y0), size, brush=self.brush.get_pic(self.color),
                                        color=self.color + 255*2**24,
-                                       fill=True)
+                                       fill=modifiers & window.key.MOD_SHIFT)
 
 
 class FillStroke(Tool):

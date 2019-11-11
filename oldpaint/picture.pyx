@@ -471,8 +471,10 @@ cpdef draw_ellipse(pic, (int, int) center, (int, int) size, brush=None,
     y = b
     stopy = 0
     stopx = a2 * b
-    hw = brush.size[0]//2 if brush else 0
-    hh = brush.size[1]//2 if brush else 0
+    bw = brush.width if brush else 0
+    bh = brush.height if brush else 0
+    hw = bw//2 if brush else 1
+    hh = bh//2 if brush else 1
 
     w, h = pic.size
 
@@ -586,9 +588,7 @@ cpdef draw_ellipse(pic, (int, int) center, (int, int) size, brush=None,
             x -= 1
             stopy -= b2
 
-    return pic.rect.intersect(Rectangle((x0-a-hw-1, y0-b-hh-1), (2*a+2*hw+2, 2*b+2*hh+2)))
-    # layer.dirty = rect.unite(layer.dirty)
-    # return rect
+    return pic.rect.intersect(Rectangle((x0-a-hw-1, y0-b-hh-1), (2*a+bw+2, 2*b+bh+2)))
 
 
 cpdef draw_fill(pic, (int, int) point, unsigned int color):
