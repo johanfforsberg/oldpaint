@@ -297,9 +297,9 @@ cdef class LongPicture:
         cdef int x0, y0, x1, y1
         x0, y0, x1, y1 = box
         x0 = max(0, x0)
-        x1 = min(w-1, x1)
+        x1 = min(w, x1)
         y0 = max(0, y0)
-        y1 = min(h-1, y1)
+        y1 = min(h, y1)
         with nogil:
             for x in range(x0, x1):
                 for y in range(y0, y1):
@@ -430,7 +430,7 @@ cpdef draw_rectangle(pic, (int, int) pos, (int, int) size, brush=None, unsigned 
     hw = brush.width // 2 if brush else 1
     hh = brush.height // 2 if brush else 1
 
-    return pic.rect.intersect(Rectangle((x-hw, y-hh), (w + 2*hw, h + 2*hh)))
+    return pic.rect.intersect(Rectangle((x-hw, y-hh), (w + brush.width, h + brush.height)))
     # layer.dirty = rect.unite(layer.dirty)
     # return rect
 

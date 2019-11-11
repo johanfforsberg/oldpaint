@@ -19,9 +19,14 @@ def make_stroke(layer, event_queue, tool):
             event_type, args = event_queue.get()
 
         if event_type == "mouse_drag":
-            tool.draw(*args)
+            with layer.lock:
+                if tool.ephemeral and tool.rect:
+                    # By keeping the lock here, we can prevent some flickering.
+                    layer.clear(tool.rect)
+                tool.draw(layer, *args)
         elif event_type == "mouse_up":
-            tool.finish(*args)
+            with layer.lock:
+                tool.finish(layer, *args)
             break
 
     return tool

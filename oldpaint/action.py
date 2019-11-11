@@ -1,6 +1,8 @@
 import abc
 #from queue import SimpleQueue, Empty
 
+from pyglet import window
+
 #from .picture import rgba_to_32bit
 from .rect import from_points, cover
 #from .util import LoggerMixin
@@ -14,21 +16,19 @@ class Action(metaclass=abc.ABCMeta):
     and releasing it, with a drawing tool.
     """
 
-    tool = None  # Name of the associated tool (e.g. icon)
-    ephemeral = False  # Ephemeral means redraw the whole thing each time the mouse moves.
+    tool = None  # Name of the tool (should correspond to an icon)
+    ephemeral = False  # Ephemeral means clear the layer before each draw call
 
-    def __init__(self, overlay, brush, color, initial):
-
-        self.overlay = overlay
+    def __init__(self, brush, color, initial):
         self.brush = brush
         self.color = color
         self.points = [initial]  # Stores the coordinates used when drawing, e.g. for repeating
         self.rect = None         # The dirty rectangle covering the edit
 
-    def draw(self, point, buttons, modifiers):
+    def draw(self, layer, point, buttons, modifiers):
         "Runs once per mouse move event, *on a separate thread*. Be careful!"
 
-    def finish(self, point, buttons, modifiers):
+    def finish(self, layer, point, buttons, modifiers):
         "Runs once at the end, on main thread."
 
     # def redraw(self, cls):
@@ -42,11 +42,6 @@ class Action(metaclass=abc.ABCMeta):
     #         stroke.on_mouse_drag_imgcoord(*points[-1])
     #     stroke.on_mouse_release_imgcoord(*points[-1], pop_handler=False)
 
-    # def undo(self):
-    #     backup = self.image.get_subimage(self.rect)
-    #     self.image.blit(self.backup, rect=self.rect, mask=False)
-    #     self.backup = backup
-
     def __repr__(self):
         return self.tool
 
@@ -55,59 +50,48 @@ class Stroke:
     pass
 
 
-class Pencil(Stroke, Action):
+class PencilTool(Stroke, Action):
 
     tool = "pencil"
     ephemeral = False
 
-    def draw(self, point, buttons, modifiers):
+    def draw(self, layer, point, buttons, modifiers):
         p0 = tuple(self.points[-1][:2])
         p1 = point
         self.points.append(point)
-        rect = self.overlay.draw_line(p0, p1, brush=self.brush.get_pic(self.color))
+        rect = layer.draw_line(p0, p1, brush=self.brush.get_pic(self.color))
         if rect:
             self.rect = rect.unite(self.rect)
 
-    def finish(self, point, buttons, modifiers):
-        self.draw(point, buttons, modifiers)
+    def finish(self, layer, point, buttons, modifiers):
+        self.draw(layer, point, buttons, modifiers)
 
 
-class PointsStroke(Stroke, Action):
+class PointsTool(Stroke, Action):
 
     tool = "points"
     ephemeral = False
 
-    def draw(self, x, y, buttons, modifiers):
-        p1 = (x, y)
-        if len(self.points) % 2 == 1:
-            index = self.palette.get_index(buttons)
-            rect = self.overlay.draw_line(p1, p1, color=rgba_to_32bit(index, 0, 0, 255), brush=self.brush.pic)
+    def draw(self, layer, point, buttons, modifiers):
+        self.points.append(point)
+        if len(self.points) % 5 == 0:
+            rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.color))
             if rect:
                 self.rect = rect.unite(self.rect)
-        return True
 
-    def finish(self, x, y, buttons, modifiers):
-        p1 = x, y
-        index = self.palette.get_index(buttons)
-        rect = self.overlay.draw_line(p1, p1, color=rgba_to_32bit(index, 0, 0, 255), brush=self.brush.pic)
-        self.rect = rect.unite(self.rect)
+    def finish(self, layer, point, buttons, modifiers):
+        self.draw(layer, point, buttons, modifiers)
 
 
-class Line(Stroke, Action):
+class LineTool(Stroke, Action):
 
     tool = "line"
     ephemeral = True
 
-    def draw(self, point, buttons, modifiers):
-        rect1 = self.overlay.clear(self.rect, set_dirty=False)
+    def draw(self, layer, point, buttons, modifiers):
         p0 = tuple(self.points[0][:2])
         p1 = point
-        rect2 = self.overlay.draw_line(p0, p1, brush=self.brush.get_pic(self.color), set_dirty=False)
-        self.rect = rect2
-        self.overlay.dirty = cover([rect1, rect2])
-
-    # def finish(self, x, y, buttons, modifiers):
-    #     self.draw(x, y, buttons, modifiers)
+        self.rect = layer.draw_line(p0, p1, brush=self.brush.get_pic(self.color))
 
 
 class RectangleTool(Stroke, Action):
@@ -115,15 +99,11 @@ class RectangleTool(Stroke, Action):
     tool = "rectangle"
     ephemeral = True
 
-    def draw(self, point, buttons, modifiers):
-        rect1 = self.rect
-        self.overlay.clear(self.rect, set_dirty=False)
+    def draw(self, layer, point, buttons, modifiers):
         p0 = self.points[0]
         r = from_points([p0, point])
-        rect2 = self.overlay.draw_rectangle(r.position, r.size, brush=self.brush.get_pic(self.color))
-                                            #fill=modifiers & window.key.MOD_SHIFT)
-        self.rect = rect2
-        self.overlay.dirty = cover([rect1, rect2])
+        self.rect = layer.draw_rectangle(r.position, r.size, brush=self.brush.get_pic(self.color),
+                                         fill=modifiers & window.key.MOD_SHIFT)
 
 
 class EllipseTool(Stroke, Action):
@@ -132,18 +112,13 @@ class EllipseTool(Stroke, Action):
     ephemeral = True
 
     @try_except_log
-    def draw(self, point, buttons, modifiers):
-        rect1 = self.rect
-        self.overlay.clear(self.rect, set_dirty=False)
+    def draw(self, layer, point, buttons, modifiers):
         x0, y0 = self.points[0]
         x, y = point
         size = (int(abs(x - x0)), int(abs(y - y0)))
-        print(size)
-        self.rect = self.overlay.draw_ellipse((x0, y0), size, brush=self.brush.get_pic(self.color),
-                                              color=self.color + 255*2**24,
-                                              fill=False)
-        print(self.rect)
-        self.overlay.dirty = cover([rect1, self.rect])
+        self.rect = layer.draw_ellipse((x0, y0), size, brush=self.brush.get_pic(self.color),
+                                       color=self.color + 255*2**24,
+                                       fill=True)
 
 
 class FillStroke(Stroke, Action):
