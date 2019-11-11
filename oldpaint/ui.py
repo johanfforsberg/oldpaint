@@ -26,12 +26,13 @@ def render_tools(tools, icons):
     current_tool = tools.current
     for i, tool in enumerate(tools):
         texture = icons[tool.tool]
-        imgui.push_style_color(imgui.COLOR_BUTTON, *TOOL_BUTTON_COLORS[tool == current_tool])
-        if imgui.core.image_button(texture.name, 16, 16):
-            tools.select(tool)
+        #imgui.push_style_color(imgui.COLOR_BUTTON, *TOOL_BUTTON_COLORS[tool == current_tool])
+        with imgui.extra.styled(imgui.COLOR_BUTTON, TOOL_BUTTON_COLORS[tool == current_tool]):
+            if imgui.core.image_button(texture.name, 16, 16):
+                tools.select(tool)
         if i % 4 != 3:
             imgui.same_line()
-        imgui.pop_style_color(1)
+        #imgui.pop_style_color(1)
     imgui.new_line()
 
 

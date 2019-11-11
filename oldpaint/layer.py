@@ -95,8 +95,8 @@ class Layer:
                     self.pic.paste_long(pic, rect.x, rect.y, mask)
             else:
                 self.pic.paste(pic, rect.x, rect.y, mask)
-            self.dirty = rect.unite(self.dirty)
-            self.dirty_data = pic
+            self.dirty = rect.unite(self.dirty).intersect(self.rect)
+            # self.dirty_data = pic
         return rect
 
     def __hash__(self):

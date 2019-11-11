@@ -17,6 +17,7 @@ from ugly.texture import Texture, ByteTexture, ImageTexture
 from ugly.util import try_except_log, enabled
 from ugly.vao import VertexArrayObject
 
+from .action import Pencil, Line, RectangleTool, EllipseTool
 from .brush import EllipseBrush
 from .imgui_pyglet import PygletRenderer
 from .rect import Rectangle
@@ -83,7 +84,7 @@ class OldpaintWindow(pyglet.window.Window):
                     "pencil", "picker", "points", "rectangle"
             ]
         }
-        self.tools = Selectable([])
+        self.tools = Selectable([Pencil, Line, RectangleTool, EllipseTool])
         self.brushes = Selectable([EllipseBrush((3, 3)), EllipseBrush((10, 20)), ])
 
         io = imgui.get_io()
@@ -115,8 +116,8 @@ class OldpaintWindow(pyglet.window.Window):
             self.mouse_event_queue = Queue()
             color = (self.stack.palette.foreground if button == pyglet.window.mouse.LEFT
                      else self.stack.palette.background)
-            self.stroke = self.executor.submit(make_stroke, self.overlay, self.mouse_event_queue, self.brushes.current,
-                                               color=color)
+            tool = self.tools.current(self.overlay, self.brushes.current, color, self._to_image_coords(x, y))
+            self.stroke = self.executor.submit(make_stroke, self.overlay, self.mouse_event_queue, tool)
             self.stroke.add_done_callback(lambda s: self.executor.submit(self._finish_stroke, s))
 
     def on_mouse_release(self, x, y, button, modifiers):
@@ -134,6 +135,9 @@ class OldpaintWindow(pyglet.window.Window):
 
     @no_imgui_events
     def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
+        if (x, y) == self.mouse_position:
+            # The mouse hasn't actually moved; do nothing
+            return
         self._update_cursor(x, y)
         if self.mouse_event_queue:
             self.mouse_event_queue.put(("mouse_drag", (self._to_image_coords(x, y), button, modifiers)))
@@ -142,6 +146,9 @@ class OldpaintWindow(pyglet.window.Window):
             self.offset = ox + dx, oy + dy
 
     def on_mouse_motion(self, x, y, dx, dy):
+        if (x, y) == self.mouse_position:
+            # The mouse hasn't actually moved; do nothing
+            return
         self._update_cursor(x, y)
         self._draw_brush_preview(x - dx, y - dy, x, y)
 
@@ -233,7 +240,7 @@ class OldpaintWindow(pyglet.window.Window):
 
             self._draw_mouse_cursor()
 
-        # self._render_gui()
+        self._render_gui()
 
         # gl.glFinish()  # No double buffering, to minimize latency (does this work?)
 
@@ -244,11 +251,11 @@ class OldpaintWindow(pyglet.window.Window):
 
     def _finish_stroke(self, stroke):
         # Since this is a callback, stroke is a Future and is guaranteed to be finished.
-        points, rect = stroke.result()
-        print("stroke finished", rect)
-        if rect:
-            self.stack.update(self.overlay.get_subimage(rect), rect)
-            self.overlay.clear(rect)
+        tool = stroke.result()
+        print("stroke finished", tool.rect)
+        if tool.rect:
+            self.stack.update(self.overlay.get_subimage(tool.rect), tool.rect)
+            self.overlay.clear(tool.rect)
         self.stroke = None
         # TODO here we should handle undo history etc
 
@@ -288,9 +295,9 @@ class OldpaintWindow(pyglet.window.Window):
 
         imgui.begin("Tools", True)
         with imgui.font(self._font):
-            # ui.render_tools(self.tools, self.icons)
+            ui.render_tools(self.tools, self.icons)
             imgui.core.separator()
-            ui.render_brushes(self.brushes, self.get_brush_preview_texture)
+            # ui.render_brushes(self.brushes, self.get_brush_preview_texture)
         imgui.end()
 
         ui.render_palette(self.stack.palette)
@@ -357,6 +364,7 @@ class OldpaintWindow(pyglet.window.Window):
         wy = -(scale * (y - h / 2) - wh / 2 - oy)
         return wx, wy
 
+    @lru_cache(1)
     def _over_image(self, x, y):
         ix, iy = self._to_image_coords(x, y)
         w, h = self.stack.size
@@ -364,7 +372,7 @@ class OldpaintWindow(pyglet.window.Window):
 
     @try_except_log
     def _draw_brush_preview(self, x0, y0, x, y):
-        if self.stroke:
+        if self.stroke or not self._over_image(x, y):
             return
         ix0, iy0 = self._to_image_coords(x0, y0)
         ix, iy = self._to_image_coords(x, y)
@@ -373,6 +381,7 @@ class OldpaintWindow(pyglet.window.Window):
         bw, bh = brush.size
         cx, cy = brush.center
         # Clear the previous brush preview
+        # TODO when leaving the image, or screen, we also need to clear
         old_rect = Rectangle((ix0 - cx, iy0 - cy), brush.size)
         overlay.clear(old_rect)
         rect = Rectangle((ix - cx, iy - cy), brush.size)

@@ -293,9 +293,13 @@ cdef class LongPicture:
 
     cpdef void clear(self, (int, int, int, int) box, unsigned int value) nogil:
         cdef int x, y
-        cdef int w = self.width
+        cdef int w = self.width, h = self.height
         cdef int x0, y0, x1, y1
         x0, y0, x1, y1 = box
+        x0 = max(0, x0)
+        x1 = min(w-1, x1)
+        y0 = max(0, y0)
+        y1 = min(h-1, y1)
         with nogil:
             for x in range(x0, x1):
                 for y in range(y0, y1):
@@ -445,7 +449,6 @@ cpdef draw_rectangle(pic, (int, int) pos, (int, int) size, brush=None, unsigned 
 #         col = array("B", color * (ymax - ymin))
 #         print ymax-ymin
 #         image.data[4*(ymin*cols+x):4*(ymax*cols+x):4*cols] = col
-
 
 
 cpdef draw_ellipse(pic, (int, int) center, (int, int) size, brush=None,
