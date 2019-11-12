@@ -52,16 +52,17 @@ class PencilTool(Tool):
     ephemeral = False
 
     def draw(self, layer, point, buttons, modifiers):
-        p1 = point
+        if self.points[-1] == point:
+            return
         p0 = tuple(self.points[-1])
-        rect = layer.draw_line(p0, p1, brush=self.brush.get_pic(self.color))
+        rect = layer.draw_line(p0, point, brush=self.brush.get_pic(self.color))
         if rect:
             self.rect = rect.unite(self.rect)
         self.points.append(point)
 
     def finish(self, layer, point, buttons, modifiers):
         # Make sure we draw a point even if the mouse was never moved
-        rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.color))
+        rect = layer.draw_line(self.points[-1], point, brush=self.brush.get_pic(self.color))
         if rect:
             self.rect = rect.unite(self.rect)
         self.stack.update(layer.get_subimage(self.rect), self.rect)
@@ -74,6 +75,8 @@ class PointsTool(Tool):
     ephemeral = False
 
     def draw(self, layer, point, buttons, modifiers):
+        if self.points[-1] == point:
+            return
         self.points.append(point)
         if len(self.points) % 5 == 0:
             rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.color))
@@ -154,16 +157,13 @@ class FillTool(Tool):
 
     def finish(self, layer, point, buttons, modifiers):
         clone = self.stack.current.clone()
-        t0 = time()
-        self.rect = clone.draw_fill(point, color=self.color + 255*2**24)
-        print(time() - t0)
+        self.rect = clone.draw_fill(point, color=self.color)
         self.stack.update(clone.get_subimage(self.rect), self.rect)
 
 
 class Selection(Tool):
 
     tool = "brush"
-    stroke = False
 
     def __init__(self, stack, brush, initial):
         super().__init__(stack, brush, initial)
@@ -181,7 +181,6 @@ class Selection(Tool):
 class PickerTool(Tool):
 
     tool = "picker"
-    stroke = False
 
     def __init__(self, stack, brush, color, initial):
         super().__init__(stack, brush, color, initial)

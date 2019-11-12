@@ -143,7 +143,8 @@ class OldpaintWindow(pyglet.window.Window):
             return
         self._update_cursor(x, y)
         if self.mouse_event_queue:
-            self.mouse_event_queue.put(("mouse_drag", (self._to_image_coords(x, y), button, modifiers)))
+            ipos = self._to_image_coords(x, y)
+            self.mouse_event_queue.put(("mouse_drag", (ipos, button, modifiers)))
         elif button == pyglet.window.mouse.MIDDLE:
             ox, oy = self.offset
             self.offset = ox + dx, oy + dy
