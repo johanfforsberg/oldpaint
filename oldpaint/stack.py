@@ -129,6 +129,12 @@ class Stack:
             self.layers.insert(index - 1, self.current)
             self.dirty = True
 
+    def clear_layer(self, layer=None, color=0):
+        layer = layer or self.current
+        prev_data = layer.get_subimage(layer.rect)
+        self.undos.append((layer, layer.rect, prev_data))
+        layer.clear(value=color)
+
     def undo(self):
         if self.undos:
             layer, rect, undo_data = self.undos.pop()

@@ -76,6 +76,7 @@ class OldpaintWindow(pyglet.window.Window):
         # Mouse cursor setup
         self.mouse_texture = ImageTexture(*load_png("icons/cursor.png"))
         self.mouse_position = None
+        self.brush_preview_dirty = None  # A hacky way to keep brush preview dirt away
 
         # UI stuff
         self.imgui_renderer = PygletRenderer(self)
@@ -147,13 +148,16 @@ class OldpaintWindow(pyglet.window.Window):
             ox, oy = self.offset
             self.offset = ox + dx, oy + dy
 
-    #@no_imgui_events
     def on_mouse_motion(self, x, y, dx, dy):
         if (x, y) == self.mouse_position:
-            # The mouse hasn't actually moved; do nothing
             return
         self._update_cursor(x, y)
         self._draw_brush_preview(x - dx, y - dy, x, y)
+
+    def on_mouse_leave(self, x, y):
+        self.mouse_position = None
+        if self.brush_preview_dirty:
+            self.overlay.clear(self.brush_preview_dirty)
 
     def on_key_press(self, symbol, modifiers):
         if symbol == key.UP:
@@ -166,7 +170,7 @@ class OldpaintWindow(pyglet.window.Window):
             self.stack.palette.foreground -= 1
 
         elif symbol == key.DELETE:
-            self.stack.current.clear()
+            self.stack.clear_layer(color=self.stack.palette.background)
 
         elif symbol == key.Z:
             self.stack.undo()
@@ -378,6 +382,9 @@ class OldpaintWindow(pyglet.window.Window):
 
     @try_except_log
     def _draw_brush_preview(self, x0, y0, x, y):
+        if self.brush_preview_dirty:
+            self.overlay.clear(self.brush_preview_dirty)
+        self.brush_preview_dirty = None
         if self.stroke or not self._over_image(x, y):
             return
         ix0, iy0 = self._to_image_coords(x0, y0)
@@ -392,6 +399,7 @@ class OldpaintWindow(pyglet.window.Window):
         overlay.clear(old_rect)
         rect = Rectangle((ix - cx, iy - cy), brush.size)
         overlay.blit(brush.get_pic(color=self.stack.palette.foreground), rect)
+        self.brush_preview_dirty = rect
 
     def _update_cursor(self, x, y):
         over_image = self._over_image(x, y)
