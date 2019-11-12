@@ -9,6 +9,7 @@ from euclid3 import Matrix4
 import imgui
 import pyglet
 from pyglet import gl
+from pyglet.window import key
 
 from ugly.framebuffer import FrameBuffer
 from ugly.glutil import gl_matrix, load_png
@@ -154,21 +155,24 @@ class OldpaintWindow(pyglet.window.Window):
         self._draw_brush_preview(x - dx, y - dy, x, y)
 
     def on_key_press(self, symbol, modifiers):
-        if symbol == pyglet.window.key.UP:
+        if symbol == key.UP:
             self.stack.next_layer()
-        elif symbol == pyglet.window.key.DOWN:
+        elif symbol == key.DOWN:
             self.stack.prev_layer()
-        if symbol == pyglet.window.key.E:
+        if symbol == key.E:
             self.stack.palette.foreground += 1
-        elif symbol == pyglet.window.key.D:
+        elif symbol == key.D:
             self.stack.palette.foreground -= 1
 
-        elif symbol == pyglet.window.key.Z:
+        elif symbol == key.DELETE:
+            self.stack.current.clear()
+
+        elif symbol == key.Z:
             self.stack.undo()
-        elif symbol == pyglet.window.key.Y:
+        elif symbol == key.Y:
             self.stack.redo()
 
-        elif symbol == pyglet.window.key.S:
+        elif symbol == key.S:
             self.stack.save_ora("/tmp/hej.ora")
 
         else:
@@ -289,8 +293,8 @@ class OldpaintWindow(pyglet.window.Window):
                     self.stack.current.flip_horizontal()
                 if imgui.menu_item("Flip vertically", "V", False, True)[0]:
                     self.stack.current.flip_vertical()
-                if imgui.menu_item("Clear", "V", False, True)[0]:
-                    self.stack.current.flip_vertical()
+                if imgui.menu_item("Clear", "Delete", False, True)[0]:
+                    self.stack.current.clear()
                 imgui.end_menu()
             imgui.end_main_menu_bar()
 

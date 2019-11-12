@@ -49,14 +49,16 @@ class PencilTool(Tool):
 
     tool = "pencil"
     ephemeral = False
+    step = 5
 
     def draw(self, layer, point, buttons, modifiers):
-        p0 = tuple(self.points[-1][:2])
         p1 = point
+        if len(self.points) % self.step == 0:
+            p0 = tuple(self.points[-self.step])
+            rect = layer.draw_line(p0, p1, brush=self.brush.get_pic(self.color))
+            if rect:
+                self.rect = rect.unite(self.rect)
         self.points.append(point)
-        rect = layer.draw_line(p0, p1, brush=self.brush.get_pic(self.color))
-        if rect:
-            self.rect = rect.unite(self.rect)
 
     def finish(self, layer, point, buttons, modifiers):
         self.draw(layer, point, buttons, modifiers)

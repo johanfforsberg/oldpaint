@@ -58,6 +58,14 @@ class Layer:
                 self.dirty = rect.unite(self.dirty)
         return rect
 
+    def flip_vertical(self):
+        self.pic = self.pic.flip_vertical()
+        self.dirty = self.rect
+
+    def flip_horizontal(self):
+        self.pic = self.pic.flip_horizontal()
+        self.dirty = self.rect
+
     @property
     def size(self):
         return self.pic.size

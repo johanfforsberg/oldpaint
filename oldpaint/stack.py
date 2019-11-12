@@ -163,6 +163,11 @@ class Stack:
     def __repr__(self):
         return f"ImageStack(size={self.size}, layers={self.layers}, current={self.get_index()})"
 
+    def layer_op(method, *args, layer=None):
+        layer = layer or self.current
+        rect = method(layer, *args)
+        self.
+
     def update(self, new_data, rect, layer=None):
         layer = layer or self.current
         prev_data = layer.get_subimage(rect)
