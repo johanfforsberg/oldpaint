@@ -91,6 +91,9 @@ class Layer:
             self.dirty = rect
         return rect
 
+    def clone(self):
+        return Layer(self.pic.crop(*self.rect.points))
+
     def get_subimage(self, rect):
         return self.pic.crop(*rect.points)
 
@@ -102,7 +105,10 @@ class Layer:
                 else:
                     self.pic.paste_long(pic, rect.x, rect.y, mask)
             else:
-                self.pic.paste(pic, rect.x, rect.y, mask)
+                if isinstance(self.pic, LongPicture):
+                    self.pic.paste_byte(pic, rect.x, rect.y, mask)
+                else:
+                    self.pic.paste(pic, rect.x, rect.y, mask)
             self.dirty = rect.unite(self.dirty).intersect(self.rect)
             # self.dirty_data = pic
         return rect

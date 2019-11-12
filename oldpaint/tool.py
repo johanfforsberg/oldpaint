@@ -1,4 +1,5 @@
 import abc
+from time import time
 
 from pyglet import window
 
@@ -28,7 +29,7 @@ class Tool(metaclass=abc.ABCMeta):
         "Runs once per mouse move event, *on a separate thread*. Be careful!"
 
     def finish(self, layer, point, buttons, modifiers):
-        "Runs once at the end, on main thread."
+        "Runs once at the end, also on the thread."
 
     # def redraw(self, cls):
     #     points = self.points[1:]
@@ -49,19 +50,22 @@ class PencilTool(Tool):
 
     tool = "pencil"
     ephemeral = False
-    step = 5
 
     def draw(self, layer, point, buttons, modifiers):
         p1 = point
-        if len(self.points) % self.step == 0:
-            p0 = tuple(self.points[-self.step])
-            rect = layer.draw_line(p0, p1, brush=self.brush.get_pic(self.color))
-            if rect:
-                self.rect = rect.unite(self.rect)
+        p0 = tuple(self.points[-1])
+        rect = layer.draw_line(p0, p1, brush=self.brush.get_pic(self.color))
+        if rect:
+            self.rect = rect.unite(self.rect)
         self.points.append(point)
 
     def finish(self, layer, point, buttons, modifiers):
-        self.draw(layer, point, buttons, modifiers)
+        # Make sure we draw a point even if the mouse was never moved
+        rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.color))
+        if rect:
+            self.rect = rect.unite(self.rect)
+        self.stack.update(layer.get_subimage(self.rect), self.rect)
+        layer.clear(self.rect)
 
 
 class PointsTool(Tool):
@@ -77,9 +81,12 @@ class PointsTool(Tool):
                 self.rect = rect.unite(self.rect)
 
     def finish(self, layer, point, buttons, modifiers):
+        # Make sure we draw a point even if the mouse was never moved
         rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.color))
         if rect:
             self.rect = rect.unite(self.rect)
+        self.stack.update(layer.get_subimage(self.rect), self.rect)
+        layer.clear(self.rect)
 
 
 class LineTool(Tool):
@@ -92,6 +99,13 @@ class LineTool(Tool):
         p1 = point
         self.rect = layer.draw_line(p0, p1, brush=self.brush.get_pic(self.color))
 
+    def finish(self, layer, point, buttons, modifiers):
+        rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.color))
+        if rect:
+            self.rect = rect.unite(self.rect)
+        self.stack.update(layer.get_subimage(self.rect), self.rect)
+        layer.clear(self.rect)
+
 
 class RectangleTool(Tool):
 
@@ -103,6 +117,13 @@ class RectangleTool(Tool):
         r = from_points([p0, point])
         self.rect = layer.draw_rectangle(r.position, r.size, brush=self.brush.get_pic(self.color),
                                          fill=modifiers & window.key.MOD_SHIFT)
+
+    def finish(self, layer, point, buttons, modifiers):
+        # rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.color))
+        # if rect:
+        #     self.rect = rect.unite(self.rect)
+        self.stack.update(layer.get_subimage(self.rect), self.rect)
+        layer.clear(self.rect)
 
 
 class EllipseTool(Tool):
@@ -119,22 +140,24 @@ class EllipseTool(Tool):
                                        color=self.color + 255*2**24,
                                        fill=modifiers & window.key.MOD_SHIFT)
 
+    def finish(self, layer, point, buttons, modifiers):
+        # rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.color))
+        # if rect:
+        #     self.rect = rect.unite(self.rect)
+        self.stack.update(layer.get_subimage(self.rect), self.rect)
+        layer.clear(self.rect)
 
-class FillStroke(Tool):
+
+class FillTool(Tool):
 
     tool = "floodfill"
 
-    def finish(self, x, y, buttons, modifiers):
-        # TODO clean up
-        data = self.image.data.getdata()
-        rgba_data = [0, 0, 0, 0] * len(data)
-        rgba_data[0::4] = data
-        rgba_data[3::4] = (255 if x else 0 for x in data)
-        self.overlay.blit(Image.frombuffer("RGBA", self.image.size, bytearray(rgba_data))
-                          .transpose(Image.FLIP_TOP_BOTTOM), rect=self.overlay.rect)
-        index = self.palette.get_index(buttons)
-        self.rect = self.image.draw_fill(self.overlay, self.overlay, (x, y), color=rgba_to_32bit(index, 0, 0, 255))
-        return True
+    def finish(self, layer, point, buttons, modifiers):
+        clone = self.stack.current.clone()
+        t0 = time()
+        self.rect = clone.draw_fill(point, color=self.color + 255*2**24)
+        print(time() - t0)
+        self.stack.update(clone.get_subimage(self.rect), self.rect)
 
 
 class Selection(Tool):

@@ -166,7 +166,6 @@ class Stack:
     def layer_op(method, *args, layer=None):
         layer = layer or self.current
         rect = method(layer, *args)
-        self.
 
     def update(self, new_data, rect, layer=None):
         layer = layer or self.current

@@ -25,7 +25,8 @@ from .picture import Picture, LongPicture
 from .rect import Rectangle
 from .stack import Stack
 from .stroke import make_stroke
-from .tool import PencilTool, PointsTool, LineTool, RectangleTool, EllipseTool, PickerTool
+from .tool import (PencilTool, PointsTool, LineTool, RectangleTool, EllipseTool,
+                   PickerTool, FillTool)
 from .util import Selectable
 from . import ui
 
@@ -52,7 +53,7 @@ class OldpaintWindow(pyglet.window.Window):
 
         super().__init__(**kwargs, resizable=True, vsync=False)
 
-        size = (1800, 1200)
+        size = (1600, 1200)
         self.stack = Stack(size, layers=[Layer(Picture(size)), Layer(Picture(size))])
         self.overlay = Layer(LongPicture(size))  # A temporary drawing layer
 
@@ -85,7 +86,7 @@ class OldpaintWindow(pyglet.window.Window):
                     "pencil", "picker", "points", "rectangle"
             ]
         }
-        self.tools = Selectable([PencilTool, PointsTool, LineTool, RectangleTool, EllipseTool, PickerTool])
+        self.tools = Selectable([PencilTool, PointsTool, LineTool, RectangleTool, EllipseTool, FillTool, PickerTool])
         self.brushes = Selectable([RectangleBrush((1, 1)), EllipseBrush((10, 20)), ])
 
         io = imgui.get_io()
@@ -258,9 +259,9 @@ class OldpaintWindow(pyglet.window.Window):
         # Since this is a callback, stroke is a Future and is guaranteed to be finished.
         tool = stroke.result()
         print("stroke finished", tool.rect)
-        if tool.rect:
-            self.stack.update(self.overlay.get_subimage(tool.rect), tool.rect)
-            self.overlay.clear(tool.rect)
+        # if tool.rect:
+        #     #self.stack.update(self.overlay.get_subimage(tool.rect), tool.rect)
+        #     self.overlay.clear(tool.rect)
         self.stroke = None
         # TODO here we should handle undo history etc
 

@@ -84,7 +84,7 @@ cdef class Picture:
 
     cdef void set_pixel(self, int x, int y, unsigned int value):
         cdef int offset
-        if (0 < x <= self.width) & (0 < y <= self.height):
+        if (0 <= x < self.width) & (0 <= y < self.height):
             offset = self._get_offset(x, y)
             self.data[offset] = value
 
@@ -288,6 +288,30 @@ cdef class LongPicture:
                     break
                 if not mask or pic.data[offset1+x1] >> 24:  # Ignore 100% transparent pixels
                     self.data[offset2+x1] = data[offset1+x1]
+            offset1 += w
+            offset2 += self.width
+
+    cpdef void paste_byte(self, Picture pic, int x, int y, bint mask):
+        cdef int w, h, y1, x1, x2, y2, offset1, offset2
+        w, h = pic.size
+        offset1 = 0
+        offset2 = self._get_offset(x, y)
+        cdef unsigned int[:] data = memoryview(pic.data).cast(self.pixel_format)  # TODO probably slow
+        for y2 in range(y, y+h):
+            if (y2 < 0):
+                offset1 += w
+                offset2 += self.width
+                continue
+            if (y2 >= self.height):
+
+                break
+            for x1 in range(w):
+                x2 = x + x1
+                if (x2 < 0):
+                    continue
+                if (x2 >= self.width):
+                    break
+                self.data[4*(offset2+x1)] = data[offset1+x1]
             offset1 += w
             offset2 += self.width
 
@@ -593,21 +617,13 @@ cpdef draw_ellipse(pic, (int, int) center, (int, int) size, brush=None,
 
 cpdef draw_fill(pic, (int, int) point, unsigned int color):
 
-    # TODO I am broken!
+    # TODO kind of slow, and requires the GIL.
 
-    # A slightly undocumented way of accessing the raw data in a PIL image
-    # cdef int ptr_val = image.unsafe_ptrs['image32']
-    # cdef int** img = <int**>ptr_val
-
-    # cdef int cr, cg, cb, ca
-    # cr, cg, cb, ca = color
-    # cdef int col = cr + 16777216*ca  # turning the color into a 32 bit integer
-
-    cdef startx, starty, w, h
+    cdef int startx, starty, w, h
     startx, starty = point
     cdef list stack = [point]  # TODO maybe find some more C friendly way of keeping a stack
     w, h = pic.size
-    cdef int start_col = pic[startx, starty]
+    cdef unsigned int start_col = pic[startx, starty]
 
     if start_col == color:
         return
@@ -619,21 +635,19 @@ cpdef draw_fill(pic, (int, int) point, unsigned int color):
 
     while stack:
         x, y = stack.pop()
-        print(x, y)
         # search left
         while x >= 0 and start_col == pic[x, y]:
             x -= 1
         x += 1
         reach_top = reach_bottom = False
-        xstart = x
+
         # search right
         while x < w and pic[x, y] == start_col:
-            print(xstart, x, y, pic[x, y])
-
             pic[x, y] = color  # color this pixel
             xmin, xmax = min(xmin, x), max(xmax, x)
             ymin, ymax = min(ymin, y), max(ymax, y)
-            if 0 < y < h-1:
+            if 0 < y < h - 1:
+
                 # check pixel above
                 if start_col == pic[x, y-1]:
                     if not reach_top:
@@ -641,6 +655,7 @@ cpdef draw_fill(pic, (int, int) point, unsigned int color):
                         reach_top = True
                 elif reach_top:
                     reach_top = False
+
                 # check pixel below
                 if start_col == pic[x, y+1]:
                     if not reach_bottom:
