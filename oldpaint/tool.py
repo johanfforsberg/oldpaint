@@ -144,20 +144,20 @@ class FillTool(Tool):
             self.stack.update(clone.get_subimage(rect), rect)
 
 
-class Selection(Tool):
+class SelectionTool(Tool):
 
     tool = "brush"
     uses_overlay = False
 
-    def __init__(self, stack, brush, initial):
-        super().__init__(stack, brush, initial)
-        self.start = tuple(initial[:2])
+    # def __init__(self, stack, brush, initial):
+    #     super().__init__(stack, brush, initial)
+    #     self.start = tuple(initial[:2])
 
-    def draw(self, x, y, buttons, modifiers):
-        rect = from_points([self.start, (x, y)])
+    def draw(self, layer, point, buttons, modifiers):
+        rect = from_points([self.points[0], point])
         self.stack.selection = rect
 
-    def finish(self, x, y, buttons, modifiers):
+    def finish(self, layer, point, buttons, modifiers):
         self.stack.make_brush()
         self.stack.selection = None
 

@@ -1,6 +1,7 @@
 import logging
 from time import time
 
+from .brush import PicBrush
 from .layer import Layer
 from .ora import load_ora, save_ora
 from .picture import Picture, LongPicture
@@ -34,7 +35,7 @@ class Stack:
         self.redos = []
         # self.brushes = Brushes([RectangleBrush(1, 1), RectangleBrush(2, 2),
         #                         EllipseBrush(3, 3), EllipseBrush(10, 10)])
-
+        self.brushes = Selectable([])
         self.selection = None
         self.stroke = None
 
@@ -155,7 +156,7 @@ class Stack:
         rect = rect or self.selection
         layer = layer or self.current
         subimage = layer.get_subimage(rect)
-        brush = Brush(subimage)
+        brush = PicBrush(subimage)
         self.brushes.add(brush)
 
     @property

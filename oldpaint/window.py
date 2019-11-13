@@ -17,6 +17,7 @@ from ugly.shader import Program, VertexShader, FragmentShader
 from ugly.texture import Texture, ByteTexture, ImageTexture
 from ugly.util import try_except_log, enabled
 from ugly.vao import VertexArrayObject
+from ugly.vertex import SimpleVertices
 
 from .brush import RectangleBrush, EllipseBrush
 from .imgui_pyglet import PygletRenderer
@@ -26,7 +27,7 @@ from .rect import Rectangle
 from .stack import Stack
 from .stroke import make_stroke
 from .tool import (PencilTool, PointsTool, LineTool, RectangleTool, EllipseTool,
-                   PickerTool, FillTool)
+                   SelectionTool, PickerTool, FillTool)
 from .util import Selectable
 from . import ui
 
@@ -64,6 +65,9 @@ class OldpaintWindow(pyglet.window.Window):
                                     FragmentShader("glsl/palette_frag.glsl"))
         self.copy_program = Program(VertexShader("glsl/copy_vert.glsl"),
                                     FragmentShader("glsl/copy_frag.glsl"))
+        self.line_program = Program(VertexShader("glsl/triangle_vert.glsl"),
+                                    FragmentShader("glsl/triangle_frag.glsl"))
+
         # All the drawing will happen in a thread, managed by this executor
         self.executor = ThreadPoolExecutor(max_workers=1)
         self.stroke = None
@@ -87,7 +91,9 @@ class OldpaintWindow(pyglet.window.Window):
                     "pencil", "picker", "points", "rectangle"
             ]
         }
-        self.tools = Selectable([PencilTool, PointsTool, LineTool, RectangleTool, EllipseTool, FillTool, PickerTool])
+        self.tools = Selectable([PencilTool, PointsTool,
+                                 LineTool, RectangleTool, EllipseTool, FillTool,
+                                 SelectionTool, PickerTool])
         self.brushes = Selectable([RectangleBrush((1, 1)), EllipseBrush((10, 20)), ])
         self.highlighted_layer = None
 
@@ -96,6 +102,14 @@ class OldpaintWindow(pyglet.window.Window):
             "ttf/dpcomic.ttf", 14, io.fonts.get_glyph_ranges_latin()
         )
         self.imgui_renderer.refresh_font_texture()
+
+        self.selection = None
+        self.selection_vao = VertexArrayObject(vertices_class=SimpleVertices)
+        self.selection_vertices = self.selection_vao.create_vertices(
+            [((0, 0, 0),),
+             ((0, 0, 0),),
+             ((0, 0, 0),),
+             ((0, 0, 0),)])
 
         self.loader = None
         self.saver = None
@@ -258,6 +272,15 @@ class OldpaintWindow(pyglet.window.Window):
 
             self._draw_mouse_cursor()
 
+        # Selection rectangle, if any
+        if self.tools.current.tool == "brush" and self.stack.selection:
+            self.set_selection(self.stack.selection)
+            with self.selection_vao, self.line_program:
+                gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
+                gl.glUniform3f(1, 1., 1., 0.)
+                gl.glLineWidth(1)
+                gl.glDrawArrays(gl.GL_LINE_LOOP, 0, 4)
+
         self._render_gui()
 
         # gl.glFinish()  # No double buffering, to minimize latency (does this work?)
@@ -323,7 +346,8 @@ class OldpaintWindow(pyglet.window.Window):
         #imgui.core.separator()
         imgui.end()
 
-        # ui.render_brushes(self.brushes, self.get_brush_preview_texture)
+        ui.render_brushes(self.brushes, self.stack.brushes, self.get_brush_preview_texture)
+
         self.highlighted_layer = ui.render_layers(self.stack)
         ui.render_palette(self.stack.palette)
 
@@ -394,6 +418,24 @@ class OldpaintWindow(pyglet.window.Window):
         ix, iy = self._to_image_coords(x, y)
         w, h = self.stack.size
         return 0 <= ix < w and 0 <= iy < h
+
+    #@lru_cache(128)
+    def set_selection(self, rect):
+        x0, y0 = rect.topleft
+        x1, y1 = rect.bottomright
+        w, h = self.stack.size
+        w2 = w / 2
+        h2 = h / 2
+        xw0 = (x0 - w2) / w
+        yw0 = (h2 - y0) / h
+        xw1 = (x1 - w2) / w
+        yw1 = (h2 - y1) / h
+        self.selection_vertices.vertex_buffer.write([
+            ((xw0, yw0, 0),),
+            ((xw1, yw0, 0),),
+            ((xw1, yw1, 0),),
+            ((xw0, yw1, 0),)
+        ])
 
     @try_except_log
     def _draw_brush_preview(self, x0, y0, x, y):
@@ -471,6 +513,19 @@ class OldpaintWindow(pyglet.window.Window):
         view = Matrix4().new_translate(lx, ly, 0)
 
         return frust * view
+
+    @lru_cache(32)
+    def get_brush_preview_texture(self, brush):
+        texture = Texture(brush.size)
+
+        if isinstance(brush.original, Picture):
+            data = bytes(brush.original.as_rgba(self.stack.palette.colors, False).data)
+        else:
+            data = bytes(brush.original.data)
+        w, h = brush.size
+        gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
+        gl.glTextureSubImage2D(texture.name, 0, 0, 0, w, h, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, data)
+        return texture
 
 
 @lru_cache(1)

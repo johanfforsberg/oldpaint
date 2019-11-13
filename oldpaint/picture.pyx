@@ -311,7 +311,7 @@ cdef class LongPicture:
                     continue
                 if (x2 >= self.width):
                     break
-                self.data[4*(offset2+x1)] = data[offset1+x1]
+                self.data[offset2+x1] = data[offset1+x1] + 255*2**24
             offset1 += w
             offset2 += self.width
 

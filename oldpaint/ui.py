@@ -158,32 +158,32 @@ def render_layers(stack):
     return hovered
 
 
-def render_brushes(brushes, get_texture):
-
+def render_brushes(some_brushes, more_brushes, get_texture):
     if imgui.button("Delete"):
-        brushes.remove()
+        more_brushes.remove()
 
     imgui.begin_child("brushes", border=True)
 
-    for brush in brushes:
-        is_selected = brush == brushes.current
-        texture = get_texture(brush)
-        if texture:
-            w, h = brush.size
-            if w > 50 or h > 50:
-                aspect = w / h
-                if w > h:
-                    w = 50
-                    h = w / aspect
-                else:
-                    h = 50
-                    w = h * aspect
+    for i, brushes in enumerate([some_brushes, more_brushes]):
+        for brush in brushes:
+            is_selected = brush == brushes.current
+            texture = get_texture(brush)
+            if texture:
+                w, h = brush.size
+                if w > 50 or h > 50:
+                    aspect = w / h
+                    if w > h:
+                        w = 50
+                        h = w / aspect
+                    else:
+                        h = 50
+                        w = h * aspect
 
-            imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *SELECTABLE_FRAME_COLORS[is_selected])
-            imgui.image(texture.name, w*2, h*2, border_color=(1, 1, 1, 1) if is_selected else (.5, .5, .5, 1))
-            imgui.pop_style_color(1)
+                #imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *SELECTABLE_FRAME_COLORS[is_selected])
+                imgui.image(texture.name, w*2, h*2, border_color=(1, 1, 1, 1) if is_selected else (.5, .5, .5, 1))
+                #imgui.pop_style_color(1)
 
-            if imgui.core.is_item_clicked(0):
-                brushes.select(brush)
-
+                if imgui.core.is_item_clicked(0):
+                    brushes.select(brush)
+        imgui.separator()
     imgui.end()
