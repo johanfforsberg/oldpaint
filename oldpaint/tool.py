@@ -65,8 +65,6 @@ class PencilTool(Tool):
         rect = layer.draw_line(self.points[-1], point, brush=self.brush.get_pic(self.color))
         if rect:
             self.rect = rect.unite(self.rect)
-        self.stack.update(layer.get_subimage(self.rect), self.rect)
-        layer.clear(self.rect)
 
 
 class PointsTool(Tool):
@@ -88,8 +86,6 @@ class PointsTool(Tool):
         rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.color))
         if rect:
             self.rect = rect.unite(self.rect)
-        self.stack.update(layer.get_subimage(self.rect), self.rect)
-        layer.clear(self.rect)
 
 
 class LineTool(Tool):
@@ -106,8 +102,6 @@ class LineTool(Tool):
         rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.color))
         if rect:
             self.rect = rect.unite(self.rect)
-        self.stack.update(layer.get_subimage(self.rect), self.rect)
-        layer.clear(self.rect)
 
 
 class RectangleTool(Tool):
@@ -120,13 +114,6 @@ class RectangleTool(Tool):
         r = from_points([p0, point])
         self.rect = layer.draw_rectangle(r.position, r.size, brush=self.brush.get_pic(self.color),
                                          fill=modifiers & window.key.MOD_SHIFT)
-
-    def finish(self, layer, point, buttons, modifiers):
-        # rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.color))
-        # if rect:
-        #     self.rect = rect.unite(self.rect)
-        self.stack.update(layer.get_subimage(self.rect), self.rect)
-        layer.clear(self.rect)
 
 
 class EllipseTool(Tool):
@@ -143,35 +130,32 @@ class EllipseTool(Tool):
                                        color=self.color + 255*2**24,
                                        fill=modifiers & window.key.MOD_SHIFT)
 
-    def finish(self, layer, point, buttons, modifiers):
-        # rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.color))
-        # if rect:
-        #     self.rect = rect.unite(self.rect)
-        self.stack.update(layer.get_subimage(self.rect), self.rect)
-        layer.clear(self.rect)
-
 
 class FillTool(Tool):
 
     tool = "floodfill"
+    uses_overlay = False
 
     def finish(self, layer, point, buttons, modifiers):
         clone = self.stack.current.clone()
-        self.rect = clone.draw_fill(point, color=self.color)
-        self.stack.update(clone.get_subimage(self.rect), self.rect)
+        rect = clone.draw_fill(point, color=self.color)
+        if rect:
+            # Here we don't use the overlay, so we have to handle the update.
+            self.stack.update(clone.get_subimage(rect), rect)
 
 
 class Selection(Tool):
 
     tool = "brush"
+    uses_overlay = False
 
     def __init__(self, stack, brush, initial):
         super().__init__(stack, brush, initial)
         self.start = tuple(initial[:2])
 
     def draw(self, x, y, buttons, modifiers):
-        self.rect = from_points([self.start, (x, y)])
-        self.stack.selection = self.rect
+        rect = from_points([self.start, (x, y)])
+        self.stack.selection = rect
 
     def finish(self, x, y, buttons, modifiers):
         self.stack.make_brush()
@@ -181,6 +165,7 @@ class Selection(Tool):
 class PickerTool(Tool):
 
     tool = "picker"
+    uses_overlay = False
 
     def __init__(self, stack, brush, color, initial):
         super().__init__(stack, brush, color, initial)

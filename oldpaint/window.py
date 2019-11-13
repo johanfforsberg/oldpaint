@@ -89,6 +89,7 @@ class OldpaintWindow(pyglet.window.Window):
         }
         self.tools = Selectable([PencilTool, PointsTool, LineTool, RectangleTool, EllipseTool, FillTool, PickerTool])
         self.brushes = Selectable([RectangleBrush((1, 1)), EllipseBrush((10, 20)), ])
+        self.highlighted_layer = None
 
         io = imgui.get_io()
         self._font = io.fonts.add_font_from_file_ttf(
@@ -216,27 +217,33 @@ class OldpaintWindow(pyglet.window.Window):
                 overlay.lock.release()  # Allow layer to change again.
 
             for layer in self.stack:
-                layer_texture = self._get_layer_texture(layer)
-                if layer.dirty and layer.lock.acquire(timeout=0.03):
-                    rect = layer.dirty
-                    subimage = layer.get_subimage(rect)
-                    data = bytes(subimage.data)
-                    gl.glTextureSubImage2D(layer_texture.name, 0, *rect.points,
-                                           gl.GL_RED, gl.GL_UNSIGNED_BYTE, data)
 
-                    layer.dirty = None
-                    layer.lock.release()
+                if not self.highlighted_layer or self.highlighted_layer == layer:
 
-                with layer_texture:
-                    if layer == stack.current:
-                        # The overlay is combined with the layer
-                        with overlay_texture:
-                            gl.glUniform4fv(1, 256, self._get_colors(stack.palette.get_rgba()))
-                            gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
-                    else:
-                        with self._get_empty_texture(stack):
-                            gl.glUniform4fv(1, 256, self._get_colors(stack.palette.get_rgba()))
-                            gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+                    layer_texture = self._get_layer_texture(layer)
+                    if layer.dirty and layer.lock.acquire(timeout=0.03):
+                        rect = layer.dirty
+                        subimage = layer.get_subimage(rect)
+                        data = bytes(subimage.data)
+                        gl.glTextureSubImage2D(layer_texture.name, 0, *rect.points,
+                                               gl.GL_RED, gl.GL_UNSIGNED_BYTE, data)
+
+                        layer.dirty = None
+                        layer.lock.release()
+
+                    if not layer.visible:
+                        continue
+
+                    with layer_texture:
+                        if layer == stack.current:
+                            # The overlay is combined with the layer
+                            with overlay_texture:
+                                gl.glUniform4fv(1, 256, self._get_colors(stack.palette.get_rgba()))
+                                gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+                        else:
+                            with self._get_empty_texture(stack):
+                                gl.glUniform4fv(1, 256, self._get_colors(stack.palette.get_rgba()))
+                                gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 
         window_size = self.get_size()
         gl.glViewport(0, 0, *window_size)
@@ -264,6 +271,10 @@ class OldpaintWindow(pyglet.window.Window):
         # Since this is a callback, stroke is a Future and is guaranteed to be finished.
         tool = stroke.result()
         print("stroke finished", tool.rect)
+        if tool.rect:
+            self.stack.update(self.overlay.get_subimage(tool.rect), tool.rect)
+            self.overlay.clear(tool.rect)
+
         # if tool.rect:
         #     #self.stack.update(self.overlay.get_subimage(tool.rect), tool.rect)
         #     self.overlay.clear(tool.rect)
@@ -275,6 +286,8 @@ class OldpaintWindow(pyglet.window.Window):
     def _render_gui(self):
 
         imgui.new_frame()
+
+        # with imgui.font(self._font):
 
         if imgui.begin_main_menu_bar():
             if imgui.begin_menu("File", True):
@@ -305,12 +318,13 @@ class OldpaintWindow(pyglet.window.Window):
             imgui.end_main_menu_bar()
 
         imgui.begin("Tools", True)
-        with imgui.font(self._font):
-            ui.render_tools(self.tools, self.icons)
-            imgui.core.separator()
-            # ui.render_brushes(self.brushes, self.get_brush_preview_texture)
+
+        ui.render_tools(self.tools, self.icons)
+        #imgui.core.separator()
         imgui.end()
 
+        # ui.render_brushes(self.brushes, self.get_brush_preview_texture)
+        self.highlighted_layer = ui.render_layers(self.stack)
         ui.render_palette(self.stack.palette)
 
         if self.loader:

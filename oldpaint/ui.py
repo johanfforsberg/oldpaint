@@ -112,7 +112,9 @@ def render_save_file_dialog(loader):
     imgui.end()
 
 
-def render_layers(stack, get_texture):
+def render_layers(stack):
+    imgui.set_next_window_size(100, 400)
+
     imgui.begin("Layers", True)
     if imgui.button("Add"):
         stack.add_layer()
@@ -128,25 +130,32 @@ def render_layers(stack, get_texture):
     imgui.begin_child("Layers", border=True)
     selected = None
     n = len(stack.layers)
+    hovered = None
     for i, layer in zip(range(n - 1, -1, -1), reversed(stack.layers)):
-        is_current = layer == stack.current
-        imgui.text(str(i))
-        imgui.same_line()
-        texture = get_texture(layer)
-        if texture:
-            imgui.image(texture.name, 100, 100*texture.aspect,
-                        border_color=(1, 1, 1, 1) if is_current else (0.5, 0.5, 0.5, 1))
-            if imgui.core.is_item_clicked(0) and not is_current:
-                logger.info("selected %r", layer)
-                selected = layer
-        imgui.same_line()
         clicked, _ = imgui.checkbox(f"##checkbox{i}", layer.visible)
         if clicked:
             layer.visible = not layer.visible
+
+        imgui.same_line()
+        _, selected = imgui.selectable(str(i), layer == stack.current)
+        if selected:
+            stack.current = layer
+        if imgui.is_item_hovered():
+            hovered = layer
+        # imgui.same_line()
+        #texture = get_texture(layer)
+        texture = None
+        # if texture:
+        #     imgui.image(texture.name, 100, 100*texture.aspect,
+        #                 border_color=(1, 1, 1, 1) if is_current else (0.5, 0.5, 0.5, 1))
+        #     if imgui.core.is_item_clicked(0) and not is_current:
+        #         logger.info("selected %r", layer)
+        #         selected = layer
     imgui.end_child()
     imgui.end()
-    if selected is not None:
-        stack.current = selected
+    # if selected is not None:
+    #     stack.current = selected
+    return hovered
 
 
 def render_brushes(brushes, get_texture):
