@@ -10,6 +10,7 @@ ugly = {path = "/home/jofo/Sync/progg/ugly"}
 cython = "^0.29.14"
 euclid3 = "^0.1.0"
 imgui = "^1.0"
+manhole = "^1.6"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.0"

@@ -1,18 +1,18 @@
 from concurrent.futures import ThreadPoolExecutor
-import ctypes
+from contextlib import contextmanager
 from functools import lru_cache
 from itertools import chain
 from queue import Queue
-from time import time
 
 from euclid3 import Matrix4
 import imgui
 import pyglet
 from pyglet import gl
 from pyglet.window import key
+import manhole
 
 from ugly.framebuffer import FrameBuffer
-from ugly.glutil import gl_matrix, load_png
+from ugly.glutil import load_png
 from ugly.shader import Program, VertexShader, FragmentShader
 from ugly.texture import Texture, ByteTexture, ImageTexture
 from ugly.util import try_except_log, enabled
@@ -124,6 +124,15 @@ class OldpaintWindow(pyglet.window.Window):
         #         self._update_cursor(x, y)
         #         if self.mouse_event_queue:
         #             self.mouse_event_queue.put(("mouse_drag", (self._to_image_coords(x, y), 0, 0)))
+
+        @contextmanager
+        def blah(self):
+            yield self.overlay
+            rect = self.overlay.dirty
+            self.stack.update(self.overlay.get_subimage(rect), rect)
+            self.overlay.clear(rect)
+
+        manhole.install(locals={"stack": self.stack, "blah": blah, "brushes": self.brushes})
 
     @no_imgui_events
     def on_mouse_press(self, x, y, button, modifiers):
