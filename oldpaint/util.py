@@ -59,6 +59,15 @@ class Selectable:
         except (ValueError, IndexError):
             self.current = None
 
+    def cycle_forward(self):
+        index = (self.get_current_index() + 1) % len(self.items)
+        self.current = self.items[index]
+
+    def cycle_backward(self):
+        index = (self.get_current_index() - 1) % len(self.items)
+        self.current = self.items[index]
+
+
 
 def throttle(interval=0.1):
     """

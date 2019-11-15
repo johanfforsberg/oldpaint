@@ -11,9 +11,7 @@ import imgui
 import pyglet
 from pyglet import gl
 from pyglet.window import key
-import manhole
-from IPython import start_ipython, get_ipython
-from IPython.terminal.embed import InteractiveShellEmbed
+from IPython import start_ipython
 
 from ugly.framebuffer import FrameBuffer
 from ugly.glutil import load_png
@@ -27,7 +25,7 @@ from .brush import RectangleBrush, EllipseBrush
 from .drawing import Drawing
 from .imgui_pyglet import PygletRenderer
 from .layer import Layer
-from .picture import Picture, LongPicture
+from .picture import Picture
 from .rect import Rectangle
 from .stroke import make_stroke
 from .tool import (PencilTool, PointsTool, LineTool, RectangleTool, EllipseTool,
@@ -62,10 +60,11 @@ class OldpaintWindow(pyglet.window.Window):
 
         super().__init__(**kwargs, resizable=True, vsync=False)
 
-        size = (1600, 1200)
-        self.drawings = Drawings([Drawing(size, layers=[Layer(Picture(size)), Layer(Picture(size))])])
+        self.drawings = Drawings([
+            Drawing((1600, 1200), layers=[Layer(Picture((1600, 1200))), Layer(Picture((1600, 1200))),]),
+            Drawing((800, 600), layers=[Layer(Picture((800, 600))), Layer(Picture((800, 600)))])
+        ])
 
-        self.offscreen_buffer = FrameBuffer(size, textures=dict(color=Texture(size, unit=0)))
         self.vao = VertexArrayObject()
 
         self.draw_program = Program(VertexShader("glsl/palette_vert.glsl"),
@@ -228,6 +227,11 @@ class OldpaintWindow(pyglet.window.Window):
         elif symbol == key.Y:
             self.drawing.redo()
 
+        elif symbol == key.TAB and modifiers & key.MOD_ALT:
+            # TODO make this toggle to most-recently-used instead
+            self.overlay.clear()
+            self.drawings.cycle_forward()
+
         elif symbol == key.S:
             self.drawing.save_ora("/tmp/hej.ora")
         elif symbol == key.O:
@@ -244,15 +248,16 @@ class OldpaintWindow(pyglet.window.Window):
     @try_except_log
     def on_draw(self):
 
-        with self.vao, self.offscreen_buffer, self.draw_program:
-            w, h = self.offscreen_buffer.size
+        drawing = self.drawing
+        offscreen_buffer = self._get_offscreen_buffer(drawing)
+
+        with self.vao, offscreen_buffer, self.draw_program:
+            w, h = offscreen_buffer.size
             gl.glViewport(0, 0, w, h)
             gl.glDisable(gl.GL_BLEND)
             gl.glClearBufferfv(gl.GL_COLOR, 0, ZERO_COLOR)
 
             gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
-
-            drawing = self.drawing
 
             overlay = self.overlay
             overlay_texture = self._get_overlay_texture(overlay)
@@ -277,7 +282,7 @@ class OldpaintWindow(pyglet.window.Window):
                     print(rect, data)
                     pass
 
-            for layer in self.drawing:
+            for layer in drawing:
 
                 if not self.highlighted_layer or self.highlighted_layer == layer:
 
@@ -312,7 +317,7 @@ class OldpaintWindow(pyglet.window.Window):
 
         vm = make_view_matrix(window_size, drawing.size, self.zoom, self.offset)
 
-        with self.vao, self.copy_program, self.offscreen_buffer["color"]:
+        with self.vao, self.copy_program, offscreen_buffer["color"]:
             gl.glEnable(gl.GL_BLEND)
             gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
             gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
@@ -340,16 +345,11 @@ class OldpaintWindow(pyglet.window.Window):
     def _finish_stroke(self, stroke):
         # Since this is a callback, stroke is a Future and is guaranteed to be finished.
         tool = stroke.result()
-        print("stroke finished", tool.rect)
         if tool.rect:
             self.drawing.update(self.overlay.get_subimage(tool.rect), tool.rect)
             self.overlay.clear(tool.rect)
 
-        # if tool.rect:
-        #     #self.drawing.update(self.overlay.get_subimage(tool.rect), tool.rect)
-        #     self.overlay.clear(tool.rect)
         self.stroke = None
-        # TODO here we should handle undo history etc
 
     # === Helper functions ===
 
@@ -416,6 +416,10 @@ class OldpaintWindow(pyglet.window.Window):
         imgui.end_frame()
 
         self.imgui_renderer.render(imgui.get_draw_data())
+
+    @lru_cache(1)
+    def _get_offscreen_buffer(self, drawing):
+        return FrameBuffer(drawing.size, textures=dict(color=Texture(drawing.size, unit=0)))
 
     @lru_cache(1)
     def _get_colors(self, colors):
