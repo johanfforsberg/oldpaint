@@ -1,7 +1,9 @@
+from functools import lru_cache
 import logging
 from time import time
 from traceback import format_exc
 
+from euclid3 import Matrix4
 import pyglet
 
 
@@ -89,3 +91,36 @@ def throttle(interval=0.1):
         return inner
 
     return wrap
+
+
+@lru_cache(1)
+def make_view_matrix(window_size, image_size, zoom, offset):
+    "Calculate a view matrix that places the image on the screen, at scale."
+    ww, wh = window_size
+    iw, ih = image_size
+
+    scale = 2**zoom
+    width = ww / iw / scale
+    height = wh / ih / scale
+    far = 10
+    near = -10
+
+    frust = Matrix4()
+    frust[:] = (2/width, 0, 0, 0,
+                0, 2/height, 0, 0,
+                0, 0, -2/(far-near), 0,
+                0, 0, -(far+near)/(far-near), 1)
+
+    x, y = offset
+    lx = x / iw / scale
+    ly = y / ih / scale
+
+    view = (Matrix4()
+            .new_translate(lx, ly, 0))
+
+    return frust * view
+
+
+@lru_cache(1)
+def make_view_matrix_inverse(window_size, image_size, zoom, offset):
+    return make_view_matrix(window_size, image_size, zoom, offset).inverse()

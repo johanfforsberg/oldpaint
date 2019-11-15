@@ -27,18 +27,18 @@ from .imgui_pyglet import PygletRenderer
 from .layer import Layer
 from .picture import Picture
 from .rect import Rectangle
+from .render import render_drawing
 from .stroke import make_stroke
 from .tool import (PencilTool, PointsTool, LineTool, RectangleTool, EllipseTool,
                    SelectionTool, PickerTool, FillTool)
-from .util import Selectable
+from .util import Selectable, make_view_matrix
 from . import ui
 
 
-BG_COLOR = (gl.GLfloat * 4)(0.5, 0.5, 0.5, 1)
-ZERO_COLOR = (gl.GLfloat * 4)(0, 0, 0, 0)
-
 MIN_ZOOM = -2
 MAX_ZOOM = 5
+
+BG_COLOR = (gl.GLfloat * 4)(0.5, 0.5, 0.5, 1)
 
 
 def no_imgui_events(f):
@@ -65,14 +65,12 @@ class OldpaintWindow(pyglet.window.Window):
             Drawing((800, 600), layers=[Layer(Picture((800, 600))), Layer(Picture((800, 600)))])
         ])
 
-        self.vao = VertexArrayObject()
-
-        self.draw_program = Program(VertexShader("glsl/palette_vert.glsl"),
-                                    FragmentShader("glsl/palette_frag.glsl"))
         self.copy_program = Program(VertexShader("glsl/copy_vert.glsl"),
                                     FragmentShader("glsl/copy_frag.glsl"))
         self.line_program = Program(VertexShader("glsl/triangle_vert.glsl"),
                                     FragmentShader("glsl/triangle_frag.glsl"))
+
+        self.vao = VertexArrayObject()
 
         # All the drawing will happen in a thread, managed by this executor
         self.executor = ThreadPoolExecutor(max_workers=1)
@@ -248,74 +246,13 @@ class OldpaintWindow(pyglet.window.Window):
     @try_except_log
     def on_draw(self):
 
-        drawing = self.drawing
-        offscreen_buffer = self._get_offscreen_buffer(drawing)
-
-        with self.vao, offscreen_buffer, self.draw_program:
-            w, h = offscreen_buffer.size
-            gl.glViewport(0, 0, w, h)
-            gl.glDisable(gl.GL_BLEND)
-            gl.glClearBufferfv(gl.GL_COLOR, 0, ZERO_COLOR)
-
-            gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
-
-            overlay = self.overlay
-            overlay_texture = self._get_overlay_texture(overlay)
-
-            if overlay.dirty and overlay.lock.acquire(timeout=0.03):
-                # Since we're drawing in a separate thread, we need to be very careful
-                # when accessing the overlay, otherwise we can get nasty problems.
-                # While we have the lock, the thread won't draw, so we can safely copy data.
-                rect = overlay.dirty
-                subimage = overlay.get_subimage(rect)
-                data = bytes(subimage.data)  # TODO Is this making a copy?
-
-
-                # Now update the texture with the changed part of the layer.
-                try:
-                    gl.glTextureSubImage2D(overlay_texture.name, 0, *rect.points,
-                                           gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, data)
-
-                    overlay.dirty = None
-                    overlay.lock.release()  # Allow layer to change again.
-                except gl.lib.GLException:
-                    print(rect, data)
-                    pass
-
-            for layer in drawing:
-
-                if not self.highlighted_layer or self.highlighted_layer == layer:
-
-                    layer_texture = self._get_layer_texture(layer)
-                    if layer.dirty and layer.lock.acquire(timeout=0.03):
-                        rect = layer.dirty
-                        subimage = layer.get_subimage(rect)
-                        data = bytes(subimage.data)
-                        gl.glTextureSubImage2D(layer_texture.name, 0, *rect.points,
-                                               gl.GL_RED, gl.GL_UNSIGNED_BYTE, data)
-
-                        layer.dirty = None
-                        layer.lock.release()
-
-                    if not layer.visible:
-                        continue
-
-                    with layer_texture:
-                        if layer == drawing.current:
-                            # The overlay is combined with the layer
-                            with overlay_texture:
-                                gl.glUniform4fv(1, 256, self._get_colors(drawing.palette.get_rgba()))
-                                gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
-                        else:
-                            with self._get_empty_texture(drawing):
-                                gl.glUniform4fv(1, 256, self._get_colors(drawing.palette.get_rgba()))
-                                gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+        offscreen_buffer = render_drawing(self.drawing)
 
         window_size = self.get_size()
         gl.glViewport(0, 0, *window_size)
         gl.glClearBufferfv(gl.GL_COLOR, 0, BG_COLOR)
 
-        vm = make_view_matrix(window_size, drawing.size, self.zoom, self.offset)
+        vm = make_view_matrix(window_size, self.drawing.size, self.zoom, self.offset)
 
         with self.vao, self.copy_program, offscreen_buffer["color"]:
             gl.glEnable(gl.GL_BLEND)
@@ -335,7 +272,7 @@ class OldpaintWindow(pyglet.window.Window):
 
         self._render_gui()
 
-        # gl.glFinish()  # No double buffering, to minimize latency (does this work?)
+        gl.glFinish()  # No double buffering, to minimize latency (does this work?)
 
     def on_resize(self, w, h):
         return pyglet.event.EVENT_HANDLED  # Work around pyglet internals
@@ -422,25 +359,8 @@ class OldpaintWindow(pyglet.window.Window):
         return FrameBuffer(drawing.size, textures=dict(color=Texture(drawing.size, unit=0)))
 
     @lru_cache(1)
-    def _get_colors(self, colors):
-        colors = chain.from_iterable(colors)
-        return (gl.GLfloat*(4*256))(*colors)
-
-    @lru_cache(1)
-    def _get_empty_texture(self, drawing):
-        texture = Texture(drawing.size, unit=1)
-        texture.clear()
-        return texture
-
-    @lru_cache(1)
     def _get_overlay_texture(self, overlay):
         texture = Texture(overlay.size, unit=1)
-        texture.clear()
-        return texture
-
-    @lru_cache(32)
-    def _get_layer_texture(self, layer):
-        texture = ByteTexture(layer.size)
         texture.clear()
         return texture
 
@@ -577,39 +497,6 @@ class OldpaintWindow(pyglet.window.Window):
         gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
         gl.glTextureSubImage2D(texture.name, 0, 0, 0, w, h, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, data)
         return texture
-
-
-@lru_cache(1)
-def make_view_matrix(window_size, image_size, zoom, offset):
-    "Calculate a view matrix that places the image on the screen, at scale."
-    ww, wh = window_size
-    iw, ih = image_size
-
-    scale = 2**zoom
-    width = ww / iw / scale
-    height = wh / ih / scale
-    far = 10
-    near = -10
-
-    frust = Matrix4()
-    frust[:] = (2/width, 0, 0, 0,
-                0, 2/height, 0, 0,
-                0, 0, -2/(far-near), 0,
-                0, 0, -(far+near)/(far-near), 1)
-
-    x, y = offset
-    lx = x / iw / scale
-    ly = y / ih / scale
-
-    view = (Matrix4()
-            .new_translate(lx, ly, 0))
-
-    return frust * view
-
-
-@lru_cache(1)
-def make_view_matrix_inverse(window_size, image_size, zoom, offset):
-    return make_view_matrix(window_size, image_size, zoom, offset).inverse()
 
 
 @lru_cache(32)
