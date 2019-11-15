@@ -1,4 +1,5 @@
 import logging
+import zlib
 
 from .brush import PicBrush
 from .layer import Layer
@@ -123,18 +124,20 @@ class Drawing:
 
     def undo(self):
         if self.undos:
-            layer, rect, undo_data = self.undos.pop()
-            redo_data = layer.get_subimage(rect)
-            self.redos.append((layer, rect, redo_data))
-            layer.blit(undo_data, rect, alpha=False)
+            layer, rect, undo_data_z = self.undos.pop()
+            undo_data = zlib.decompress(undo_data_z)
+            redo_pic = layer.get_subimage(rect)
+            self.redos.append((layer, rect, zlib.compress(redo_pic.data)))
+            layer.blit(LongPicture(rect.size, undo_data), rect, alpha=False)
             return rect
 
     def redo(self):
         if self.redos:
             layer, rect, redo_data = self.redos.pop()
-            undo_data = layer.get_subimage(rect)
-            self.undos.append((layer, rect, undo_data))
-            layer.blit(redo_data, rect)
+            redo_data = zlib.decompress(redo_data)
+            undo_pic = layer.get_subimage(rect)
+            self.undos.append((layer, rect, zlib.compress(undo_pic.data)))
+            layer.blit(LongPicture(rect.size, redo_data), rect)
             return rect
 
     def make_brush(self, rect=None, layer=None):
@@ -159,13 +162,13 @@ class Drawing:
     #     layer = layer or self.current
     #     rect = method(layer, *args)
 
-    def update(self, new_data, rect, layer=None):
+    def update(self, new_pic, rect, layer=None):
         "Update a part of the layer, keeping track of the change as an 'undo'"
         layer = layer or self.current
-        prev_data = layer.get_subimage(rect)
-        self.undos.append((layer, rect, prev_data))
+        prev_pic = layer.get_subimage(rect)
+        self.undos.append((layer, rect, zlib.compress(prev_pic.data)))
         self.redos.clear()
-        layer.blit(new_data, rect)
+        layer.blit(new_pic, rect)
 
     def __iter__(self):
         return iter(self.layers)
