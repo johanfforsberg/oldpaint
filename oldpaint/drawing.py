@@ -3,7 +3,7 @@ import logging
 from .brush import PicBrush
 from .layer import Layer
 from .ora import load_ora, save_ora
-from .picture import Picture, LongPicture, load_png
+from .picture import LongPicture, load_png
 from .palette import Palette
 from .util import Selectable
 
@@ -68,7 +68,7 @@ class Drawing:
                 pass
 
     def add_layer(self, layer=None):
-        layer = layer or Layer(Picture(self.size))
+        layer = layer or Layer(LongPicture(self.size))
         index = self.get_index()
         if index is None:
             self.layers.append(layer)
@@ -126,7 +126,7 @@ class Drawing:
             layer, rect, undo_data = self.undos.pop()
             redo_data = layer.get_subimage(rect)
             self.redos.append((layer, rect, redo_data))
-            layer.blit(undo_data, rect)
+            layer.blit(undo_data, rect, alpha=False)
             return rect
 
     def redo(self):

@@ -1,7 +1,7 @@
 from threading import RLock
 
 from .rect import Rectangle
-from .picture import Picture, LongPicture, save_png, load_png, draw_line, draw_rectangle, draw_ellipse, draw_fill
+from .picture import LongPicture, save_png, load_png, draw_line, draw_rectangle, draw_ellipse, draw_fill
 # from . import draw
 
 
@@ -13,6 +13,7 @@ class Layer:
     """
 
     def __init__(self, pic=None):
+        assert isinstance(pic, LongPicture), "Layer expects a LongPicture instance."
         self.pic = pic
         # "dirty" is a rect that tells the visualisation that part of the
         # picture has changed and must be refreshed, after which it should
@@ -98,20 +99,10 @@ class Layer:
     def get_subimage(self, rect):
         return self.pic.crop(*rect.points)
 
-    def blit(self, pic, rect, set_dirty=True, mask=True):
+    def blit(self, pic, rect, set_dirty=True, alpha=True):
         with self.lock:
-            if isinstance(pic, LongPicture):
-                if isinstance(self.pic, LongPicture):
-                    self.pic.paste(pic, rect.x, rect.y, mask)
-                else:
-                    self.pic.paste_long(pic, rect.x, rect.y, mask)
-            else:
-                if isinstance(self.pic, LongPicture):
-                    self.pic.paste_byte(pic, rect.x, rect.y, mask)
-                else:
-                    self.pic.paste(pic, rect.x, rect.y, mask)
-            self.dirty = rect.unite(self.dirty).intersect(self.rect)
-            # self.dirty_data = pic
+            self.pic.paste(pic, rect.x, rect.y, alpha)
+            self.dirty = self.rect.intersect(rect.unite(self.dirty))
         return self.rect.intersect(rect)
 
     def __hash__(self):

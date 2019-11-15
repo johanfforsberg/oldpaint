@@ -62,7 +62,7 @@ def render_drawing(drawing):
                 subimage = layer.get_subimage(rect)
                 data = bytes(subimage.data)
                 gl.glTextureSubImage2D(layer_texture.name, 0, *rect.points,
-                                       gl.GL_RED, gl.GL_UNSIGNED_BYTE, data)
+                                       gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, data)
 
                 layer.dirty = None
                 layer.lock.release()

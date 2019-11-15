@@ -147,7 +147,7 @@ class FillTool(Tool):
 
     def finish(self, layer, point, buttons, modifiers):
         clone = self.drawing.current.clone()
-        rect = clone.draw_fill(point, color=self.color)
+        rect = clone.draw_fill(point, color=self.color + 255*2**24)
         if rect:
             # Here we don't use the overlay, and therefore handle the updating directly
             self.drawing.update(clone.get_subimage(rect), rect)

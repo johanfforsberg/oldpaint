@@ -7,10 +7,10 @@ import io
 import zipfile
 from xml.etree import ElementTree as ET
 
-from .picture import Picture, load_png, save_png
+from .picture import LongPicture, load_png, save_png
 
 
-def save_ora(size: Tuple[int, int], layers: List[Picture], palette, path: str):
+def save_ora(size: Tuple[int, int], layers: List[LongPicture], palette, path: str):
     w, h = size
     image_el = ET.Element("image", version="0.0.3", w=str(w), h=str(h))
     stack_el = ET.SubElement(image_el, "stack")

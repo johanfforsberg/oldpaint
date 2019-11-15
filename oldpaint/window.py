@@ -25,7 +25,7 @@ from .brush import RectangleBrush, EllipseBrush
 from .drawing import Drawing
 from .imgui_pyglet import PygletRenderer
 from .layer import Layer
-from .picture import Picture
+from .picture import LongPicture
 from .rect import Rectangle
 from .render import render_drawing
 from .stroke import make_stroke
@@ -61,8 +61,10 @@ class OldpaintWindow(pyglet.window.Window):
         super().__init__(**kwargs, resizable=True, vsync=False)
 
         self.drawings = Drawings([
-            Drawing((1600, 1200), layers=[Layer(Picture((1600, 1200))), Layer(Picture((1600, 1200))),]),
-            Drawing((800, 600), layers=[Layer(Picture((800, 600))), Layer(Picture((800, 600)))])
+            Drawing((1600, 1200), layers=[Layer(LongPicture((1600, 1200))),
+                                          Layer(LongPicture((1600, 1200))),]),
+            Drawing((800, 600), layers=[Layer(LongPicture((800, 600))),
+                                        Layer(LongPicture((800, 600)))])
         ])
 
         self.tools = Selectable([PencilTool, PointsTool,
@@ -518,10 +520,10 @@ class OldpaintWindow(pyglet.window.Window):
     def get_brush_preview_texture(self, brush):
         texture = Texture(brush.size)
 
-        if isinstance(brush.original, Picture):
-            data = bytes(brush.original.as_rgba(self.drawing.palette.colors, False).data)
-        else:
-            data = bytes(brush.original.data)
+        # if isinstance(brush.original, Picture):
+        #     data = bytes(brush.original.as_rgba(self.drawing.palette.colors, False).data)
+        # else:
+        data = bytes(brush.original.data)
         w, h = brush.size
         gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
         gl.glTextureSubImage2D(texture.name, 0, 0, 0, w, h, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, data)
