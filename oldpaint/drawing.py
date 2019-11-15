@@ -1,5 +1,4 @@
 import logging
-from time import time
 
 from .brush import PicBrush
 from .layer import Layer
@@ -55,14 +54,6 @@ class Drawing:
         layers = [Layer(p) for p in layer_pics]
         return cls(size=size, layers=layers, palette=palette)
 
-    # @classmethod
-    # def from_png(cls, path):
-    #     img = PILImage.open(path)
-    #     size = img.size
-    #     palette = Palette(img.getpalette(), transparency=0)
-    #     layers = [PillowImage(img)]
-    #     return cls(size=size, layers=layers, palette=palette)
-
     def save_ora(self, path):
         save_ora(self.size, self.layers, self.palette, path)
 
@@ -77,11 +68,6 @@ class Drawing:
                 pass
 
     def add_layer(self, layer=None):
-        # if data:
-        #     layer = PillowImage(data=data)
-        # else:
-        #     layer = PillowImage(PILImage.new("P", self.size))
-        #     layer.clear()
         layer = layer or Layer(Picture(self.size))
         index = self.get_index()
         if index is None:
