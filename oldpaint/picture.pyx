@@ -293,10 +293,10 @@ cdef class LongPicture:
 
     cpdef void paste_byte(self, Picture pic, int x, int y, bint mask):
         cdef int w, h, y1, x1, x2, y2, offset1, offset2
+        cdef unsigned int p
         w, h = pic.size
         offset1 = 0
         offset2 = self._get_offset(x, y)
-        cdef unsigned int[:] data = memoryview(pic.data).cast(self.pixel_format)  # TODO probably slow
         for y2 in range(y, y+h):
             if (y2 < 0):
                 offset1 += w
@@ -311,7 +311,9 @@ cdef class LongPicture:
                     continue
                 if (x2 >= self.width):
                     break
-                self.data[offset2+x1] = data[offset1+x1] + 255*2**24
+                p = pic.data[offset1+x1]
+                # TODO here we hardcode color 0 as transparent.
+                self.data[offset2+x1] = p + bool(p) * 255*2**24
             offset1 += w
             offset2 += self.width
 

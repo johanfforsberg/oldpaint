@@ -65,11 +65,18 @@ class OldpaintWindow(pyglet.window.Window):
             Drawing((800, 600), layers=[Layer(Picture((800, 600))), Layer(Picture((800, 600)))])
         ])
 
+        self.tools = Selectable([PencilTool, PointsTool,
+                                 LineTool, RectangleTool, EllipseTool, FillTool,
+                                 SelectionTool, PickerTool])
+        self.brushes = Selectable([RectangleBrush((1, 1)), EllipseBrush((10, 20)), ])
+        self.highlighted_layer = None
+        self.drawing_brush = None
+
+        # Some gl setup
         self.copy_program = Program(VertexShader("glsl/copy_vert.glsl"),
                                     FragmentShader("glsl/copy_frag.glsl"))
         self.line_program = Program(VertexShader("glsl/triangle_vert.glsl"),
                                     FragmentShader("glsl/triangle_frag.glsl"))
-
         self.vao = VertexArrayObject()
 
         # All the drawing will happen in a thread, managed by this executor
@@ -95,11 +102,6 @@ class OldpaintWindow(pyglet.window.Window):
                     "pencil", "picker", "points", "rectangle"
             ]
         }
-        self.tools = Selectable([PencilTool, PointsTool,
-                                 LineTool, RectangleTool, EllipseTool, FillTool,
-                                 SelectionTool, PickerTool])
-        self.brushes = Selectable([RectangleBrush((1, 1)), EllipseBrush((10, 20)), ])
-        self.highlighted_layer = None
 
         io = imgui.get_io()
         self._font = io.fonts.add_font_from_file_ttf(
@@ -114,9 +116,6 @@ class OldpaintWindow(pyglet.window.Window):
              ((0, 0, 0),),
              ((0, 0, 0),),
              ((0, 0, 0),)])
-
-        self.loader = None
-        self.saver = None
 
         # tablets = pyglet.input.get_tablets()
         # if tablets:
@@ -150,6 +149,10 @@ class OldpaintWindow(pyglet.window.Window):
     def drawing(self):
         return self.drawings.current
 
+    @property
+    def brush(self):
+        return self.drawing_brush or self.brushes.current
+
     @no_imgui_events
     def on_mouse_press(self, x, y, button, modifiers):
         if self.mouse_event_queue:
@@ -164,7 +167,7 @@ class OldpaintWindow(pyglet.window.Window):
             self.mouse_event_queue = Queue()
             color = (self.drawing.palette.foreground if button == pyglet.window.mouse.LEFT
                      else self.drawing.palette.background)
-            tool = self.tools.current(self.drawing, self.brushes.current, color, self._to_image_coords(x, y))
+            tool = self.tools.current(self.drawing, self.brush, color, self._to_image_coords(x, y))
 
             self.stroke = self.executor.submit(make_stroke, self.overlay, self.mouse_event_queue, tool)
             self.stroke.add_done_callback(lambda s: self.executor.submit(self._finish_stroke, s))
@@ -324,28 +327,41 @@ class OldpaintWindow(pyglet.window.Window):
                 imgui.end_menu()
             imgui.end_main_menu_bar()
 
+        # Tools & brushes
         imgui.begin("Tools", True)
 
         ui.render_tools(self.tools, self.icons)
-        #imgui.core.separator()
+        imgui.core.separator()
+
+        brush = ui.render_brushes(self.brushes, self.get_brush_preview_texture)
+        if brush:
+            self.drawing_brush = None
+        imgui.core.separator()
+
+        if imgui.button("Delete"):
+            self.drawing.brushes.remove()
+        imgui.begin_child("brushes", border=False)
+        brush = ui.render_brushes(self.drawing.brushes, self.get_brush_preview_texture)
+        if brush:
+            self.drawing_brush = brush
         imgui.end()
 
-        ui.render_brushes(self.brushes, self.drawing.brushes, self.get_brush_preview_texture)
+        imgui.end()
 
         self.highlighted_layer = ui.render_layers(self.drawing)
         ui.render_palette(self.drawing.palette)
 
-        if self.loader:
-            if self.loader.done:
-                self.loader = None
-            else:
-                ui.render_open_file_dialog(self.loader)
+        # if self.loader:
+        #     if self.loader.done:
+        #         self.loader = None
+        #     else:
+        #         ui.render_open_file_dialog(self.loader)
 
-        if self.saver:
-            if self.saver.done:
-                self.saver = None
-            else:
-                ui.render_save_file_dialog(self.saver)
+        # if self.saver:
+        #     if self.saver.done:
+        #         self.saver = None
+        #     else:
+        #         ui.render_save_file_dialog(self.saver)
 
         # ui.render_layers(self.drawing, self.get_layer_preview_texture)
 
@@ -418,7 +434,7 @@ class OldpaintWindow(pyglet.window.Window):
         ix0, iy0 = self._to_image_coords(x0, y0)
         ix, iy = self._to_image_coords(x, y)
         overlay = self.overlay
-        brush = self.brushes.current
+        brush = self.brush
         bw, bh = brush.size
         cx, cy = brush.center
         # Clear the previous brush preview

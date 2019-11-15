@@ -12,11 +12,16 @@ class Brush:
 class PicBrush(Brush):
 
     def __init__(self, pic):
-        self.original = pic
+        longpic = LongPicture(size=pic.size)
+        longpic.paste_byte(pic, 0, 0, None)
+        self.original = longpic
+
         #LongPicture(size=pic.size)
         #self.original.paste_byte(pic, 0, 0, None)
-        self.size = pic.size
+        self.size = w, h = pic.size
+        self.center = w // 2, h // 2
 
+    @lru_cache(1)
     def get_pic(self, color=None):
         return self.original
 
