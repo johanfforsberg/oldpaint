@@ -19,9 +19,11 @@ class Brushes(Selectable):
 class Drawing:
 
     """
-    The "drawing" is a bunch of images with the same size and palette, stacked on top of each order (from the bottom).
+    The "drawing" is a bunch of images with the same size and palette,
+    stacked on top of each order (from the bottom).
 
-    This is also where most functionality that affects the image is collected, e.g. strokes, undo/redo, load/save...
+    This is also where most functionality that affects the image is collected,
+    e.g. drawing, undo/redo, load/save...
     """
 
     def __init__(self, size, layers=None, palette=None):
@@ -30,21 +32,16 @@ class Drawing:
         self.overlay = Layer(LongPicture(size=self.size))
         self.current = layers[0] if layers else None
         self._palette = palette if palette else Palette(transparency=0)
+        self.brushes = Selectable([])
         self.unsaved = False
 
         self.undos = []
         self.redos = []
-        # self.brushes = Brushes([RectangleBrush(1, 1), RectangleBrush(2, 2),
-        #                         EllipseBrush(3, 3), EllipseBrush(10, 10)])
-        self.brushes = Selectable([])
         self.selection = None
-        self.stroke = None
 
     @classmethod
     def from_png(cls, path):
-        #img = PILImage.open(path)
         pic, colors = load_png(path)
-        print(colors)
         layer = Layer(pic)
         palette = Palette(colors, transparency=0)
         return cls(size=layer.size, layers=[layer], palette=palette)
@@ -177,9 +174,11 @@ class Drawing:
     #     rect = method(layer, *args)
 
     def update(self, new_data, rect, layer=None):
+        "Update a part of the layer, keeping track of the change as an 'undo'"
         layer = layer or self.current
         prev_data = layer.get_subimage(rect)
         self.undos.append((layer, rect, prev_data))
+        self.redos.clear()
         layer.blit(new_data, rect)
 
     def __iter__(self):

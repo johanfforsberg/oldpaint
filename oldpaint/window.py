@@ -233,16 +233,29 @@ class OldpaintWindow(pyglet.window.Window):
             self.overlay.clear()
             self.drawings.cycle_forward()
 
+        # TODO the file dialogs are blocking.
         elif symbol == key.S:
-            self.drawing.save_ora("/tmp/hej.ora")
+            path = filedialog.asksaveasfilename(title="Select file",
+                                                filetypes=(("ORA files", "*.ora"),
+                                                           #("PNG files", "*.png"),
+                                                           ("all files", "*.*")))
+            if path:
+                if path.endswith(".ora"):
+                    self.drawing.save_ora(path)
         elif symbol == key.O:
             path = filedialog.askopenfilename(title="Select file",
                                               filetypes=(("ORA files", "*.ora"),
+                                                         ("PNG files", "*.png"),
                                                          ("all files", "*.*")))
-            if path.endswith(".ora"):
-                self.drawing = Drawing.from_ora(path)
-            elif path.endswith(".png"):
-                self.drawing = Drawing.from_png(path)
+            if path:
+                if path.endswith(".ora"):
+                    drawing = Drawing.from_ora(path)
+                    self.drawings.add(drawing)
+                    self.drawings.select(drawing)
+                elif path.endswith(".png"):
+                    self.drawing = Drawing.from_png(path)
+                    self.drawings.add(drawing)
+                    self.drawings.select(drawing)
         else:
             super().on_key_press(symbol, modifiers)
 
