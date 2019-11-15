@@ -37,6 +37,6 @@ def load_ora(path):
         for layer_el in stack_el:
             path = layer_el.attrib["src"]
             with orafile.open(path) as imgf:
-                pic = load_png(imgf)
+                pic, palette = load_png(imgf)
                 layers.append(pic)
-    return list(reversed(layers))
+    return list(reversed(layers)), palette

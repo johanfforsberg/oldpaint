@@ -15,38 +15,36 @@ class Tool(metaclass=abc.ABCMeta):
     """
 
     tool = None  # Name of the tool (should correspond to an icon)
-    ephemeral = False  # Ephemeral means clear the layer before each draw call
+    ephemeral = False  # Ephemeral means we'll clear the layer before each draw call
+    brush_preview = True  # Whether to show the current brush on top of the image while not drawing
 
-    def __init__(self, stack, brush, color, initial):
-        self.stack = stack  # Note: normally don't draw directly to the stack, as that
-                            # will bypass the undo system.
+    def __init__(self, drawing, brush, color, initial):
+        self.drawing = drawing
         self.brush = brush
         self.color = color
-        self.points = [initial]  # Store the coordinates used when drawing, e.g. for repeating
-        self.rect = None         # The dirty rectangle covering the edit
+        self.points = [initial]  # Store the coordinates used when drawing
+        self.rect = None         # The smallest rectangle covering the edit
+
+    # Both these methods are optional, but without any of them, the tool won't
+    # actually *do* anything.abc
 
     def draw(self, layer, point, buttons, modifiers):
         "Runs once per mouse move event, *on a separate thread*. Be careful!"
+        # layer: overlay layer (that can safely be drawn to),
+        # point: the latest mouse coord,
+        # buttons: mouse buttons currently held
+        # modifiers: keyboard modifiers held
 
     def finish(self, layer, point, buttons, modifiers):
         "Runs once at the end, also on the thread."
-
-    # def redraw(self, cls):
-    #     points = self.points[1:]
-    #     initial = self.points[0]
-    #     stroke = cls(self.image, self.overlay, self.window, initial)
-    #     if not stroke.ephemeral:
-    #         for point in points:
-    #             stroke.on_mouse_drag_imgcoord(*point)
-    #     else:
-    #         stroke.on_mouse_drag_imgcoord(*points[-1])
-    #     stroke.on_mouse_release_imgcoord(*points[-1], pop_handler=False)
 
     def __repr__(self):
         return self.tool
 
 
 class PencilTool(Tool):
+
+    "One continuous line along the mouse movement"
 
     tool = "pencil"
     ephemeral = False
@@ -69,14 +67,17 @@ class PencilTool(Tool):
 
 class PointsTool(Tool):
 
+    "A series of dots along the mouse movement."
+
     tool = "points"
     ephemeral = False
+    step = 5
 
     def draw(self, layer, point, buttons, modifiers):
         if self.points[-1] == point:
             return
         self.points.append(point)
-        if len(self.points) % 5 == 0:
+        if len(self.points) % self.step == 0:
             rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.color))
             if rect:
                 self.rect = rect.unite(self.rect)
@@ -89,6 +90,8 @@ class PointsTool(Tool):
 
 
 class LineTool(Tool):
+
+    "A straight line from the starting point to the end point."
 
     tool = "line"
     ephemeral = True
@@ -106,6 +109,8 @@ class LineTool(Tool):
 
 class RectangleTool(Tool):
 
+    "A rectangle with opposing corners at the start and end points."
+
     tool = "rectangle"
     ephemeral = True
 
@@ -117,6 +122,8 @@ class RectangleTool(Tool):
 
 
 class EllipseTool(Tool):
+
+    "An ellipse centered at the start point and with radii described by the end point."
 
     tool = "ellipse"
     ephemeral = True
@@ -133,48 +140,50 @@ class EllipseTool(Tool):
 
 class FillTool(Tool):
 
+    "Fill all adjacent pixels of the same color as the start point."
+
     tool = "floodfill"
-    uses_overlay = False
+    brush_preview = False
 
     def finish(self, layer, point, buttons, modifiers):
-        clone = self.stack.current.clone()
+        clone = self.drawing.current.clone()
         rect = clone.draw_fill(point, color=self.color)
         if rect:
-            # Here we don't use the overlay, so we have to handle the update.
-            self.stack.update(clone.get_subimage(rect), rect)
+            # Here we don't use the overlay, and therefore handle the updating directly
+            self.drawing.update(clone.get_subimage(rect), rect)
 
 
 class SelectionTool(Tool):
 
-    tool = "brush"
-    uses_overlay = False
+    "Create a brush from a rectangular region of the current layer."
 
-    # def __init__(self, stack, brush, initial):
-    #     super().__init__(stack, brush, initial)
-    #     self.start = tuple(initial[:2])
+    tool = "brush"
+    brush_preview = False
 
     def draw(self, layer, point, buttons, modifiers):
         rect = from_points([self.points[0], point])
-        self.stack.selection = rect
+        self.drawing.selection = rect
 
     def finish(self, layer, point, buttons, modifiers):
-        self.stack.make_brush()
-        self.stack.selection = None
+        self.drawing.make_brush()
+        self.drawing.selection = None
 
 
 class PickerTool(Tool):
 
-    tool = "picker"
-    uses_overlay = False
+    "Set the current color to the one under the mouse when clicked."
 
-    def __init__(self, stack, brush, color, initial):
-        super().__init__(stack, brush, color, initial)
+    tool = "picker"
+    brush_preview = False
+
+    def __init__(self, drawing, brush, color, initial):
+        super().__init__(drawing, brush, color, initial)
         self.start = initial
         self.color = None
 
     def finish(self, layer, point, buttons, modifiers):
-        index = self.stack.current.pic.get_pixel(*point)
+        index = self.drawing.current.pic.get_pixel(*point)
         if buttons == window.mouse.LEFT:
-            self.stack.palette.foreground = index
+            self.drawing.palette.foreground = index
         elif buttons == window.mouse.RIGHT:
-            self.stack.palette.background = index
+            self.drawing.palette.background = index

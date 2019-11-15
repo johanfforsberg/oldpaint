@@ -27,9 +27,9 @@ def render_tools(tools, icons):
     for i, tool in enumerate(tools):
         texture = icons[tool.tool]
         #imgui.push_style_color(imgui.COLOR_BUTTON, *TOOL_BUTTON_COLORS[tool == current_tool])
-        with imgui.extra.styled(imgui.COLOR_BUTTON, TOOL_BUTTON_COLORS[tool == current_tool]):
-            if imgui.core.image_button(texture.name, 16, 16):
-                tools.select(tool)
+        #with imgui.extra.styled(imgui.COLOR_BUTTON_ACTIVE, TOOL_BUTTON_COLORS[tool == current_tool]):
+        if imgui.core.image_button(texture.name, 16, 16):
+            tools.select(tool)
         if i % 4 != 3:
             imgui.same_line()
         #imgui.pop_style_color(1)
@@ -112,34 +112,34 @@ def render_save_file_dialog(loader):
     imgui.end()
 
 
-def render_layers(stack):
+def render_layers(drawing):
     imgui.set_next_window_size(100, 400)
 
     imgui.begin("Layers", True)
     if imgui.button("Add"):
-        stack.add_layer()
+        drawing.add_layer()
     imgui.same_line()
     if imgui.button("Remove"):
-        stack.remove_layer()
+        drawing.remove_layer()
     if imgui.button("Down"):
-        stack.move_layer_down()
+        drawing.move_layer_down()
     imgui.same_line()
     if imgui.button("Up"):
-        stack.move_layer_up()
+        drawing.move_layer_up()
 
     imgui.begin_child("Layers", border=True)
     selected = None
-    n = len(stack.layers)
+    n = len(drawing.layers)
     hovered = None
-    for i, layer in zip(range(n - 1, -1, -1), reversed(stack.layers)):
+    for i, layer in zip(range(n - 1, -1, -1), reversed(drawing.layers)):
         clicked, _ = imgui.checkbox(f"##checkbox{i}", layer.visible)
         if clicked:
             layer.visible = not layer.visible
 
         imgui.same_line()
-        _, selected = imgui.selectable(str(i), layer == stack.current)
+        _, selected = imgui.selectable(str(i), layer == drawing.current)
         if selected:
-            stack.current = layer
+            drawing.current = layer
         if imgui.is_item_hovered():
             hovered = layer
         # imgui.same_line()
@@ -154,7 +154,7 @@ def render_layers(stack):
     imgui.end_child()
     imgui.end()
     # if selected is not None:
-    #     stack.current = selected
+    #     drawing.current = selected
     return hovered
 
 

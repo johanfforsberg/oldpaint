@@ -4,7 +4,7 @@ from time import time
 from .brush import PicBrush
 from .layer import Layer
 from .ora import load_ora, save_ora
-from .picture import Picture, LongPicture
+from .picture import Picture, LongPicture, load_png
 from .palette import Palette
 from .util import Selectable
 
@@ -16,10 +16,10 @@ class Brushes(Selectable):
     pass
 
 
-class Stack:
+class Drawing:
 
     """
-    The "stack" is a bunch of images with the same size and palette, stacked on top of each order (from the bottom).
+    The "drawing" is a bunch of images with the same size and palette, stacked on top of each order (from the bottom).
 
     This is also where most functionality that affects the image is collected, e.g. strokes, undo/redo, load/save...
     """
@@ -27,6 +27,7 @@ class Stack:
     def __init__(self, size, layers=None, palette=None):
         self.size = size
         self.layers = layers or []
+        self.overlay = Layer(LongPicture(size=self.size))
         self.current = layers[0] if layers else None
         self._palette = palette if palette else Palette(transparency=0)
         self.unsaved = False
@@ -39,22 +40,23 @@ class Stack:
         self.selection = None
         self.stroke = None
 
-    def load_image(self, path):
+    @classmethod
+    def from_png(cls, path):
         #img = PILImage.open(path)
-        layer, palette = Layer.load_png(path)
-        self.layers.clear()
-        self.add_layer(layer)
-        self.palette = palette
-        self.path = path
+        pic, colors = load_png(path)
+        print(colors)
+        layer = Layer(pic)
+        palette = Palette(colors, transparency=0)
+        return cls(size=layer.size, layers=[layer], palette=palette)
 
-    # @classmethod
-    # def from_ora(cls, path):
-    #     layer_images = load_ora(path)
-    #     img = layer_images[0]
-    #     size = img.size
-    #     palette = Palette(img.getpalette(), transparency=0)
-    #     layers = [PillowImage(i) for i in layer_images]
-    #     return cls(size=size, layers=layers, palette=palette)
+    @classmethod
+    def from_ora(cls, path):
+        layer_pics, colors = load_ora(path)
+        pic = layer_pics[0]
+        size = pic.size
+        palette = Palette(colors, transparency=0)
+        layers = [Layer(p) for p in layer_pics]
+        return cls(size=size, layers=layers, palette=palette)
 
     # @classmethod
     # def from_png(cls, path):
@@ -68,7 +70,7 @@ class Stack:
         save_ora(self.size, self.layers, self.palette, path)
 
     def get_index(self, layer=None):
-        "Return the stack index of the given layer (or current)."
+        "Return the index of the given layer (or current)."
         layer = layer or self.current
         if layer is not None:
             try:
@@ -168,11 +170,11 @@ class Stack:
         self._palette = Palette(palette_data, 0)  #img.info.get("transparency"))
 
     def __repr__(self):
-        return f"ImageStack(size={self.size}, layers={self.layers}, current={self.get_index()})"
+        return f"Drawing(size={self.size}, layers={self.layers}, current={self.get_index()})"
 
-    def layer_op(method, *args, layer=None):
-        layer = layer or self.current
-        rect = method(layer, *args)
+    # def layer_op(method, *args, layer=None):
+    #     layer = layer or self.current
+    #     rect = method(layer, *args)
 
     def update(self, new_data, rect, layer=None):
         layer = layer or self.current

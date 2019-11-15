@@ -3,6 +3,8 @@ from contextlib import contextmanager
 from functools import lru_cache
 from itertools import chain
 from queue import Queue
+from threading import Thread
+from tkinter import Tk, filedialog
 
 from euclid3 import Matrix4
 import imgui
@@ -10,6 +12,8 @@ import pyglet
 from pyglet import gl
 from pyglet.window import key
 import manhole
+from IPython import start_ipython, get_ipython
+from IPython.terminal.embed import InteractiveShellEmbed
 
 from ugly.framebuffer import FrameBuffer
 from ugly.glutil import load_png
@@ -20,11 +24,11 @@ from ugly.vao import VertexArrayObject
 from ugly.vertex import SimpleVertices
 
 from .brush import RectangleBrush, EllipseBrush
+from .drawing import Drawing
 from .imgui_pyglet import PygletRenderer
 from .layer import Layer
 from .picture import Picture, LongPicture
 from .rect import Rectangle
-from .stack import Stack
 from .stroke import make_stroke
 from .tool import (PencilTool, PointsTool, LineTool, RectangleTool, EllipseTool,
                    SelectionTool, PickerTool, FillTool)
@@ -48,6 +52,10 @@ def no_imgui_events(f):
     return inner
 
 
+class Drawings(Selectable):
+    pass
+
+
 class OldpaintWindow(pyglet.window.Window):
 
     def __init__(self, **kwargs):
@@ -55,8 +63,7 @@ class OldpaintWindow(pyglet.window.Window):
         super().__init__(**kwargs, resizable=True, vsync=False)
 
         size = (1600, 1200)
-        self.stack = Stack(size, layers=[Layer(Picture(size)), Layer(Picture(size))])
-        self.overlay = Layer(LongPicture(size))  # A temporary drawing layer
+        self.drawings = Drawings([Drawing(size, layers=[Layer(Picture(size)), Layer(Picture(size))])])
 
         self.offscreen_buffer = FrameBuffer(size, textures=dict(color=Texture(size, unit=0)))
         self.vao = VertexArrayObject()
@@ -125,14 +132,26 @@ class OldpaintWindow(pyglet.window.Window):
         #         if self.mouse_event_queue:
         #             self.mouse_event_queue.put(("mouse_drag", (self._to_image_coords(x, y), 0, 0)))
 
+        Tk().withdraw() # disables TkInter GUI
+
         @contextmanager
-        def blah(self):
+        def blah():
             yield self.overlay
             rect = self.overlay.dirty
-            self.stack.update(self.overlay.get_subimage(rect), rect)
+            self.drawing.update(self.overlay.get_subimage(rect), rect)
             self.overlay.clear(rect)
 
-        manhole.install(locals={"stack": self.stack, "blah": blah, "brushes": self.brushes})
+        # TODO this works, but figure out a way to exit automatically when the application closes.
+        # Thread(target=start_ipython,
+        #        kwargs=dict(colors="neutral", user_ns={"drawing": self.drawing, "blah": blah})).start()
+
+    @property
+    def overlay(self):
+        return self.drawings.current.overlay
+
+    @property
+    def drawing(self):
+        return self.drawings.current
 
     @no_imgui_events
     def on_mouse_press(self, x, y, button, modifiers):
@@ -140,10 +159,16 @@ class OldpaintWindow(pyglet.window.Window):
             return
         if button in (pyglet.window.mouse.LEFT,
                       pyglet.window.mouse.RIGHT):
+
+            if self.brush_preview_dirty:
+                self.overlay.clear(self.brush_preview_dirty)
+                self.brush_preview_dirty = None
+
             self.mouse_event_queue = Queue()
-            color = (self.stack.palette.foreground if button == pyglet.window.mouse.LEFT
-                     else self.stack.palette.background)
-            tool = self.tools.current(self.stack, self.brushes.current, color, self._to_image_coords(x, y))
+            color = (self.drawing.palette.foreground if button == pyglet.window.mouse.LEFT
+                     else self.drawing.palette.background)
+            tool = self.tools.current(self.drawing, self.brushes.current, color, self._to_image_coords(x, y))
+
             self.stroke = self.executor.submit(make_stroke, self.overlay, self.mouse_event_queue, tool)
             self.stroke.add_done_callback(lambda s: self.executor.submit(self._finish_stroke, s))
 
@@ -177,7 +202,8 @@ class OldpaintWindow(pyglet.window.Window):
         if (x, y) == self.mouse_position:
             return
         self._update_cursor(x, y)
-        self._draw_brush_preview(x - dx, y - dy, x, y)
+        if self.tools.current.brush_preview:
+            self._draw_brush_preview(x - dx, y - dy, x, y)
 
     def on_mouse_leave(self, x, y):
         self.mouse_position = None
@@ -186,25 +212,32 @@ class OldpaintWindow(pyglet.window.Window):
 
     def on_key_press(self, symbol, modifiers):
         if symbol == key.UP:
-            self.stack.next_layer()
+            self.drawing.next_layer()
         elif symbol == key.DOWN:
-            self.stack.prev_layer()
+            self.drawing.prev_layer()
         if symbol == key.E:
-            self.stack.palette.foreground += 1
+            self.drawing.palette.foreground += 1
         elif symbol == key.D:
-            self.stack.palette.foreground -= 1
+            self.drawing.palette.foreground -= 1
 
         elif symbol == key.DELETE:
-            self.stack.clear_layer(color=self.stack.palette.background)
+            self.drawing.clear_layer(color=self.drawing.palette.background)
 
         elif symbol == key.Z:
-            self.stack.undo()
+            self.drawing.undo()
         elif symbol == key.Y:
-            self.stack.redo()
+            self.drawing.redo()
 
         elif symbol == key.S:
-            self.stack.save_ora("/tmp/hej.ora")
-
+            self.drawing.save_ora("/tmp/hej.ora")
+        elif symbol == key.O:
+            path = filedialog.askopenfilename(title="Select file",
+                                              filetypes=(("ORA files", "*.ora"),
+                                                         ("all files", "*.*")))
+            if path.endswith(".ora"):
+                self.drawing = Drawing.from_ora(path)
+            elif path.endswith(".png"):
+                self.drawing = Drawing.from_png(path)
         else:
             super().on_key_press(symbol, modifiers)
 
@@ -219,7 +252,7 @@ class OldpaintWindow(pyglet.window.Window):
 
             gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
 
-            stack = self.stack
+            drawing = self.drawing
 
             overlay = self.overlay
             overlay_texture = self._get_overlay_texture(overlay)
@@ -232,14 +265,19 @@ class OldpaintWindow(pyglet.window.Window):
                 subimage = overlay.get_subimage(rect)
                 data = bytes(subimage.data)  # TODO Is this making a copy?
 
+
                 # Now update the texture with the changed part of the layer.
-                gl.glTextureSubImage2D(overlay_texture.name, 0, *rect.points,
-                                       gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, data)
+                try:
+                    gl.glTextureSubImage2D(overlay_texture.name, 0, *rect.points,
+                                           gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, data)
 
-                overlay.dirty = None
-                overlay.lock.release()  # Allow layer to change again.
+                    overlay.dirty = None
+                    overlay.lock.release()  # Allow layer to change again.
+                except gl.lib.GLException:
+                    print(rect, data)
+                    pass
 
-            for layer in self.stack:
+            for layer in self.drawing:
 
                 if not self.highlighted_layer or self.highlighted_layer == layer:
 
@@ -258,21 +296,21 @@ class OldpaintWindow(pyglet.window.Window):
                         continue
 
                     with layer_texture:
-                        if layer == stack.current:
+                        if layer == drawing.current:
                             # The overlay is combined with the layer
                             with overlay_texture:
-                                gl.glUniform4fv(1, 256, self._get_colors(stack.palette.get_rgba()))
+                                gl.glUniform4fv(1, 256, self._get_colors(drawing.palette.get_rgba()))
                                 gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
                         else:
-                            with self._get_empty_texture(stack):
-                                gl.glUniform4fv(1, 256, self._get_colors(stack.palette.get_rgba()))
+                            with self._get_empty_texture(drawing):
+                                gl.glUniform4fv(1, 256, self._get_colors(drawing.palette.get_rgba()))
                                 gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 
         window_size = self.get_size()
         gl.glViewport(0, 0, *window_size)
         gl.glClearBufferfv(gl.GL_COLOR, 0, BG_COLOR)
 
-        vm = make_view_matrix(window_size, stack.size, self.zoom, self.offset)
+        vm = make_view_matrix(window_size, drawing.size, self.zoom, self.offset)
 
         with self.vao, self.copy_program, self.offscreen_buffer["color"]:
             gl.glEnable(gl.GL_BLEND)
@@ -282,8 +320,8 @@ class OldpaintWindow(pyglet.window.Window):
             self._draw_mouse_cursor()
 
         # Selection rectangle, if any
-        if self.tools.current.tool == "brush" and self.stack.selection:
-            self.set_selection(self.stack.selection)
+        if self.tools.current.tool == "brush" and self.drawing.selection:
+            self.set_selection(self.drawing.selection)
             with self.selection_vao, self.line_program:
                 gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
                 gl.glUniform3f(1, 1., 1., 0.)
@@ -304,11 +342,11 @@ class OldpaintWindow(pyglet.window.Window):
         tool = stroke.result()
         print("stroke finished", tool.rect)
         if tool.rect:
-            self.stack.update(self.overlay.get_subimage(tool.rect), tool.rect)
+            self.drawing.update(self.overlay.get_subimage(tool.rect), tool.rect)
             self.overlay.clear(tool.rect)
 
         # if tool.rect:
-        #     #self.stack.update(self.overlay.get_subimage(tool.rect), tool.rect)
+        #     #self.drawing.update(self.overlay.get_subimage(tool.rect), tool.rect)
         #     self.overlay.clear(tool.rect)
         self.stroke = None
         # TODO here we should handle undo history etc
@@ -341,11 +379,11 @@ class OldpaintWindow(pyglet.window.Window):
                 imgui.end_menu()
             if imgui.begin_menu("Layer", True):
                 if imgui.menu_item("Flip horizontally", "H", False, True)[0]:
-                    self.stack.current.flip_horizontal()
+                    self.drawing.current.flip_horizontal()
                 if imgui.menu_item("Flip vertically", "V", False, True)[0]:
-                    self.stack.current.flip_vertical()
+                    self.drawing.current.flip_vertical()
                 if imgui.menu_item("Clear", "Delete", False, True)[0]:
-                    self.stack.current.clear()
+                    self.drawing.current.clear()
                 imgui.end_menu()
             imgui.end_main_menu_bar()
 
@@ -355,10 +393,10 @@ class OldpaintWindow(pyglet.window.Window):
         #imgui.core.separator()
         imgui.end()
 
-        ui.render_brushes(self.brushes, self.stack.brushes, self.get_brush_preview_texture)
+        ui.render_brushes(self.brushes, self.drawing.brushes, self.get_brush_preview_texture)
 
-        self.highlighted_layer = ui.render_layers(self.stack)
-        ui.render_palette(self.stack.palette)
+        self.highlighted_layer = ui.render_layers(self.drawing)
+        ui.render_palette(self.drawing.palette)
 
         if self.loader:
             if self.loader.done:
@@ -372,7 +410,7 @@ class OldpaintWindow(pyglet.window.Window):
             else:
                 ui.render_save_file_dialog(self.saver)
 
-        # ui.render_layers(self.stack, self.get_layer_preview_texture)
+        # ui.render_layers(self.drawing, self.get_layer_preview_texture)
 
         imgui.render()
         imgui.end_frame()
@@ -385,8 +423,8 @@ class OldpaintWindow(pyglet.window.Window):
         return (gl.GLfloat*(4*256))(*colors)
 
     @lru_cache(1)
-    def _get_empty_texture(self, stack):
-        texture = Texture(stack.size, unit=1)
+    def _get_empty_texture(self, drawing):
+        texture = Texture(drawing.size, unit=1)
         texture.clear()
         return texture
 
@@ -404,7 +442,7 @@ class OldpaintWindow(pyglet.window.Window):
 
     def _to_image_coords(self, x, y):
         "Convert window coordinates to image coordinates."
-        w, h = self.stack.size
+        w, h = self.drawing.size
         ww, wh = self.get_size()
         scale = 2 ** self.zoom
         ox, oy = self.offset
@@ -414,7 +452,7 @@ class OldpaintWindow(pyglet.window.Window):
 
     def _to_window_coords(self, x, y):
         "Convert image coordinates to window coordinates"
-        w, h = self.stack.size
+        w, h = self.drawing.size
         ww, wh = self.get_size()
         scale = 2 ** self.zoom
         ox, oy = self.offset
@@ -425,14 +463,14 @@ class OldpaintWindow(pyglet.window.Window):
     @lru_cache(1)
     def _over_image(self, x, y):
         ix, iy = self._to_image_coords(x, y)
-        w, h = self.stack.size
+        w, h = self.drawing.size
         return 0 <= ix < w and 0 <= iy < h
 
     #@lru_cache(128)
     def set_selection(self, rect):
         x0, y0 = rect.topleft
         x1, y1 = rect.bottomright
-        w, h = self.stack.size
+        w, h = self.drawing.size
         w2 = w / 2
         h2 = h / 2
         xw0 = (x0 - w2) / w
@@ -464,7 +502,7 @@ class OldpaintWindow(pyglet.window.Window):
         old_rect = Rectangle((ix0 - cx, iy0 - cy), brush.size)
         overlay.clear(old_rect)
         rect = Rectangle((ix - cx, iy - cy), brush.size)
-        overlay.blit(brush.get_pic(color=self.stack.palette.foreground), rect)
+        overlay.blit(brush.get_pic(color=self.drawing.palette.foreground), rect)
         self.brush_preview_dirty = rect
 
     def _update_cursor(self, x, y):
@@ -528,7 +566,7 @@ class OldpaintWindow(pyglet.window.Window):
         texture = Texture(brush.size)
 
         if isinstance(brush.original, Picture):
-            data = bytes(brush.original.as_rgba(self.stack.palette.colors, False).data)
+            data = bytes(brush.original.as_rgba(self.drawing.palette.colors, False).data)
         else:
             data = bytes(brush.original.data)
         w, h = brush.size
@@ -579,10 +617,10 @@ def get_brush_preview_texture(brush):
 
 def render_brush_preview_texture(brush, colors):
     texture = Texture(brush.size)
-    #brush.original.putpalette(self.stack.palette.get_pil_palette())  # TODO do this when palette changes
-    #brush.set_palette(self.stack.palette)
+    #brush.original.putpalette(self.drawing.palette.get_pil_palette())  # TODO do this when palette changes
+    #brush.set_palette(self.drawing.palette)
     #rawdata = brush.original.convert("RGBA").getdata()
-    rgbdata = brush.original.as_rgba(self.stack.palette.colors, False).data
+    rgbdata = brush.original.as_rgba(self.drawing.palette.colors, False).data
     # TODO alpha mask
     data = (gl.GLuint * len(rgbdata))(*rgbdata)
     w, h = brush.size

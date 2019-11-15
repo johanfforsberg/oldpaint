@@ -28,7 +28,8 @@ class Layer:
 
     @classmethod
     def load_png(cls, path):
-        return cls(load_png(path))
+        pic, colors = load_png(path)
+        return cls(pic), colors
 
     def draw_line(self, *args, set_dirty=True, **kwargs):
         with self.lock:
@@ -86,7 +87,7 @@ class Layer:
     def clear(self, rect=None, value=0, set_dirty=True):
         rect = rect or self.rect
         self.pic.clear(rect.box(), value)
-        rect = rect.unite(self.dirty)
+        rect = self.rect.intersect(rect.unite(self.dirty))
         if set_dirty:
             self.dirty = rect
         return rect
@@ -111,7 +112,7 @@ class Layer:
                     self.pic.paste(pic, rect.x, rect.y, mask)
             self.dirty = rect.unite(self.dirty).intersect(self.rect)
             # self.dirty_data = pic
-        return rect
+        return self.rect.intersect(rect)
 
     def __hash__(self):
         return hash((id(self), self.size))
