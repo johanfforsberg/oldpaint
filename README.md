@@ -50,3 +50,8 @@ That should install the various other dependencies of oldpaint. Then you should 
 It will take a few seconds to start up the first time, since it uses cython to compile some parts to machine code. If this (or installation of the dependencies) fails, you're probably missing some compiler stuff. On ubuntu, something like the following should help.
     
     $ apt install build-essential python3-dev
+
+
+#### License ####
+
+Oldpaint is released under the GNU General Public License version 3. https://www.gnu.org/licenses/gpl-3.0.en.html
