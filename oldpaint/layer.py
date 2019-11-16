@@ -18,10 +18,14 @@ class Layer:
         # "dirty" is a rect that tells the visualisation that part of the
         # picture has changed and must be refreshed, after which it should
         # set the dirty rect to None. From this side, we should never shrink
-        # the dirty rect, but growing it is fine.
+        # or remove the dirty rect, but growing it is fine.
         self.dirty = self.rect
 
         self._visible = True
+        # This lock is important to hold while drawing, since otherwise
+        # the main thread might start reading from it while we're writing.
+        # It's reentrant so we don't have to worry about collisions within
+        # the drawing thread.
         self.lock = RLock()
 
     def save_png(self, path, palette=None):
@@ -85,7 +89,7 @@ class Layer:
         self._visible = value
         self.dirty = self.rect  # TODO should not be needed
 
-    def clear(self, rect=None, value=0, set_dirty=True):
+    def clear(self, rect:Rectangle=None, value=0, set_dirty=True):
         rect = rect or self.rect
         self.pic.clear(rect.box(), value)
         rect = self.rect.intersect(rect.unite(self.dirty))
@@ -96,7 +100,7 @@ class Layer:
     def clone(self):
         return Layer(self.pic.crop(*self.rect.points))
 
-    def get_subimage(self, rect):
+    def get_subimage(self, rect: Rectangle):
         return self.pic.crop(*rect.points)
 
     def blit(self, pic, rect, set_dirty=True, alpha=True):

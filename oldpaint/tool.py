@@ -1,5 +1,5 @@
 import abc
-from time import time
+from random import gauss
 
 from pyglet import window
 
@@ -17,17 +17,21 @@ class Tool(metaclass=abc.ABCMeta):
     tool = None  # Name of the tool (should correspond to an icon)
     ephemeral = False  # Ephemeral means we'll clear the layer before each draw call
     brush_preview = True  # Whether to show the current brush on top of the image while not drawing
+    period = None
 
     def __init__(self, drawing, brush, color, initial):
         self.drawing = drawing
         self.brush = brush
         self.color = color
-        self.points = [initial]  # Store the coordinates used when drawing
+        self.points = []  # Store the coordinates used when drawing
         self.rect = None         # The smallest rectangle covering the edit
 
     # Both these methods are optional, but without any of them, the tool won't
     # actually *do* anything.abc
 
+    def start(self, layer, point, buttons, modifiers):
+        self.points.append(point)
+    
     def draw(self, layer, point, buttons, modifiers):
         "Runs once per mouse move event, *on a separate thread*. Be careful!"
         # layer: overlay layer (that can safely be drawn to),
@@ -85,6 +89,29 @@ class PointsTool(Tool):
     def finish(self, layer, point, buttons, modifiers):
         # Make sure we draw a point even if the mouse was never moved
         rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.color))
+        if rect:
+            self.rect = rect.unite(self.rect)
+
+
+class SprayTool(Tool):
+
+    tool = "spray"
+    ephemeral = False
+    size = 10
+    intensity = 1.0
+    period = 0.002
+
+    def start(self, layer, point, buttons, modifiers):
+        super().start(layer, point, buttons, modifiers)
+        self.draw(layer, point, buttons, modifiers)
+
+    def draw(self, layer, point, buttons, modifiers):
+        self.points.append(point)
+        x, y = point
+        xg = gauss(x, self.size)
+        yg = gauss(y, self.size)
+        p = (xg, yg)
+        rect = layer.draw_line(p, p, brush=self.brush.get_pic(self.color))
         if rect:
             self.rect = rect.unite(self.rect)
 

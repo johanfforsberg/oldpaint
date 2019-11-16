@@ -29,7 +29,8 @@ from .picture import LongPicture
 from .rect import Rectangle
 from .render import render_drawing
 from .stroke import make_stroke
-from .tool import (PencilTool, PointsTool, LineTool, RectangleTool, EllipseTool,
+from .tool import (PencilTool, PointsTool, SprayTool,
+                   LineTool, RectangleTool, EllipseTool,
                    SelectionTool, PickerTool, FillTool)
 from .util import Selectable, make_view_matrix
 from . import ui
@@ -61,13 +62,13 @@ class OldpaintWindow(pyglet.window.Window):
         super().__init__(**kwargs, resizable=True, vsync=False)
 
         self.drawings = Drawings([
-            Drawing((1600, 1200), layers=[Layer(LongPicture((1600, 1200))),
-                                          Layer(LongPicture((1600, 1200))),]),
+            Drawing((640, 480), layers=[Layer(LongPicture((640, 480))),
+                                        Layer(LongPicture((640, 480))),]),
             Drawing((800, 600), layers=[Layer(LongPicture((800, 600))),
                                         Layer(LongPicture((800, 600)))])
         ])
 
-        self.tools = Selectable([PencilTool, PointsTool,
+        self.tools = Selectable([PencilTool, PointsTool, SprayTool,
                                  LineTool, RectangleTool, EllipseTool, FillTool,
                                  SelectionTool, PickerTool])
         self.brushes = Selectable([RectangleBrush((1, 1)), EllipseBrush((10, 20)), ])
@@ -100,7 +101,7 @@ class OldpaintWindow(pyglet.window.Window):
         self.icons = {
             name: ImageTexture(*load_png(f"icons/{name}.png"))
             for name in [
-                    "brush", "ellipse", "floodfill", "line",
+                    "brush", "ellipse", "floodfill", "line", "spray",
                     "pencil", "picker", "points", "rectangle"
             ]
         }
@@ -167,9 +168,11 @@ class OldpaintWindow(pyglet.window.Window):
                 self.brush_preview_dirty = None
 
             self.mouse_event_queue = Queue()
+            initial_point = self._to_image_coords(x, y)
+            self.mouse_event_queue.put(("mouse_down", (initial_point, button, modifiers)))
             color = (self.drawing.palette.foreground if button == pyglet.window.mouse.LEFT
                      else self.drawing.palette.background)
-            tool = self.tools.current(self.drawing, self.brush, color, self._to_image_coords(x, y))
+            tool = self.tools.current(self.drawing, self.brush, color, initial_point)
 
             self.stroke = self.executor.submit(make_stroke, self.overlay, self.mouse_event_queue, tool)
             self.stroke.add_done_callback(lambda s: self.executor.submit(self._finish_stroke, s))
