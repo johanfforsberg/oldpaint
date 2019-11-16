@@ -187,8 +187,6 @@ class OldpaintWindow(pyglet.window.Window):
     def on_mouse_release(self, x, y, button, modifiers):
         if self.mouse_event_queue:
             self.mouse_event_queue.put(("mouse_up", (self._to_image_coords(x, y), button, modifiers)))
-            self.mouse_event_queue = None
-            self.stroke = None
 
     @no_imgui_events
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
@@ -314,6 +312,8 @@ class OldpaintWindow(pyglet.window.Window):
         if tool.rect:
             self.drawing.update(self.overlay.get_subimage(tool.rect), tool.rect)
             self.overlay.clear(tool.rect)
+        self.mouse_event_queue = None
+        self.stroke = None
 
     # === Helper functions ===
 
