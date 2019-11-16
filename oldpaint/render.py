@@ -3,10 +3,10 @@ from itertools import chain
 
 from pyglet import gl
 
-from ugly.framebuffer import FrameBuffer
-from ugly.shader import Program, VertexShader, FragmentShader
-from ugly.texture import Texture, ByteTexture, ImageTexture
-from ugly.vao import VertexArrayObject
+from fogl.framebuffer import FrameBuffer
+from fogl.shader import Program, VertexShader, FragmentShader
+from fogl.texture import Texture, ByteTexture, ImageTexture
+from fogl.vao import VertexArrayObject
 
 
 ZERO_COLOR = (gl.GLfloat * 4)(0, 0, 0, 0)

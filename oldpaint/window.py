@@ -13,13 +13,13 @@ from pyglet import gl
 from pyglet.window import key
 from IPython import start_ipython
 
-from ugly.framebuffer import FrameBuffer
-from ugly.glutil import load_png
-from ugly.shader import Program, VertexShader, FragmentShader
-from ugly.texture import Texture, ByteTexture, ImageTexture
-from ugly.util import try_except_log, enabled
-from ugly.vao import VertexArrayObject
-from ugly.vertex import SimpleVertices
+from fogl.framebuffer import FrameBuffer
+from fogl.glutil import load_png
+from fogl.shader import Program, VertexShader, FragmentShader
+from fogl.texture import Texture, ByteTexture, ImageTexture
+from fogl.util import try_except_log, enabled
+from fogl.vao import VertexArrayObject
+from fogl.vertex import SimpleVertices
 
 from .brush import RectangleBrush, EllipseBrush
 from .drawing import Drawing
