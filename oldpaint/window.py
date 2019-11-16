@@ -11,7 +11,7 @@ import imgui
 import pyglet
 from pyglet import gl
 from pyglet.window import key
-from IPython import start_ipython
+# from IPython import start_ipython
 
 from fogl.framebuffer import FrameBuffer
 from fogl.glutil import load_png

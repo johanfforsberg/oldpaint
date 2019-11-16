@@ -1,29 +1,4 @@
 [[package]]
-category = "dev"
-description = "Atomic file writes."
-name = "atomicwrites"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "1.3.0"
-
-[[package]]
-category = "dev"
-description = "Classes Without Boilerplate"
-name = "attrs"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "19.3.0"
-
-[[package]]
-category = "dev"
-description = "Cross-platform colored terminal text."
-marker = "sys_platform == \"win32\""
-name = "colorama"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "0.4.1"
-
-[[package]]
 category = "main"
 description = "The Cython compiler for writing C extensions for the Python language."
 name = "cython"
@@ -41,104 +16,8 @@ version = "0.01"
 
 [[package]]
 category = "main"
-description = "Cython-based Python bindings for dear imgui"
-name = "imgui"
-optional = false
-python-versions = "*"
-version = "1.0.0"
-
-[[package]]
-category = "dev"
-description = "Read metadata from Python packages"
-marker = "python_version < \"3.8\""
-name = "importlib-metadata"
-optional = false
-python-versions = ">=2.7,!=3.0,!=3.1,!=3.2,!=3.3"
-version = "0.23"
-
-[package.dependencies]
-zipp = ">=0.5"
-
-[[package]]
-category = "dev"
-description = "More routines for operating on iterables, beyond itertools"
-name = "more-itertools"
-optional = false
-python-versions = ">=3.4"
-version = "7.2.0"
-
-[[package]]
-category = "dev"
-description = "plugin and hook calling mechanisms for python"
-name = "pluggy"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "0.13.0"
-
-[package.dependencies]
-[package.dependencies.importlib-metadata]
-python = "<3.8"
-version = ">=0.12"
-
-[[package]]
-category = "dev"
-description = "library with cross-python path, ini-parsing, io, code, log facilities"
-name = "py"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "1.8.0"
-
-[[package]]
-category = "main"
-description = "Cross-platform windowing and multimedia library"
-name = "pyglet"
-optional = false
-python-versions = "*"
-version = "2.0.dev0"
-
-[package.source]
-reference = ""
-type = "directory"
-url = "/home/jofo/Sync/progg/ugly/pyglet"
-
-[[package]]
-category = "main"
-description = "Pure Python PNG image encoder/decoder"
-name = "pypng"
-optional = false
-python-versions = "*"
-version = "0.0.20"
-
-[[package]]
-category = "dev"
-description = "pytest: simple powerful testing with Python"
-name = "pytest"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "3.10.1"
-
-[package.dependencies]
-atomicwrites = ">=1.0"
-attrs = ">=17.4.0"
-colorama = "*"
-more-itertools = ">=4.0.0"
-pluggy = ">=0.7"
-py = ">=1.5.0"
-setuptools = "*"
-six = ">=1.10.0"
-
-[[package]]
-category = "dev"
-description = "Python 2 and 3 compatibility utilities"
-name = "six"
-optional = false
-python-versions = ">=2.6, !=3.0.*, !=3.1.*"
-version = "1.13.0"
-
-[[package]]
-category = "main"
 description = ""
-name = "ugly"
+name = "fogl"
 optional = false
 python-versions = "^3.6"
 version = "0.1.0"
@@ -151,38 +30,45 @@ pypng = "^0.0.20"
 [package.source]
 reference = ""
 type = "directory"
-url = "/home/jofo/Sync/progg/ugly"
+url = "/home/jofo/Sync/progg/fogl"
 
 [[package]]
-category = "dev"
-description = "Backport of pathlib-compatible object wrapper for zip files"
-marker = "python_version < \"3.8\""
-name = "zipp"
+category = "main"
+description = "Cython-based Python bindings for dear imgui"
+name = "imgui"
 optional = false
-python-versions = ">=2.7"
-version = "0.6.0"
+python-versions = "*"
+version = "1.0.0"
 
-[package.dependencies]
-more-itertools = "*"
+[[package]]
+category = "main"
+description = "Cross-platform windowing and multimedia library"
+name = "pyglet"
+optional = false
+python-versions = "*"
+version = "2.0.dev0"
+
+[package.source]
+reference = ""
+type = "directory"
+url = "/home/jofo/Sync/progg/fogl/pyglet"
+
+[[package]]
+category = "main"
+description = "Pure Python PNG image encoder/decoder"
+name = "pypng"
+optional = false
+python-versions = "*"
+version = "0.0.20"
 
 [metadata]
-content-hash = "509b4c7701133f287b75401e25a833c346c13da05b2e38a7931a5d44603faf0b"
+content-hash = "7262c2a3b27facce633ed8169b7773e03fc3d0d0540c381119580c5ccdc43a47"
 python-versions = "^3.7"
 
 [metadata.hashes]
-atomicwrites = ["03472c30eb2c5d1ba9227e4c2ca66ab8287fbfbbda3888aa93dc2e28fc6811b4", "75a9445bac02d8d058d5e1fe689654ba5a6556a1dfd8ce6ec55a0ed79866cfa6"]
-attrs = ["08a96c641c3a74e44eb59afb61a24f2cb9f4d7188748e76ba4bb5edfa3cb7d1c", "f7b7ce16570fe9965acd6d30101a28f62fb4a7f9e926b3bbc9b61f8b04247e72"]
-colorama = ["05eed71e2e327246ad6b38c540c4a3117230b19679b875190486ddd2d721422d", "f8ac84de7840f5b9c4e3347b3c1eaa50f7e49c2b07596221daec5edaabbd7c48"]
 cython = ["03f6bbb380ad0acb744fb06e42996ea217e9d00016ca0ff6f2e7d60f580d0360", "05e8cfd3a3a6087aec49a1ae08a89171db991956209406d1e5576f9db70ece52", "05eb79efc8029d487251c8a2702a909a8ba33c332e06d2f3980866541bd81253", "094d28a34c3fa992ae02aea1edbe6ff89b3cc5870b6ee38b5baeb805dc57b013", "0c70e842e52e2f50cc43bad43b5e5bc515f30821a374e544abb0e0746f2350ff", "1dcdaa319558eb924294a554dcf6c12383ec947acc7e779e8d3622409a7f7d28", "1fc5bdda28f25fec44e4721677458aa509d743cd350862270309d61aa148d6ff", "280573a01d9348d44a42d6a9c651d9f7eb1fe9217df72555b2a118f902996a10", "298ceca7b0f0da4205fcb0b7c9ac9e120e2dafffd5019ba1618e84ef89434b5a", "4074a8bff0040035673cc6dd365a762476d6bff4d03d8ce6904e3e53f9a25dc8", "41e7068e95fbf9ec94b41437f989caf9674135e770a39cdb9c00de459bafd1bc", "47e5e1502d52ef03387cf9d3b3241007961a84a466e58a3b74028e1dd4957f8c", "521340844cf388d109ceb61397f3fd5250ccb622a1a8e93559e8de76c80940a9", "6c53338c1811f8c6d7f8cb7abd874810b15045e719e8207f957035c9177b4213", "75c2dda47dcc3c77449712b1417bb6b89ec3b7b02e18c64262494dceffdf455e", "773c5a98e463b52f7e8197254b39b703a5ea1972aef3a94b3b921515d77dd041", "78c3068dcba300d473fef57cdf523e34b37de522f5a494ef9ee1ac9b4b8bbe3f", "7bc18fc5a170f2c1cef5387a3d997c28942918bbee0f700e73fd2178ee8d474d", "7f89eff20e4a7a64b55210dac17aea711ed8a3f2e78f2ff784c0e984302583dd", "89458b49976b1dee5d89ab4ac943da3717b4292bf624367e862e4ee172fcce99", "986f871c0fa649b293061236b93782d25c293a8dd8117c7ba05f8a61bdc261ae", "a0f495a4fe5278aab278feee35e6102efecde5176a8a74dd28c28e3fc5c8d7c7", "a14aa436586c41633339415de82a41164691d02d3e661038da533be5d40794a5", "b8ab3ab38afc47d8f4fe629b836243544351cef681b6bdb1dc869028d6fdcbfb", "bb487881608ebd293592553c618f0c83316f4f13a64cb18605b1d2fb9fd3da3e", "c0b24bfe3431b3cb7ced323bca813dbd13aca973a1475b512d3331fd0de8ec60", "c7894c06205166d360ab2915ae306d1f7403e9ce3d3aaeff4095eaf98e42ce66", "d4039bb7f234ad32267c55e72fd49fb56078ea102f9d9d8559f6ec34d4887630", "e4d6bb8703d0319eb04b7319b12ea41580df44fd84d83ccda13ea463c6801414", "e8fab9911fd2fa8e5af407057cb8bdf87762f983cba483fa3234be20a9a0af77", "f3818e578e687cdb21dc4aa4a3bc6278c656c9c393e9eda14dd04943f478863d", "fe666645493d72712c46e4fbe8bec094b06aec3c337400479e9704439c9d9586"]
 euclid3 = ["25b827a57adbfd9a3fa8625e43abc3e907f61de622343e7e538482ef9b46fd0b"]
+fogl = []
 imgui = ["01a0e970acdb37bb1c2f007cd5851e534d7eacf976f1af1e514964edec66a430", "02a6ff9058f46125ef78c5aa87bcf28316b16683547eac449d5d4ff92e09eaaf", "032679fb833c18569a639c971c0e0ef9b8952bb73f025e546a45a43ad4491aa2", "127e8cd4f2e3ac541f0205afe5cc91e7d1e59baa82e352c3264a0dd4994ab012", "264c493ffeee4dc8689c55b8c44eb05bf081a3a36115131c719fd743ab473a46", "280ecd1884bb630c13d6632f8ab6d7b3a13a21fc4ec598040112d401d6caa6f5", "37632df1543761840d089f39485d4eebb3af904f91c0ef58d20a01c600c8ff6e", "5ec09acd536f2a8f8c2d1f6d867f6eee17515c5d97f8474513bc2df5b3d4caf1", "699c65e80d5515afb211f4a6929ec27e0437af264afd98961318117c0b734398", "6e3ee42371c63455d2066f3d6474876090a00763749e714ad734560e1a31b97b", "73f084630667e056448d479f268e73bd2afb9b5e22375142a144d94efdd2c183", "754c8f2dd1ddfac3139945fbae56dd9667a62d66adbe3202f525e461cd9b8cb1", "7ef63836fdf186a20bddf8a47a0f7eb4d1784e8431bc03eb2a59990108cc6f9a", "8a88ec2e8d86fce495786d4d42804a396cbe6a25870a49ad47e80cf3288bb595", "9fa33edb9a2b4f9f8b6adb1d85f9c16bcf64305fd5dc5a441a3002b5fa50e38e", "a2cb45eaf7ccb76af69242f6c9896b963d8c700d131402f51eae2c6d87f14f40", "a4f08dd88f9ffb98a0f399195483131a56a2ab2569ca7f589c9b162cdfe36980", "a95c5ee9e55ba7346aa0cbaafd00c759c14dcb9ceb684e8aa9479bdef83b6a08", "aacbc565bd69e26976e1c5c2ddd70d2c7d5417caf66212f99c59edcbc782e564", "b4df8bb028c996cd277f5402f717ac498d8d301ca1152b731232cc1eb0e49b43", "b623298bc9495c866b4d3f4969553965241ab961baf3d74e5885c0ebdd00718e", "b7aa5a4822c8ada771a9d79f7637947a05637078be9841c61e4824faff758478", "bb6e2c7308656822e5f4115b8f3bc1f05cd830f179def289e65a696f87e62904", "c282d3bf08aef4d05d4255cddd4a59d71404dbc1ee241e450e4774f1152d9bb3", "c6aa6d4f2e91f9a87534a612219228a2dbf338de7c9ed4f9c62fbb8cb69be7da", "ca082fcc5589e939fa62f759a586bf756fd9ca18854139b4fd95fed4da86a4e8", "ce8e09e3c503be0cb7276d6817412833bf49f9764435b65c5fcc7d0529fa4440", "dfa97758c25e2651e7b41bb19932f1d898fbac86f835683bc2c30528d1d75424", "eda0be114825de93da602c6580909ebe6bc6f0819cf4a6763a25ea1f4f7fb9d3", "f122a2fe81da5e02f458deae630c1b55f95c0a2a70a3bcecbea1ee9ebf7fd959", "f9f53530a485b596c4d9b19d28e5b63f5787559d33bd567214dc86ac1f7aa54e"]
-importlib-metadata = ["aa18d7378b00b40847790e7c27e11673d7fed219354109d0e7b9e5b25dc3ad26", "d5f18a79777f3aa179c145737780282e27b508fc8fd688cb17c7a813e8bd39af"]
-more-itertools = ["409cd48d4db7052af495b09dec721011634af3753ae1ef92d2b32f73a745f832", "92b8c4b06dac4f0611c0729b2f2ede52b2e1bac1ab48f089c7ddc12e26bb60c4"]
-pluggy = ["0db4b7601aae1d35b4a033282da476845aa19185c1e6964b25cf324b5e4ec3e6", "fa5fa1622fa6dd5c030e9cad086fa19ef6a0cf6d7a2d12318e10cb49d6d68f34"]
-py = ["64f65755aee5b381cea27766a3a147c3f15b9b6b9ac88676de66ba2ae36793fa", "dc639b046a6e2cff5bbe40194ad65936d6ba360b52b3c3fe1d08a82dd50b5e53"]
 pyglet = []
 pypng = ["1032833440c91bafee38a42c38c02d00431b24c42927feb3e63b104d8550170b"]
-pytest = ["3f193df1cfe1d1609d4c583838bea3d532b18d6160fd3f55c9447fdca30848ec", "e246cf173c01169b9617fc07264b7b1316e78d7a650055235d6d897bc80d9660"]
-six = ["1f1b7d42e254082a9db6279deae68afb421ceba6158efa6131de7b3003ee93fd", "30f610279e8b2578cab6db20741130331735c781b56053c59c4076da27f06b66"]
-ugly = []
-zipp = ["3718b1cbcd963c7d4c5511a8240812904164b7f381b647143a89d3b98f9bcd8e", "f06903e9f1f43b12d371004b4ac7b06ab39a44adc747266928ae6debfa7b3335"]
