@@ -108,7 +108,7 @@ class OldpaintWindow(pyglet.window.Window):
 
         io = imgui.get_io()
         self._font = io.fonts.add_font_from_file_ttf(
-            "ttf/dpcomic.ttf", 14, io.fonts.get_glyph_ranges_latin()
+            "ttf/Topaznew.ttf", 14, io.fonts.get_glyph_ranges_latin()
         )
         self.imgui_renderer.refresh_font_texture()
 
@@ -315,73 +315,68 @@ class OldpaintWindow(pyglet.window.Window):
 
         imgui.new_frame()
 
-        # with imgui.font(self._font):
+        with imgui.font(self._font):
 
-        if imgui.begin_main_menu_bar():
-            if imgui.begin_menu("File", True):
+            if imgui.begin_main_menu_bar():
+                if imgui.begin_menu("File", True):
 
-                clicked_quit, selected_quit = imgui.menu_item(
-                    "Quit", 'Cmd+Q', False, True
-                )
-                if clicked_quit:
-                    exit(1)
+                    clicked_quit, selected_quit = imgui.menu_item(
+                        "Quit", 'Cmd+Q', False, True
+                    )
+                    if clicked_quit:
+                        exit(1)
 
-                clicked_load, selected_load = imgui.menu_item("Load", "Ctrl+F", False, True)
-                if clicked_load:
-                    self.dispatch_event("on_load_file")
+                    clicked_load, selected_load = imgui.menu_item("Load", "Ctrl+F", False, True)
+                    if clicked_load:
+                        self.dispatch_event("on_load_file")
 
-                clicked_save, selected_save = imgui.menu_item("Save", "Ctrl+S", False, True)
-                if clicked_save:
-                    self.dispatch_event("on_save_file")
+                    clicked_save, selected_save = imgui.menu_item("Save", "Ctrl+S", False, True)
+                    if clicked_save:
+                        self.dispatch_event("on_save_file")
 
-                imgui.end_menu()
-            if imgui.begin_menu("Layer", True):
-                if imgui.menu_item("Flip horizontally", "H", False, True)[0]:
-                    self.drawing.current.flip_horizontal()
-                if imgui.menu_item("Flip vertically", "V", False, True)[0]:
-                    self.drawing.current.flip_vertical()
-                if imgui.menu_item("Clear", "Delete", False, True)[0]:
-                    self.drawing.current.clear()
-                imgui.end_menu()
-            imgui.end_main_menu_bar()
+                    imgui.end_menu()
 
-        # Tools & brushes
-        imgui.begin("Tools", True)
+                if imgui.begin_menu("Drawing", True):
+                    if imgui.menu_item("New", "N", False, True)[0]:
+                        self._new_drawing()
+                    if imgui.menu_item("Close", "K", False, True)[0]:
+                        self._close_drawing()
+                    imgui.end_menu()
 
-        ui.render_tools(self.tools, self.icons)
-        imgui.core.separator()
+                if imgui.begin_menu("Layer", True):
+                    if imgui.menu_item("Flip horizontally", "H", False, True)[0]:
+                        self.drawing.current.flip_horizontal()
+                    if imgui.menu_item("Flip vertically", "V", False, True)[0]:
+                        self.drawing.current.flip_vertical()
+                    if imgui.menu_item("Clear", "Delete", False, True)[0]:
+                        self.drawing.current.clear()
+                    imgui.end_menu()
+                imgui.end_main_menu_bar()
 
-        brush = ui.render_brushes(self.brushes, self.get_brush_preview_texture)
-        if brush:
-            self.drawing_brush = None
-        imgui.core.separator()
+            # Tools & brushes
+            imgui.begin("Tools", True)
 
-        if imgui.button("Delete"):
-            self.drawing.brushes.remove()
-        imgui.begin_child("brushes", border=False)
-        brush = ui.render_brushes(self.drawing.brushes, self.get_brush_preview_texture)
-        if brush:
-            self.drawing_brush = brush
-        imgui.end()
+            ui.render_tools(self.tools, self.icons)
+            imgui.core.separator()
 
-        imgui.end()
+            brush = ui.render_brushes(self.brushes, self.get_brush_preview_texture)
+            if brush:
+                self.drawing_brush = None
+            imgui.core.separator()
 
-        self.highlighted_layer = ui.render_layers(self.drawing)
-        ui.render_palette(self.drawing.palette)
+            if imgui.button("Delete"):
+                self.drawing.brushes.remove()
 
-        # if self.loader:
-        #     if self.loader.done:
-        #         self.loader = None
-        #     else:
-        #         ui.render_open_file_dialog(self.loader)
+            imgui.begin_child("brushes", border=False)
+            brush = ui.render_brushes(self.drawing.brushes, self.get_brush_preview_texture)
+            if brush:
+                self.drawing_brush = brush
+            imgui.end()
 
-        # if self.saver:
-        #     if self.saver.done:
-        #         self.saver = None
-        #     else:
-        #         ui.render_save_file_dialog(self.saver)
+            imgui.end()
 
-        # ui.render_layers(self.drawing, self.get_layer_preview_texture)
+            self.highlighted_layer = ui.render_layers(self.drawing)
+            ui.render_palette(self.drawing.palette)
 
         imgui.render()
         imgui.end_frame()
