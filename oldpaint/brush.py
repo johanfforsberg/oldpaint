@@ -1,4 +1,5 @@
 from functools import lru_cache
+from math import floor
 
 from .picture import LongPicture, draw_ellipse, draw_rectangle
 
@@ -46,13 +47,13 @@ class EllipseBrush(Brush):
 
     def __init__(self, size):
         self.size = w, h = size
-        self.center = (w // 2, h // 2)
+        self.center = (w // 2 - 1, h // 2 - 1)
         self.original = self.get_pic(color=1)
 
     @lru_cache(1)
     def get_pic(self, color):
         pic = LongPicture(size=self.size)
-        wx, wy = self.size
-        draw_ellipse(pic, (wx//2, wy//2), (wx//2, wy//2),
+        w, h = self.size
+        draw_ellipse(pic, (w//2-1, h//2-1), (w//2-1, h//2-1),
                      color=color + 255*2**24, fill=True)
         return pic

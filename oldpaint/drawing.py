@@ -122,6 +122,7 @@ class Drawing:
         self.undos.append((layer, layer.rect, prev_data))
         layer.clear(value=color)
 
+    # TODO undo/redo should cover all "destructive" ops, e.g delete layer
     def undo(self):
         if self.undos:
             layer, rect, undo_data_z = self.undos.pop()

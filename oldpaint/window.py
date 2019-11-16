@@ -67,11 +67,18 @@ class OldpaintWindow(pyglet.window.Window):
             Drawing((800, 600), layers=[Layer(LongPicture((800, 600))),
                                         Layer(LongPicture((800, 600)))])
         ])
-
-        self.tools = Selectable([PencilTool, PointsTool, SprayTool,
-                                 LineTool, RectangleTool, EllipseTool, FillTool,
-                                 SelectionTool, PickerTool])
-        self.brushes = Selectable([RectangleBrush((1, 1)), EllipseBrush((10, 20)), ])
+        self.tools = Selectable([
+            PencilTool, PointsTool, SprayTool,
+            LineTool, RectangleTool, EllipseTool, FillTool,
+            SelectionTool, PickerTool
+        ])
+        self.brushes = Selectable([
+            RectangleBrush((1, 1)),
+            RectangleBrush((2, 2)),
+            RectangleBrush((3, 3)),
+            EllipseBrush((8, 8)),
+            EllipseBrush((10, 20)),
+        ])
         self.highlighted_layer = None
         self.drawing_brush = None
 
@@ -181,6 +188,7 @@ class OldpaintWindow(pyglet.window.Window):
         if self.mouse_event_queue:
             self.mouse_event_queue.put(("mouse_up", (self._to_image_coords(x, y), button, modifiers)))
             self.mouse_event_queue = None
+            self.stroke = None
 
     @no_imgui_events
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
@@ -306,8 +314,6 @@ class OldpaintWindow(pyglet.window.Window):
         if tool.rect:
             self.drawing.update(self.overlay.get_subimage(tool.rect), tool.rect)
             self.overlay.clear(tool.rect)
-
-        self.stroke = None
 
     # === Helper functions ===
 

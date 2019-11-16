@@ -481,6 +481,8 @@ cpdef draw_rectangle(pic, (int, int) pos, (int, int) size, brush=None, unsigned 
 cpdef draw_ellipse(pic, (int, int) center, (int, int) size, brush=None,
               unsigned int color=0, bint fill=False):
 
+    # TODO this does not handle small radii (<5) well
+
     cdef int w, h, a, b, x0, y0, a2, b2, error, x, y, stopx, stopy, hw, hh
 
     a, b = size
