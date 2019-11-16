@@ -359,7 +359,7 @@ class OldpaintWindow(pyglet.window.Window):
             ui.render_tools(self.tools, self.icons)
             imgui.core.separator()
 
-            brush = ui.render_brushes(self.brushes, self.get_brush_preview_texture)
+            brush = ui.render_brushes(self.brushes, self.get_brush_preview_texture, compact=True)
             if brush:
                 self.drawing_brush = None
             imgui.core.separator()

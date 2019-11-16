@@ -131,34 +131,43 @@ def render_layers(drawing):
     selected = None
     n = len(drawing.layers)
     hovered = None
-    for i, layer in zip(range(n - 1, -1, -1), reversed(drawing.layers)):
-        clicked, _ = imgui.checkbox(f"##checkbox{i}", layer.visible)
-        if clicked:
-            layer.visible = not layer.visible
+    imgui.columns(2, 'layerlist')
+    imgui.text("#")
+    imgui.set_column_offset(1, 40)
+    imgui.next_column()
+    imgui.text("Show")
+    imgui.next_column()
+    imgui.separator()
 
-        imgui.same_line()
-        _, selected = imgui.selectable(str(i), layer == drawing.current)
+    for i, layer in zip(range(n - 1, -1, -1), reversed(drawing.layers)):
+        _, selected = imgui.selectable(str(i), layer == drawing.current,
+                                       imgui.SELECTABLE_SPAN_ALL_COLUMNS)
         if selected:
             drawing.current = layer
         if imgui.is_item_hovered():
             hovered = layer
-        # imgui.same_line()
-        #texture = get_texture(layer)
-        texture = None
+        imgui.next_column()
+
+        imgui.set_item_allow_overlap()  # Let the checkbox overlap
+        clicked, _ = imgui.checkbox(f"##checkbox{i}", layer.visible)
+        if clicked:
+            layer.visible = not layer.visible
+        imgui.next_column()
+
         # if texture:
         #     imgui.image(texture.name, 100, 100*texture.aspect,
         #                 border_color=(1, 1, 1, 1) if is_current else (0.5, 0.5, 0.5, 1))
         #     if imgui.core.is_item_clicked(0) and not is_current:
         #         logger.info("selected %r", layer)
         #         selected = layer
+
+    imgui.columns(1)
     imgui.end_child()
     imgui.end()
-    # if selected is not None:
-    #     drawing.current = selected
     return hovered
 
 
-def render_brushes(brushes, get_texture):
+def render_brushes(brushes, get_texture, compact=False):
 
     clicked = False
 
@@ -183,5 +192,8 @@ def render_brushes(brushes, get_texture):
             if imgui.core.is_item_clicked(0):
                 brushes.select(brush)
                 clicked = brush
-        #imgui.same_line()
+        if compact:
+            imgui.same_line()
+
+    imgui.new_line()
     return clicked
