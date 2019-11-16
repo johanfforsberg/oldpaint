@@ -24,6 +24,7 @@ class Drawing:
 
     This is also where most functionality that affects the image is collected,
     e.g. drawing, undo/redo, load/save...
+
     """
 
     def __init__(self, size, layers=None, palette=None):
@@ -118,17 +119,32 @@ class Drawing:
 
     def clear_layer(self, layer=None, color=0):
         layer = layer or self.current
-        prev_data = layer.get_subimage(layer.rect)
-        self.undos.append((layer, layer.rect, prev_data))
+        self.undos.append(self._build_action(layer, layer.rect))
+        self.redos.clear()
         layer.clear(value=color)
+
+    def update(self, new_pic, rect, layer=None):
+        "Update a part of the layer, keeping track of the change as an 'undo'"
+        layer = layer or self.current
+        self.undos.append(self._build_action(layer, rect))
+        self.redos.clear()
+        layer.blit(new_pic, rect)
+
+    def _build_action(self, layer, rect):
+        "An 'action' here means something that can be undone/redone."
+        # By using compression on the undo/redo buffers, we save a
+        # *lot* of memory.  Some quick tests suggest at least an
+        # order of magnitude, but it will certainly depend on the
+        # contents.
+        data = layer.get_subimage(rect).data
+        return (layer, rect, zlib.compress(data))
 
     # TODO undo/redo should cover all "destructive" ops, e.g delete layer
     def undo(self):
         if self.undos:
             layer, rect, undo_data_z = self.undos.pop()
             undo_data = zlib.decompress(undo_data_z)
-            redo_pic = layer.get_subimage(rect)
-            self.redos.append((layer, rect, zlib.compress(redo_pic.data)))
+            self.redos.append(self._build_action(layer, rect))
             layer.blit(LongPicture(rect.size, undo_data), rect, alpha=False)
             return rect
 
@@ -136,9 +152,8 @@ class Drawing:
         if self.redos:
             layer, rect, redo_data = self.redos.pop()
             redo_data = zlib.decompress(redo_data)
-            undo_pic = layer.get_subimage(rect)
-            self.undos.append((layer, rect, zlib.compress(undo_pic.data)))
-            layer.blit(LongPicture(rect.size, redo_data), rect)
+            self.undos.append(self._build_action(layer, rect))
+            layer.blit(LongPicture(rect.size, redo_data), rect, alpha=False)
             return rect
 
     def make_brush(self, rect=None, layer=None):
@@ -162,14 +177,6 @@ class Drawing:
     # def layer_op(method, *args, layer=None):
     #     layer = layer or self.current
     #     rect = method(layer, *args)
-
-    def update(self, new_pic, rect, layer=None):
-        "Update a part of the layer, keeping track of the change as an 'undo'"
-        layer = layer or self.current
-        prev_pic = layer.get_subimage(rect)
-        self.undos.append((layer, rect, zlib.compress(prev_pic.data)))
-        self.redos.clear()
-        layer.blit(new_pic, rect)
 
     def __iter__(self):
         return iter(self.layers)
