@@ -14,14 +14,16 @@ class Layer:
 
     def __init__(self, pic=None):
         assert isinstance(pic, LongPicture), "Layer expects a LongPicture instance."
+        # Here lies the image data for the layer.
         self.pic = pic
+
         # "dirty" is a rect that tells the visualisation that part of the
         # picture has changed and must be refreshed, after which it should
         # set the dirty rect to None. From this side, we should never shrink
         # or remove the dirty rect, but growing it is fine.
         self.dirty = self.rect
 
-        self._visible = True
+        self.visible = True
         # This lock is important to hold while drawing, since otherwise
         # the main thread might start reading from it while we're writing.
         # It's reentrant so we don't have to worry about collisions within
@@ -79,15 +81,6 @@ class Layer:
     @property
     def rect(self):
         return self.pic.rect
-
-    @property
-    def visible(self):
-        return self._visible
-
-    @visible.setter
-    def visible(self, value):
-        self._visible = value
-        self.dirty = self.rect  # TODO should not be needed
 
     def clear(self, rect:Rectangle=None, value=0, set_dirty=True):
         rect = rect or self.rect
