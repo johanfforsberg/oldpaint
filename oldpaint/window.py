@@ -193,8 +193,10 @@ class OldpaintWindow(pyglet.window.Window):
         ox, oy = self.offset
         ix, iy = self._to_image_coords(x, y)
         self.zoom = max(min(self.zoom + scroll_y, MAX_ZOOM), MIN_ZOOM)
+        self._to_image_coords.cache_clear()
         x2, y2 = self._to_window_coords(ix, iy)
         self.offset = ox + (x - x2), oy + (y - y2)
+        self._to_image_coords.cache_clear()
 
     @no_imgui_events
     def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
@@ -208,6 +210,7 @@ class OldpaintWindow(pyglet.window.Window):
         elif button == pyglet.window.mouse.MIDDLE:
             ox, oy = self.offset
             self.offset = ox + dx, oy + dy
+            self._to_image_coords.cache_clear()
 
     def on_mouse_motion(self, x, y, dx, dy):
         if (x, y) == self.mouse_position:
@@ -319,8 +322,9 @@ class OldpaintWindow(pyglet.window.Window):
 
     def _render_gui(self):
 
-        imgui.new_frame()
+        io = imgui.get_io()
 
+        imgui.new_frame()
         with imgui.font(self._font):
 
             if imgui.begin_main_menu_bar():
@@ -330,7 +334,8 @@ class OldpaintWindow(pyglet.window.Window):
                         "Quit", 'Cmd+Q', False, True
                     )
                     if clicked_quit:
-                        exit(1)
+                        #exit(1)
+                        pyglet.app.exit()
 
                     clicked_load, selected_load = imgui.menu_item("Load", "Ctrl+F", False, True)
                     if clicked_load:
@@ -357,6 +362,12 @@ class OldpaintWindow(pyglet.window.Window):
                     if imgui.menu_item("Clear", "Delete", False, True)[0]:
                         self.drawing.current.clear()
                     imgui.end_menu()
+
+                if self.mouse_position:
+                    w, h = self.get_size()
+                    imgui.set_cursor_screen_pos((w - 100, 0))
+                    x, y = self._to_image_coords(*self.mouse_position)
+                    imgui.text(f"{x}, {y}")
                 imgui.end_main_menu_bar()
 
             # Tools & brushes
@@ -389,6 +400,12 @@ class OldpaintWindow(pyglet.window.Window):
 
         self.imgui_renderer.render(imgui.get_draw_data())
 
+    def _new_drawing(self):
+        pass
+
+    def _close_drawing(self):
+        pass
+
     @lru_cache(1)
     def _get_offscreen_buffer(self, drawing):
         return FrameBuffer(drawing.size, textures=dict(color=Texture(drawing.size, unit=0)))
@@ -399,6 +416,7 @@ class OldpaintWindow(pyglet.window.Window):
         texture.clear()
         return texture
 
+    @lru_cache(1)
     def _to_image_coords(self, x, y):
         "Convert window coordinates to image coordinates."
         w, h = self.drawing.size
@@ -407,7 +425,7 @@ class OldpaintWindow(pyglet.window.Window):
         ox, oy = self.offset
         ix = (x - (ww / 2 + ox)) / scale + w / 2
         iy = -(y - (wh / 2 + oy)) / scale + h / 2
-        return ix, iy
+        return int(ix), int(iy)
 
     def _to_window_coords(self, x, y):
         "Convert image coordinates to window coordinates"
