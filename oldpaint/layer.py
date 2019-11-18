@@ -2,7 +2,7 @@ from threading import RLock
 
 from .rect import Rectangle
 from .picture import LongPicture, save_png, load_png, draw_line, draw_rectangle, draw_ellipse, draw_fill
-# from . import draw
+from .util import Selectable
 
 
 class Layer:
@@ -29,6 +29,8 @@ class Layer:
         # It's reentrant so we don't have to worry about collisions within
         # the drawing thread.
         self.lock = RLock()
+
+        self.sublayers = Selectable([])
 
     def save_png(self, path, palette=None):
         save_png(self.pic, path, palette)

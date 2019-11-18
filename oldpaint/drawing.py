@@ -12,10 +12,6 @@ from .util import Selectable
 logger = logging.getLogger(__name__)
 
 
-class Brushes(Selectable):
-    pass
-
-
 class Drawing:
 
     """
@@ -29,16 +25,24 @@ class Drawing:
 
     def __init__(self, size, layers=None, palette=None):
         self.size = size
-        self.layers = layers or []
+        self.layers = Selectable(layers)
         self.overlay = Layer(LongPicture(size=self.size))
-        self.current = layers[0] if layers else None
         self._palette = palette if palette else Palette(transparency=0)
-        self.brushes = Selectable([])
+        self.brushes = Selectable()
         self.unsaved = False
 
         self.undos = []
         self.redos = []
         self.selection = None
+
+    @property
+    def current(self):
+        return self.layers.current
+
+    @current.setter
+    def current(self, layer):
+        assert isinstance(layer, Layer)
+        self.layers.set_item(layer)
 
     @classmethod
     def from_png(cls, path):
@@ -59,30 +63,24 @@ class Drawing:
     def save_ora(self, path):
         save_ora(self.size, self.layers, self.palette, path)
 
-    def get_index(self, layer=None):
-        "Return the index of the given layer (or current)."
-        layer = layer or self.current
-        if layer is not None:
-            try:
-                return self.layers.index(self.current)
-            except ValueError:
-                # TODO in this case, maybe some cleanup is in order?
-                pass
+    # def get_index(self, layer=None):
+    #     "Return the index of the given layer (or current)."
+    #     layer = layer or self.current
+    #     if layer is not None:
+    #         try:
+    #             return self.layers.index(self.current)
+    #         except ValueError:
+    #             # TODO in this case, maybe some cleanup is in order?
+    #             pass
 
     def add_layer(self, layer=None):
         layer = layer or Layer(LongPicture(self.size))
-        index = self.get_index()
-        if index is None:
-            self.layers.append(layer)
-        else:
-            self.layers.insert(index + 1, layer)
-        self.current = layer
-        self.dirty = True
+        self.layers.add(layer)
 
     def remove_layer(self, index=None):
         if len(self.layers) == 1:
             return
-        index = index or self.get_index()
+        index = index or self.layers.get_current_index()
         layer = self.layers[index]
         self.layers.remove(layer)
         if layer == self.current:
@@ -93,29 +91,22 @@ class Drawing:
                 except IndexError:
                     pass
                 index -= 1
-        self.dirty = True
 
     def next_layer(self):
-        index = min(self.get_index() + 1, len(self.layers) - 1)
-        self.current = self.layers[index]
+        self.layers.cycle_forward()
 
     def prev_layer(self):
-        index = max(self.get_index() - 1, 0)
-        self.current = self.layers[index]
+        self.layers.cycle_backward()
 
     def move_layer_up(self):
-        index = self.get_index()
+        index = self.layers.get_current_index()
         if index < len(self.layers) - 1:
-            self.layers.remove(self.current)
-            self.layers.insert(index + 1, self.current)
-            self.dirty = True
+            self.layers.swap(index + 1, index)
 
     def move_layer_down(self):
-        index = self.get_index()
+        index = self.layers.get_current_index()
         if index > 0:
-            self.layers.remove(self.current)
-            self.layers.insert(index - 1, self.current)
-            self.dirty = True
+            self.layers.swap(index + 1, index)
 
     def clear_layer(self, layer=None, color=0):
         layer = layer or self.current

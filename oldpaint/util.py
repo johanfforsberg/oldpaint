@@ -31,10 +31,28 @@ class Selectable:
     def __iter__(self):
         return iter(self.items)
 
+    def __len__(self):
+        return len(self.items)
+
+    def __reversed__(self):
+        return reversed(self.items)
+
+    def __getitem__(self, index):
+        return self.items[index]
+
+    def index(self, item):
+        return self.items.index(item)
+
     def select(self, item):
         assert item in self.items, f"No such item {item}!"
-        print("select", item)
         self.current = item
+
+    def set_item(self, item, index=None):
+        current_index = self.get_current_index()
+        if index is None or index == current_index:
+            self.items[current_index] = self.current = item
+        else:
+            self.items[index] = item
 
     def get_current_index(self):
         if self.current is None:
@@ -69,6 +87,9 @@ class Selectable:
         index = (self.get_current_index() - 1) % len(self.items)
         self.current = self.items[index]
 
+    def swap(self, a, b=None):
+        b = self.get_current_index() if b is None else b
+        self.items[a], self.items[b] = self.items[b], self.items[a]
 
 
 def throttle(interval=0.1):

@@ -37,21 +37,14 @@ def render_tools(tools, icons):
 
 
 def render_palette(palette):
-    imgui.set_next_window_size(270, 400)
+    #imgui.set_next_window_size(270, 400)
     imgui.begin("Palette", True)
     fg = palette.foreground
     bg = palette.background
-    #r, g, b, a = palette.get_as_float(fg)
-    #_, color = imgui.color_edit3(str(fg), r, g, b)
-    r, g, b, a = palette.foreground_color
-    imgui.push_item_width(256)
-    # r_changed, r = imgui.slider_int("R", r, 0, 255)
-    # g_changed, g = imgui.slider_int("G", g, 0, 255)
-    # b_changed, b = imgui.slider_int("B", b, 0, 255)
-    changed, (r, g, b, a) = imgui.drag_int4("RGB", r, g, b, a, min_value=0, max_value=255)
-    imgui.pop_item_width()
+    changed, color = imgui.drag_int4("RGB", *palette.foreground_color,
+                                     min_value=0, max_value=255)
     if changed:
-        palette[fg] = r, g, b, a
+        palette[fg] = color
     imgui.begin_child("Palette", border=True)
     imgui.push_style_var(imgui.STYLE_ITEM_SPACING, (0, 0))  # Make layout tighter
     width = int(imgui.get_window_content_region_width()) // 20
@@ -144,7 +137,7 @@ def render_layers(drawing):
         _, selected = imgui.selectable(str(i), layer == drawing.current,
                                        imgui.SELECTABLE_SPAN_ALL_COLUMNS)
         if selected:
-            drawing.current = layer
+            drawing.layers.current = layer
         if imgui.is_item_hovered():
             hovered = layer
         imgui.next_column()

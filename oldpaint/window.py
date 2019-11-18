@@ -231,6 +231,7 @@ class OldpaintWindow(pyglet.window.Window):
             self.drawing.next_layer()
         elif symbol == key.DOWN:
             self.drawing.prev_layer()
+
         if symbol == key.E:
             self.drawing.palette.foreground += 1
         elif symbol == key.D:
