@@ -1,6 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from functools import lru_cache
+from functools import lru_cache, partial
 from itertools import chain
 from queue import Queue
 from threading import Thread
@@ -92,6 +92,7 @@ class OldpaintWindow(pyglet.window.Window):
         # All the drawing will happen in a thread, managed by this executor
         self.executor = ThreadPoolExecutor(max_workers=1)
         self.stroke = None
+        self.stroke_tool = None
         self.mouse_event_queue = None
 
         # Keep track of what we're looking at
@@ -144,7 +145,7 @@ class OldpaintWindow(pyglet.window.Window):
         def blah():
             yield self.overlay
             rect = self.overlay.dirty
-            self.drawing.update(self.overlay.get_subimage(rect), rect)
+            self.drawing.update(self.overlay, rect)
             self.overlay.clear(rect)
 
         # TODO this works, but figure out a way to exit automatically when the application closes.
@@ -183,6 +184,7 @@ class OldpaintWindow(pyglet.window.Window):
 
             self.stroke = self.executor.submit(make_stroke, self.overlay, self.mouse_event_queue, tool)
             self.stroke.add_done_callback(lambda s: self.executor.submit(self._finish_stroke, s))
+            self.stroke_tool = tool
 
     def on_mouse_release(self, x, y, button, modifiers):
         if self.mouse_event_queue:
@@ -311,9 +313,10 @@ class OldpaintWindow(pyglet.window.Window):
 
     def _finish_stroke(self, stroke):
         # Since this is a callback, stroke is a Future and is guaranteed to be finished.
+        self.stroke_tool = None
         tool = stroke.result()
         if tool.rect:
-            self.drawing.update(self.overlay.get_subimage(tool.rect), tool.rect)
+            self.drawing.update(self.overlay, tool.rect)
             self.overlay.clear(tool.rect)
         self.mouse_event_queue = None
         self.stroke = None
@@ -321,8 +324,6 @@ class OldpaintWindow(pyglet.window.Window):
     # === Helper functions ===
 
     def _render_gui(self):
-
-        io = imgui.get_io()
 
         imgui.new_frame()
         with imgui.font(self._font):
@@ -367,7 +368,14 @@ class OldpaintWindow(pyglet.window.Window):
                     w, h = self.get_size()
                     imgui.set_cursor_screen_pos((w - 100, 0))
                     x, y = self._to_image_coords(*self.mouse_position)
-                    imgui.text(f"{x}, {y}")
+                    if self.stroke_tool:
+                        txt = repr(self.stroke_tool)
+                        if txt:
+                            imgui.text(repr(self.stroke_tool))
+                        else:
+                            imgui.text(f"{x}, {y}")
+                    else:
+                        imgui.text(f"{x}, {y}")
                 imgui.end_main_menu_bar()
 
             # Tools & brushes
@@ -376,7 +384,10 @@ class OldpaintWindow(pyglet.window.Window):
             ui.render_tools(self.tools, self.icons)
             imgui.core.separator()
 
-            brush = ui.render_brushes(self.brushes, self.get_brush_preview_texture, compact=True)
+            brush = ui.render_brushes(self.brushes,
+                                      partial(self.get_brush_preview_texture,
+                                              palette=self.drawing.palette),
+                                      compact=True)
             if brush:
                 self.drawing_brush = None
             imgui.core.separator()
@@ -385,7 +396,9 @@ class OldpaintWindow(pyglet.window.Window):
                 self.drawing.brushes.remove()
 
             imgui.begin_child("brushes", border=False)
-            brush = ui.render_brushes(self.drawing.brushes, self.get_brush_preview_texture)
+            brush = ui.render_brushes(self.drawing.brushes,
+                                      partial(self.get_brush_preview_texture,
+                                              palette=self.drawing.palette))
             if brush:
                 self.drawing_brush = brush
             imgui.end()
@@ -394,6 +407,8 @@ class OldpaintWindow(pyglet.window.Window):
 
             self.highlighted_layer = ui.render_layers(self.drawing)
             ui.render_palette(self.drawing.palette)
+
+            imgui.show_metrics_window()
 
         imgui.render()
         imgui.end_frame()
@@ -539,22 +554,23 @@ class OldpaintWindow(pyglet.window.Window):
         return frust * view
 
     @lru_cache(32)
-    def get_brush_preview_texture(self, brush):
+    def get_brush_preview_texture(self, brush, palette):
         texture = Texture(brush.size)
 
         # if isinstance(brush.original, Picture):
         #     data = bytes(brush.original.as_rgba(self.drawing.palette.colors, False).data)
         # else:
-        data = bytes(brush.original.data)
+        #data = bytes(brush.original.data)
+        data = brush.original.as_rgba(palette.colors, True)
         w, h = brush.size
         gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
-        gl.glTextureSubImage2D(texture.name, 0, 0, 0, w, h, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, data)
+        gl.glTextureSubImage2D(texture.name, 0, 0, 0, w, h, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, bytes(data))
         return texture
 
 
 @lru_cache(32)
-def get_brush_preview_texture(brush):
-    texture = render_brush_preview_texture(brush)
+def get_brush_preview_texture(brush, palette):
+    texture = render_brush_preview_texture(brush, palette)
     print("create brush texture", texture)
     return texture
 
@@ -564,7 +580,7 @@ def render_brush_preview_texture(brush, colors):
     #brush.original.putpalette(self.drawing.palette.get_pil_palette())  # TODO do this when palette changes
     #brush.set_palette(self.drawing.palette)
     #rawdata = brush.original.convert("RGBA").getdata()
-    rgbdata = brush.original.as_rgba(self.drawing.palette.colors, False).data
+    rgbdata = brush.original.as_rgba(palette.colors, False).data
     # TODO alpha mask
     data = (gl.GLuint * len(rgbdata))(*rgbdata)
     w, h = brush.size

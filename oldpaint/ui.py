@@ -45,11 +45,12 @@ def render_palette(palette):
     #_, color = imgui.color_edit3(str(fg), r, g, b)
     r, g, b, a = palette.foreground_color
     imgui.push_item_width(256)
-    r_changed, r = imgui.slider_int("R", r, 0, 255)
-    g_changed, g = imgui.slider_int("G", g, 0, 255)
-    b_changed, b = imgui.slider_int("B", b, 0, 255)
+    # r_changed, r = imgui.slider_int("R", r, 0, 255)
+    # g_changed, g = imgui.slider_int("G", g, 0, 255)
+    # b_changed, b = imgui.slider_int("B", b, 0, 255)
+    changed, (r, g, b, a) = imgui.drag_int4("RGB", r, g, b, a, min_value=0, max_value=255)
     imgui.pop_item_width()
-    if any((r_changed, g_changed, b_changed)):
+    if changed:
         palette[fg] = r, g, b, a
     imgui.begin_child("Palette", border=True)
     imgui.push_style_var(imgui.STYLE_ITEM_SPACING, (0, 0))  # Make layout tighter

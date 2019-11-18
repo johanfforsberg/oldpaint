@@ -5,6 +5,7 @@
 from cpython cimport array
 import ctypes
 import cython
+from cython cimport view
 from itertools import chain
 
 import png
@@ -51,160 +52,6 @@ def save_png(pic, dest, palette=None):
     rows = (bytearray(pic.data[offset:offset + w])[::4]
             for offset in range(0, pic.length, w))
     writer.write(dest, rows)
-
-
-# @cython.final
-# cdef class Picture:
-
-#     """
-#     A low level, bare bones but reasonably fast, image implementation.
-#     Single byte images. Does not care about palettes.
-#     """
-
-#     pixel_format = "B"  # unsigned byte
-
-#     def __init__(self, (int, int) size, data=None):
-#         self.width, self.height = self.size = size
-#         self.length = self.width * self.height
-
-#         if data is not None:
-#             self.data = array.array(self.pixel_format, data)
-#             assert len(self.data) == self.length, f"Data must have correct size {self.length}, has {len(self.data)}."
-#         else:
-#             self.data = array.clone(byte_array_template, self.length, zero=True)
-
-#         self.rect = Rectangle((0, 0), (self.width, self.height))
-
-#     cdef int _get_offset(self, int x, int y) nogil:
-#         return self.width * y + x
-
-#     cpdef get_ptr(self):
-#         return self.data.data.as_uchars
-
-#     cdef void set_pixel(self, int x, int y, unsigned int value):
-#         cdef int offset
-#         if (0 <= x < self.width) & (0 <= y < self.height):
-#             offset = self._get_offset(x, y)
-#             self.data[offset] = value
-
-#     cpdef unsigned int get_pixel(self, int x, int y):
-#         cdef int offset
-#         if (0 <= x < self.width) & (0 <= y < self.height):
-#             offset = self._get_offset(x, y)
-#             return self.data[offset]
-#         raise ValueError(f"The given coordinates {x}, {y} lie outside of the picture!")
-
-#     def __getitem__(self, (int, int) pos):
-#         cdef int x, y
-#         x, y = pos
-#         return self.get_pixel(x, y)
-
-#     def __setitem__(self, (int, int) pos, unsigned int value):
-#         cdef int x, y
-#         x, y = pos
-#         self.set_pixel(x, y, value)
-
-#     cpdef Picture crop(self, int x, int y, int w, int h):
-#         cdef Picture cropped = Picture((w, h))
-#         cdef int i, j, offset, start, x1, y1
-#         offset = self._get_offset(x, y)
-#         start = 0
-#         for y1 in range(h):
-#             for x1 in range(w):
-#                 cropped.data[start+x1] = self.data[offset+x1]
-#             offset += self.width
-#             start += w
-#         return cropped
-
-#     cpdef void paste(self, Picture pic, int x, int y, bint mask) nogil:
-#         cdef int w, h, y1, x1, x2, y2, offset1, offset2
-#         w, h = pic.size
-#         offset1 = 0
-#         offset2 = self._get_offset(x, y)
-#         cdef unsigned char[:] data = pic.data
-#         for y2 in range(y, y+h):
-#             if (y2 < 0):
-#                 offset1 += w
-#                 offset2 += self.width
-#                 continue
-#             if (y2 >= self.height):
-
-#                 break
-#             for x1 in range(w):
-#                 x2 = x + x1
-#                 if (x2 < 0):
-#                     continue
-#                 if (x2 >= self.width):
-#                     break
-#                 self.data[offset2+x1] = data[offset1+x1]
-#             offset1 += w
-#             offset2 += self.width
-
-#     cpdef void paste_long(self, LongPicture pic, int x, int y, bint mask):
-#         cdef int w, h, y1, x1, x2, y2, offset1, offset2
-#         w, h = pic.size
-#         offset1 = 0
-#         offset2 = self._get_offset(x, y)
-#         cdef unsigned char[:] data = memoryview(pic.data).cast(self.pixel_format)  # TODO probably slow
-#         for y1 in range(h):
-#             y2 = y + y1
-#             if (y2 < 0):
-#                 offset1 += w
-#                 offset2 += self.width
-#                 continue
-#             if (y2 >= self.height):
-#                 break
-#             for x1 in range(w):
-#                 x2 = x + x1
-#                 if (x2 < 0):
-#                     continue
-#                 if (x2 >= self.width):
-#                     break
-#                 if not mask or pic.data[offset1+x1] >> 24:  # Ignore 100% transparent pixels
-#                     self.data[offset2+x1] = data[4*(offset1+x1)]
-
-#             offset1 += w
-#             offset2 += self.width
-
-#     cpdef void clear(self, (int, int, int, int) box, unsigned int value) nogil:
-#         cdef int x, y
-#         cdef int w = self.width
-#         cdef int x0, y0, x1, y1
-#         x0, y0, x1, y1 = box
-#         for x in range(x0, x1):
-#             for y in range(y0, y1):
-#                 self.data[y * w + x] = value
-
-#     cpdef Picture flip_vertical(self):
-#         # TODO this is probably not the fastest way, but this shouldn't be a time critical op
-#         cdef Picture flipped = Picture(self.size)
-#         cdef x, y, y2
-#         for y in range(self.height):
-#             y2 = self.height - y - 1
-#             for x in range(self.width):
-#                 flipped[x, y] = self.get_pixel(x, y2)
-#         return flipped
-
-#     cpdef Picture flip_horizontal(self):
-#         cdef Picture flipped = Picture(self.size)
-#         cdef x, y
-#         for y in range(self.height):
-#             for x in range(self.width):
-#                 flipped[x, y] = self.get_pixel(self.width-x-1, y)
-#         return flipped
-
-#     cpdef LongPicture as_rgba(self, palette, bint alpha):
-#         cdef unsigned int[:] data
-#         if alpha:
-#              data = array.array(LongPicture.pixel_format,
-#                                 [_rgba_to_32bit(palette[p]) for p in self.data])
-#         else:
-#             data = array.array(LongPicture.pixel_format,
-#                                [_rgb_to_32bit(palette[p][:3]) for p in self.data])
-#         return LongPicture(self.size, data)
-
-#     def __repr__(self):
-#         return f"Picture({self.size})"
 
 
 @cython.final
@@ -254,6 +101,7 @@ cdef class LongPicture:
         self.set_pixel(x, y, value)
 
     cpdef LongPicture crop(self, int x, int y, int w, int h):
+        "Return a new picture, contaning a copy of the given part of the picture."
         cdef LongPicture cropped = LongPicture((w, h))
         cdef int i, j, offset, start, x1, y1
         offset = self._get_offset(x, y)
@@ -266,6 +114,7 @@ cdef class LongPicture:
         return cropped
 
     cpdef void paste(self, LongPicture pic, int x, int y, bint mask) nogil:
+        "Modify the current picture by overlaying the given picture at the x, y position"
         cdef int w, h, y1, x1, x2, y2, offset1, offset2
         w, h = pic.size
         offset1 = 0
@@ -288,6 +137,31 @@ cdef class LongPicture:
                 if not mask or pic.data[offset1+x1] >> 24:  # Ignore 100% transparent pixels
                     self.set_pixel(x2, y2, pic.data[offset1+x1])
             offset1 += w
+            offset2 += self.width
+
+    cpdef void paste_part(self, LongPicture pic, int xo, int yo, int w, int h, int xd, int yd, bint mask) nogil:
+        "Modify the current picture by overlaying the given region of the picture at the xd, yd position"
+        cdef int y1, x1, x2, y2, offset1, offset2
+        offset1 = pic._get_offset(xo, yo)
+        offset2 = self._get_offset(xd, yd)
+        cdef unsigned int[:] data = pic.data
+        for y1 in range(h):
+            y2 = yd + y1
+            if (y2 < 0):
+                offset1 += pic.width
+                offset2 += self.width
+                continue
+            if (y2 >= self.height):
+                break
+            for x1 in range(w):
+                x2 = xd + x1
+                if (x2 < 0):
+                    continue
+                if (x2 >= self.width):
+                    break
+                if not mask or pic.data[offset1+x1] >> 24:  # Ignore 100% transparent pixels
+                    self.set_pixel(x2, y2, data[offset1+x1])
+            offset1 += pic.width
             offset2 += self.width
 
     # cpdef void paste_byte(self, Picture pic, int x, int y, bint mask):
@@ -348,15 +222,15 @@ cdef class LongPicture:
                 flipped[x, y] = self.get_pixel(self.width-x-1, y)
         return flipped
 
-    cpdef LongPicture as_rgba(self, palette, bint alpha):
+    cpdef unsigned int[:] as_rgba(self, palette, bint alpha):
         cdef unsigned int[:] data
         if alpha:
-             data = array.array(LongPicture.pixel_format,
-                                [_rgba_to_32bit(palette[p]) for p in self.data])
+            data = array.array(LongPicture.pixel_format,
+                               [_rgba_to_32bit(palette[p & 0x000000FF]) for p in self.data])
         else:
             data = array.array(LongPicture.pixel_format,
-                               [_rgb_to_32bit(palette[p][:3]) for p in self.data])
-        return LongPicture(self.size, data)
+                               [_rgb_to_32bit(palette[p & 0x000000FF][:3]) for p in self.data])
+        return data
 
     def __repr__(self):
         return f"LongPicture({self.size})"

@@ -41,8 +41,9 @@ cdef class LongPicture:
     cpdef unsigned int get_pixel(self, int x, int y)
     cpdef LongPicture crop(self, int x, int y, int w, int h)
     cpdef void paste(self, LongPicture pic, int x, int y, bint mask) nogil
+    cpdef void paste_part(self, LongPicture pic, int xo, int yo, int w, int h, int xd, int yd, bint mask) nogil
     # cpdef void paste_byte(self, Picture pic, int x, int y, bint mask)
     cpdef void clear(self, (int, int, int, int) box, unsigned int value) nogil
     cpdef LongPicture flip_vertical(self)
     cpdef LongPicture flip_horizontal(self)
-    cpdef LongPicture as_rgba(self, palette, bint alpha)
+    cpdef unsigned int[:] as_rgba(self, palette, bint alpha)

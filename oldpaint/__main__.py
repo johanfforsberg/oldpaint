@@ -18,8 +18,8 @@ class OldpaintEventLoop(pyglet.app.EventLoop):
 
     def idle(self):
         super().idle()
-        return 0.1
+        return 0.05
 
 
 pyglet.app.event_loop = OldpaintEventLoop()
-pyglet.app.run(0.01)  # TODO why is this argument needed?
+pyglet.app.run()

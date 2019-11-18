@@ -43,7 +43,7 @@ class Tool(metaclass=abc.ABCMeta):
         "Runs once at the end, also on the thread."
 
     def __repr__(self):
-        return self.tool
+        return ""
 
 
 class PencilTool(Tool):
@@ -127,11 +127,17 @@ class LineTool(Tool):
         p0 = tuple(self.points[0][:2])
         p1 = point
         self.rect = layer.draw_line(p0, p1, brush=self.brush.get_pic(self.color))
+        self.points.append(p1)
 
     def finish(self, layer, point, buttons, modifiers):
         rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.color))
         if rect:
             self.rect = rect.unite(self.rect)
+
+    def __repr__(self):
+        x0, y0 = self.points[0]
+        x1, y1 = self.points[-1]
+        return f"{x1-x0}, {y1-y0}"
 
 
 class RectangleTool(Tool):
@@ -146,6 +152,12 @@ class RectangleTool(Tool):
         r = from_points([p0, point])
         self.rect = layer.draw_rectangle(r.position, r.size, brush=self.brush.get_pic(self.color),
                                          fill=modifiers & window.key.MOD_SHIFT)
+        self.points.append(point)
+
+    def __repr__(self):
+        x0, y0 = self.points[0]
+        x1, y1 = self.points[-1]
+        return f"{abs(x1-x0)}, {abs(y1-y0)}"
 
 
 class EllipseTool(Tool):
@@ -163,6 +175,12 @@ class EllipseTool(Tool):
         self.rect = layer.draw_ellipse((x0, y0), size, brush=self.brush.get_pic(self.color),
                                        color=self.color + 255*2**24,
                                        fill=modifiers & window.key.MOD_SHIFT)
+        self.points.append(point)
+
+    def __repr__(self):
+        x0, y0 = self.points[0]
+        x1, y1 = self.points[-1]
+        return f"{abs(x1-x0)}, {abs(y1-y0)}"
 
 
 class FillTool(Tool):
@@ -177,7 +195,7 @@ class FillTool(Tool):
         rect = clone.draw_fill(point, color=self.color + 255*2**24)
         if rect:
             # Here we don't use the overlay, and therefore handle the updating directly
-            self.drawing.update(clone.get_subimage(rect), rect)
+            self.drawing.update(clone, rect)
 
 
 class SelectionTool(Tool):

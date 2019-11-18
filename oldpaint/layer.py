@@ -102,5 +102,11 @@ class Layer:
             self.dirty = self.rect.intersect(rect.unite(self.dirty))
         return self.rect.intersect(rect)
 
+    def blit_part(self, pic, rect, dest, set_dirty=True, alpha=True):
+        with self.lock:
+            self.pic.paste_part(pic, rect.x, rect.y, rect.width, rect.height, *dest, alpha)
+            self.dirty = self.rect.intersect(rect.unite(self.dirty))
+        return self.rect.intersect(rect)
+
     def __hash__(self):
         return hash((id(self), self.size))

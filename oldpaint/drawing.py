@@ -123,12 +123,12 @@ class Drawing:
         self.redos.clear()
         layer.clear(value=color)
 
-    def update(self, new_pic, rect, layer=None):
+    def update(self, new, rect, layer=None):
         "Update a part of the layer, keeping track of the change as an 'undo'"
         layer = layer or self.current
         self.undos.append(self._build_action(layer, rect))
         self.redos.clear()
-        layer.blit(new_pic, rect)
+        layer.blit_part(new.pic, rect, rect.topleft)
 
     def _build_action(self, layer, rect):
         "An 'action' here means something that can be undone/redone."
