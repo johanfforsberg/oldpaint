@@ -46,7 +46,7 @@ def no_imgui_events(f):
     "Decorator for event callbacks that should ignore events on imgui windows."
     def inner(*args):
         io = imgui.get_io()
-        if not io.want_capture_mouse:
+        if not (io.want_capture_mouse or io.want_capture_keyboard):
             f(*args)
     return inner
 
@@ -226,6 +226,7 @@ class OldpaintWindow(pyglet.window.Window):
         if self.brush_preview_dirty:
             self.overlay.clear(self.brush_preview_dirty)
 
+    @no_imgui_events
     def on_key_press(self, symbol, modifiers):
         if symbol == key.UP:
             self.drawing.next_layer()
