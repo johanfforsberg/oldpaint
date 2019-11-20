@@ -95,10 +95,6 @@ class OldpaintWindow(pyglet.window.Window):
         self.stroke_tool = None
         self.mouse_event_queue = None
 
-        # Keep track of what we're looking at
-        self.offset = (0, 0)
-        self.zoom = 0
-
         # Mouse cursor setup
         self.mouse_texture = ImageTexture(*load_png("icons/cursor.png"))
         self.mouse_position = None
@@ -165,6 +161,22 @@ class OldpaintWindow(pyglet.window.Window):
     @property
     def brush(self):
         return self.drawing_brush or self.brushes.current
+
+    @property
+    def zoom(self):
+        return self.drawings.current.zoom
+
+    @zoom.setter
+    def zoom(self, zoom):
+        self.drawings.current.zoom = zoom
+
+    @property
+    def offset(self):
+        return self.drawings.current.offset
+
+    @offset.setter
+    def offset(self, offset):
+        self.drawings.current.offset = offset
 
     @no_imgui_events
     def on_mouse_press(self, x, y, button, modifiers):

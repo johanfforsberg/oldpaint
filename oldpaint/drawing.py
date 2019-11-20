@@ -38,6 +38,10 @@ class Drawing:
         self.redos = []
         self.selection = None
 
+        # Keep track of what we're looking at
+        self.offset = (0, 0)
+        self.zoom = 0
+
     @property
     def current(self):
         return self.layers.current
