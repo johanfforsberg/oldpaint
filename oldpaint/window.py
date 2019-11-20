@@ -39,7 +39,7 @@ from . import ui
 MIN_ZOOM = -2
 MAX_ZOOM = 5
 
-BG_COLOR = (gl.GLfloat * 4)(0.5, 0.5, 0.5, 1)
+BG_COLOR = (gl.GLfloat * 4)(0.25, 0.25, 0.25, 1)
 
 
 def no_imgui_events(f):

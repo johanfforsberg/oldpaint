@@ -9,7 +9,7 @@ from fogl.texture import Texture, ByteTexture, ImageTexture
 from fogl.vao import VertexArrayObject
 
 
-ZERO_COLOR = (gl.GLfloat * 4)(0, 0, 0, 0)
+IMAGE_BG_COLOR = (gl.GLfloat * 4)(0.5, 0.5, 0.5, 1)
 
 vao = VertexArrayObject()
 
@@ -26,7 +26,7 @@ def render_drawing(drawing):
         w, h = offscreen_buffer.size
         gl.glViewport(0, 0, w, h)
         gl.glDisable(gl.GL_BLEND)
-        gl.glClearBufferfv(gl.GL_COLOR, 0, ZERO_COLOR)
+        gl.glClearBufferfv(gl.GL_COLOR, 0, IMAGE_BG_COLOR)
 
         gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
 
