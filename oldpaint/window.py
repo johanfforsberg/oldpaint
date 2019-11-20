@@ -25,7 +25,7 @@ from .brush import RectangleBrush, EllipseBrush
 from .drawing import Drawing
 from .imgui_pyglet import PygletRenderer
 from .layer import Layer
-from .picture import LongPicture
+from .picture import LongPicture, save_png
 from .rect import Rectangle
 from .render import render_drawing
 from .stroke import make_stroke
@@ -354,6 +354,17 @@ class OldpaintWindow(pyglet.window.Window):
                         self._new_drawing()
                     if imgui.menu_item("Close", "K", False, True)[0]:
                         self._close_drawing()
+                    imgui.end_menu()
+
+                if imgui.begin_menu("Brush", True):
+                    if imgui.menu_item("Save current", "S", False, True)[0]:
+                        path = filedialog.asksaveasfilename(title="Select file",
+                                                            filetypes=(#("ORA files", "*.ora"),
+                                                                       ("PNG files", "*.png"),
+                                                                       ("all files", "*.*")))
+                        if path:
+                            with open(path, "wb") as f:
+                                save_png(self.brush.original, f, self.drawing.palette.colors)
                     imgui.end_menu()
 
                 if imgui.begin_menu("Layer", True):
