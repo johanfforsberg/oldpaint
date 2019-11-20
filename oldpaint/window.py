@@ -120,13 +120,15 @@ class OldpaintWindow(pyglet.window.Window):
         )
         self.imgui_renderer.refresh_font_texture()
 
-        self.selection = None
+        self.selection = None  # Rectangle e.g. for selecting brush region
         self.selection_vao = VertexArrayObject(vertices_class=SimpleVertices)
         self.selection_vertices = self.selection_vao.create_vertices(
             [((0, 0, 0),),
              ((0, 0, 0),),
              ((0, 0, 0),),
              ((0, 0, 0),)])
+
+        self.new_drawing = None  # Set when configuring a new drawing
 
         # tablets = pyglet.input.get_tablets()
         # if tablets:
@@ -261,19 +263,7 @@ class OldpaintWindow(pyglet.window.Window):
                 if path.endswith(".ora"):
                     self.drawing.save_ora(path)
         elif symbol == key.O:
-            path = filedialog.askopenfilename(title="Select file",
-                                              filetypes=(("ORA files", "*.ora"),
-                                                         ("PNG files", "*.png"),
-                                                         ("all files", "*.*")))
-            if path:
-                if path.endswith(".ora"):
-                    drawing = Drawing.from_ora(path)
-                    self.drawings.add(drawing)
-                    self.drawings.select(drawing)
-                elif path.endswith(".png"):
-                    self.drawing = Drawing.from_png(path)
-                    self.drawings.add(drawing)
-                    self.drawings.select(drawing)
+            self._open_drawing()
         else:
             super().on_key_press(symbol, modifiers)
 
@@ -353,6 +343,8 @@ class OldpaintWindow(pyglet.window.Window):
                 if imgui.begin_menu("Drawing", True):
                     if imgui.menu_item("New", "N", False, True)[0]:
                         self._new_drawing()
+                    if imgui.menu_item("Load", "O", False, True)[0]:
+                        self._load_drawing()
                     if imgui.menu_item("Close", "K", False, True)[0]:
                         self._close_drawing()
                     imgui.end_menu()
@@ -421,7 +413,24 @@ class OldpaintWindow(pyglet.window.Window):
             self.highlighted_layer = ui.render_layers(self.drawing)
             ui.render_palette(self.drawing.palette)
 
-            imgui.show_metrics_window()
+            # imgui.show_metrics_window()
+
+            if self.new_drawing:
+                imgui.open_popup("New drawing")
+
+            if imgui.begin_popup_modal("New drawing")[0]:
+                imgui.text("Creating a new drawing.")
+                imgui.separator()
+                changed, new_size = imgui.drag_int2("new_drawing_size",
+                                                *self.new_drawing["size"])
+                if changed:
+                    self.new_drawing["size"] = new_size
+                if imgui.button("Done"):
+                    drawing = Drawing(size=self.new_drawing["size"])
+                    self.drawings.add(drawing)
+                    self.new_drawing = None
+                    imgui.close_current_popup()
+                imgui.end_popup()
 
         imgui.render()
         imgui.end_frame()
@@ -429,10 +438,26 @@ class OldpaintWindow(pyglet.window.Window):
         self.imgui_renderer.render(imgui.get_draw_data())
 
     def _new_drawing(self):
-        pass
+        size = self.drawing.size
+        self.new_drawing = dict(size=size)
+
+    def _load_drawing(self):
+        path = filedialog.askopenfilename(title="Select file",
+                                          filetypes=(("ORA files", "*.ora"),
+                                                     ("PNG files", "*.png"),
+                                                     ("all files", "*.*")))
+        if path:
+            if path.endswith(".ora"):
+                drawing = Drawing.from_ora(path)
+                self.drawings.add(drawing)
+                self.drawings.select(drawing)
+            elif path.endswith(".png"):
+                self.drawing = Drawing.from_png(path)
+                self.drawings.add(drawing)
+                self.drawings.select(drawing)
 
     def _close_drawing(self):
-        pass
+        self.drawings.remove(self.drawing)
 
     @lru_cache(1)
     def _get_offscreen_buffer(self, drawing):

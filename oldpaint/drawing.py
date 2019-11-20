@@ -25,7 +25,10 @@ class Drawing:
 
     def __init__(self, size, layers=None, palette=None):
         self.size = size
-        self.layers = Selectable(layers)
+        if layers:
+            self.layers = Selectable(layers)
+        else:
+            self.layers = Selectable([Layer(LongPicture(size=self.size))])
         self.overlay = Layer(LongPicture(size=self.size))
         self._palette = palette if palette else Palette(transparency=0)
         self.brushes = Selectable()
