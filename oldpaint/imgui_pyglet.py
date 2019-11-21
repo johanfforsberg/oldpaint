@@ -367,13 +367,20 @@ class PygletMixin(object):
     def on_mouse_motion(self, x, y, dx, dy):
         self.io.mouse_pos = x, self.io.display_size.y - y
 
-    def on_key_press(self, key, mods):
-        if key in self.REVERSE_KEY_MAP:
-            self.io.keys_down[self.REVERSE_KEY_MAP[key]] = True
+    def on_key_press(self, code, mods):
+        print("press", code & key.MOD_SHIFT)
+        if code in self.REVERSE_KEY_MAP:
+            self.io.keys_down[self.REVERSE_KEY_MAP[code]] = True
+        print(mods & key.MOD_SHIFT)
+        io = imgui.get_io()
+        io.key_shift = code & key.MOD_SHIFT
 
-    def on_key_release(self, key, mods):
-        if key in self.REVERSE_KEY_MAP:
-            self.io.keys_down[self.REVERSE_KEY_MAP[key]] = False
+    def on_key_release(self, code, mods):
+        if code in self.REVERSE_KEY_MAP:
+            self.io.keys_down[self.REVERSE_KEY_MAP[code]] = False
+        if code & key.MOD_SHIFT:
+            io = imgui.get_io()
+            io.key_shift = False
 
     def on_text(self, text):
         io = imgui.get_io()
