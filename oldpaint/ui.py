@@ -38,13 +38,27 @@ def render_tools(tools, icons):
 
 def render_palette(palette):
     #imgui.set_next_window_size(270, 400)
+
+    io = imgui.get_io()
+
     imgui.begin("Palette", True)
     fg = palette.foreground
     bg = palette.background
-    changed, color = imgui.drag_int4("RGB", *palette.foreground_color,
+    changed, color = imgui.drag_int4("RGBA", *palette.foreground_color,
                                      min_value=0, max_value=255)
     if changed:
         palette[fg] = color
+
+    palette_sizes = [8, 16, 32, 64, 128, 256]
+    imgui.same_line()
+    imgui.text(f"  #: {palette.size}")
+    if imgui.begin_popup_context_item("#Colors", mouse_button=0):
+        for size in palette_sizes:
+            _, selected = imgui.selectable(str(size), size == palette.size)
+            if selected:
+                palette.size = size
+        imgui.end_popup()
+
     imgui.begin_child("Palette", border=True)
     imgui.push_style_var(imgui.STYLE_ITEM_SPACING, (0, 0))  # Make layout tighter
     width = int(imgui.get_window_content_region_width()) // 20

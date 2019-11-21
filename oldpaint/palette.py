@@ -1,5 +1,5 @@
 from functools import lru_cache
-from itertools import chain
+from itertools import chain, islice
 
 from pyglet.window import mouse
 
@@ -20,7 +20,7 @@ class Palette:
     # TODO extend Selectable?
     "Palette storage. Keeps integer values internally but allows access as floats."
 
-    def __init__(self, colors=None, transparency=None):
+    def __init__(self, colors=None, transparency=None, size=256):
         # self.colors = (list(zip(*[map(int, colors)] * 3)) if colors
         if colors:
             color0 = colors[0]
@@ -31,6 +31,7 @@ class Palette:
         else:
             self.colors = DEFAULT_COLORS + [(0, 0, 0, 255)] * (256 - len(DEFAULT_COLORS))
         assert len(self.colors) == 256, f"Bad number of colors: {len(self.colors)}"
+        self.size = size
         # self.transparency = transparency
         self.foreground = 1
         self.background = 0
@@ -45,7 +46,7 @@ class Palette:
 
     @lru_cache(maxsize=1)
     def get_rgba(self):
-        return tuple(self.get_as_float(i) for i in range(256))
+        return tuple(self.get_as_float(i) for i in range(len(self.colors)))
 
     @lru_cache(maxsize=256)
     def get_as_float(self, index):
@@ -56,7 +57,7 @@ class Palette:
         return self.get_rgba()[index]
 
     def __iter__(self):
-        return iter(self.get_rgba())
+        return islice(self.get_rgba(), 0, self.size)
 
     def set_color(self, index, r, g, b, a):
         if isinstance(r, int):
