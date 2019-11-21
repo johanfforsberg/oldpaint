@@ -107,13 +107,13 @@ class Drawing:
 
     def move_layer_up(self):
         index = self.layers.get_current_index()
-        if index < len(self.layers) - 1:
-            self.layers.swap(index + 1, index)
+        if index < (len(self.layers) - 1):
+            self.layers.swap(index, index + 1)
 
     def move_layer_down(self):
         index = self.layers.get_current_index()
-        if index > 0:
-            self.layers.swap(index + 1, index)
+        if 0 < index:
+            self.layers.swap(index, index - 1)
 
     def clear_layer(self, layer=None, color=0):
         layer = layer or self.current
