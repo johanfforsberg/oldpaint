@@ -86,10 +86,11 @@ class Drawing:
     def add_layer(self, index=None, layer=None):
         layer = layer or Layer(LongPicture(self.size))
         # self.layers.add(layer, index)
-        index = index if index is not None else self.layers.get_current_index()
+        index = (index if index is not None else self.layers.get_current_index()) + 1
 
+        self.layers.add(layer, index=index)
+        self.layers.select(layer)
         edit = AddLayerEdit.create(self, layer, index)
-        edit.perform(self)
         self._add_edit(edit)
 
     def remove_layer(self, index=None):
@@ -226,6 +227,9 @@ class LayerEdit(NamedTuple):
         diff_data = zlib.decompress(self.data)
         layer.apply_diff(memoryview(diff_data).cast("h"), self.rect, True)
 
+    def __repr__(self):
+        return f"{__class__}(index={self.index}, data={len(self.data)}B, rect={self.rect})"
+
 
 class PaletteEdit(NamedTuple):
 
@@ -264,6 +268,9 @@ class AddLayerEdit(NamedTuple):
         layer = drawing.layers[self.index]
         drawing.layers.remove(layer)
 
+    def __repr__(self):
+        return f"{__class__}(index={self.index}, data={len(self.data)}B, size={self.size})"
+
 
 class RemoveLayerEdit(NamedTuple):
 
@@ -279,6 +286,9 @@ class RemoveLayerEdit(NamedTuple):
     # This is the inverse operation of adding a layer
     perform = AddLayerEdit.undo
     undo = AddLayerEdit.perform
+
+    def __repr__(self):
+        return f"{__class__}(index={self.index}, data={len(self.data)}B, size={self.size})"
 
 
 class SwapLayersEdit(NamedTuple):

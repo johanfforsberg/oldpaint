@@ -195,7 +195,7 @@ class FillTool(Tool):
         rect = clone.draw_fill(point, color=self.color + 255*2**24)
         if rect:
             # Here we don't use the overlay, and therefore handle the updating directly
-            self.drawing.update(clone, rect)
+            self.drawing.change_layer(clone, rect)
 
 
 class SelectionTool(Tool):
