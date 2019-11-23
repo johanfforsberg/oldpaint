@@ -32,7 +32,7 @@ class Drawing:
         else:
             self.layers = Selectable([Layer(LongPicture(size=self.size))])
         self.overlay = Layer(LongPicture(size=self.size))
-        self._palette = palette if palette else Palette(transparency=0)
+        self.palette = palette if palette else Palette(transparency=0)
         self.brushes = Selectable()
         self.unsaved = False
 
@@ -173,14 +173,6 @@ class Drawing:
         subimage = layer.get_subimage(rect)
         brush = PicBrush(subimage)
         self.brushes.add(brush)
-
-    @property
-    def palette(self):
-        return self._palette
-
-    @palette.setter
-    def palette(self, palette_data):
-        self._palette = Palette(palette_data, 0)  #img.info.get("transparency"))
 
     def __repr__(self):
         return f"Drawing(size={self.size}, layers={self.layers}, current={self.get_index()})"
