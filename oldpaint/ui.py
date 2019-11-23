@@ -60,11 +60,14 @@ def render_palette(drawing):
     if changed:
         if "palette_fg_change_start" not in temp_vars and imgui.is_mouse_dragging():
             temp_vars["palette_fg_change_start"] = fg_color
+        # TODO there should be an "overlay" here too, so that we don't need to
+        # change the actual palette data in real time.
         palette[fg] = color
 
-    if "palette_color_changing" in temp_vars and not imgui.is_mouse_dragging():
-        orig_fg_color = temp_vars.pop("palette_color_changing")
+    if "palette_fg_change_start" in temp_vars and not imgui.is_mouse_dragging():
+        orig_fg_color = temp_vars.pop("palette_fg_change_start")
         print("color edited", fg, orig_fg_color, color)
+        drawing.change_color(fg, orig_fg_color, color)
 
     palette_sizes = [8, 16, 32, 64, 128, 256]
     imgui.same_line()

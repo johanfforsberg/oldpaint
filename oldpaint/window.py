@@ -320,7 +320,7 @@ class OldpaintWindow(pyglet.window.Window):
         self.stroke_tool = None
         tool = stroke.result()
         if tool.rect:
-            self.drawing.update_layer(self.overlay, tool.rect)
+            self.drawing.change_layer(self.overlay, tool.rect)
             self.overlay.clear(tool.rect)
         self.mouse_event_queue = None
         self.stroke = None
