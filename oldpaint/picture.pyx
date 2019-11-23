@@ -88,7 +88,7 @@ cdef class LongPicture:
         cdef int offset
         if (0 <= x < self.width) & (0 <= y < self.height):
             offset = self._get_offset(x, y)
-            return self.data[offset]
+            return self.data[offset] & 0xFF
         raise ValueError(f"The given coordinates {x}, {y} lie outside of the picture!")
 
     def __getitem__(self, (int, int) pos):
@@ -537,7 +537,7 @@ cpdef draw_fill(pic, (int, int) point, unsigned int color):
     startx, starty = point
     cdef list stack = [point]  # TODO maybe find some more C friendly way of keeping a stack
     w, h = pic.size
-    cdef unsigned int start_col = pic[startx, starty]
+    cdef unsigned int start_col = pic[startx, starty] & 0xFF
 
     if start_col == color:
         return
