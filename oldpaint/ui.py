@@ -237,3 +237,23 @@ def render_brushes(brushes, get_texture, compact=False):
 
     imgui.new_line()
     return clicked
+
+
+def render_edits(drawing):
+
+    imgui.begin("Edits", True)
+
+    imgui.columns(2, 'layerlist')
+    imgui.text("#")
+    imgui.set_column_offset(1, 40)
+    imgui.next_column()
+    imgui.text("Type")
+    imgui.next_column()
+    imgui.separator()
+    n = len(drawing.edits)
+    for i, edit in enumerate(reversed(drawing.edits)):
+        imgui.text(str(n - i))
+        imgui.next_column()
+        imgui.text(str(type(edit).__name__))
+        imgui.next_column()
+    imgui.end()

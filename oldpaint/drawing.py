@@ -36,8 +36,9 @@ class Drawing:
         self.brushes = Selectable()
         self.unsaved = False
 
-        self.edits = []
-        self.edits_index = -1
+        # History of changes
+        self._edits = []
+        self._edits_index = -1
 
         self.selection = None
 
@@ -53,6 +54,12 @@ class Drawing:
     def current(self, layer):
         assert isinstance(layer, Layer)
         self.layers.set_item(layer)
+
+    @property
+    def edits(self):
+        if self._edits_index == -1:
+            return self._edits
+        return self._edits[:self._edits_index + 1]
 
     @classmethod
     def from_png(cls, path):
@@ -73,19 +80,8 @@ class Drawing:
     def save_ora(self, path):
         save_ora(self.size, self.layers, self.palette, path)
 
-    # def get_index(self, layer=None):
-    #     "Return the index of the given layer (or current)."
-    #     layer = layer or self.current
-    #     if layer is not None:
-    #         try:
-    #             return self.layers.index(self.current)
-    #         except ValueError:
-    #             # TODO in this case, maybe some cleanup is in order?
-    #             pass
-
     def add_layer(self, index=None, layer=None):
         layer = layer or Layer(LongPicture(self.size))
-        # self.layers.add(layer, index)
         index = (index if index is not None else self.layers.get_current_index()) + 1
 
         self.layers.add(layer, index=index)
@@ -101,15 +97,6 @@ class Drawing:
         edit = RemoveLayerEdit.create(self, layer)
         edit.perform(self)
         self._add_edit(edit)
-        # self.layers.remove(layer)
-        # if layer == self.current:
-        #     while True:
-        #         try:
-        #             self.current = self.layers[index]
-        #             break
-        #         except IndexError:
-        #             pass
-        #         index -= 1
 
     def next_layer(self):
         self.layers.cycle_forward()
@@ -157,24 +144,26 @@ class Drawing:
 
     def _add_edit(self, edit):
         "Insert an edit into the history, keeping track of things"
-        if self.edits_index < -1:
-            del self.edits[self.edits_index + 1:]
-            self.edits_index = -1
-        self.edits.append(edit)
+        if self._edits_index < -1:
+            del self._edits[self._edits_index + 1:]
+            self._edits_index = -1
+        self._edits.append(edit)
 
     @try_except_log
     def undo(self):
-        if -self.edits_index <= len(self.edits):
-            edit = self.edits[self.edits_index]
+        "Restore the drawing to the state it was in before the current edit was made."
+        if -self._edits_index <= len(self._edits):
+            edit = self._edits[self._edits_index]
             edit.undo(self)
-            self.edits_index -= 1
+            self._edits_index -= 1
         logger.info("No more edits to undo!")
 
     @try_except_log
     def redo(self):
-        if self.edits_index < -1:
-            self.edits_index += 1
-            edit = self.edits[self.edits_index]
+        "Restore the drawing to the state it was in after the current edit was made."
+        if self._edits_index < -1:
+            self._edits_index += 1
+            edit = self._edits[self._edits_index]
             edit.perform(self)
         logger.info("No more edits to redo!")
 

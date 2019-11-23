@@ -444,6 +444,8 @@ class OldpaintWindow(pyglet.window.Window):
                     imgui.close_current_popup()
                 imgui.end_popup()
 
+            ui.render_edits(self.drawing)
+
         imgui.render()
         imgui.end_frame()
 

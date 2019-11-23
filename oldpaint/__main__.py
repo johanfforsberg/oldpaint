@@ -22,4 +22,4 @@ class OldpaintEventLoop(pyglet.app.EventLoop):
 
 
 pyglet.app.event_loop = OldpaintEventLoop()
-pyglet.app.run()
+pyglet.app.run(0.02)
