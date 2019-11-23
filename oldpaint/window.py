@@ -320,7 +320,7 @@ class OldpaintWindow(pyglet.window.Window):
         self.stroke_tool = None
         tool = stroke.result()
         if tool.rect:
-            self.drawing.update(self.overlay, tool.rect)
+            self.drawing.update_layer(self.overlay, tool.rect)
             self.overlay.clear(tool.rect)
         self.mouse_event_queue = None
         self.stroke = None
@@ -423,7 +423,7 @@ class OldpaintWindow(pyglet.window.Window):
             imgui.end()
 
             self.highlighted_layer = ui.render_layers(self.drawing)
-            ui.render_palette(self.drawing.palette)
+            ui.render_palette(self.drawing)
 
             # imgui.show_metrics_window()
 

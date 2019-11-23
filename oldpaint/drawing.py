@@ -6,7 +6,7 @@ from .layer import Layer
 from .ora import load_ora, save_ora
 from .picture import LongPicture, load_png
 from .palette import Palette
-from .util import Selectable
+from .util import Selectable, try_except_log
 
 
 logger = logging.getLogger(__name__)
@@ -34,8 +34,9 @@ class Drawing:
         self.brushes = Selectable()
         self.unsaved = False
 
-        self.undos = []
-        self.redos = []
+        self.edits = []
+        self.edits_index = -1
+
         self.selection = None
 
         # Keep track of what we're looking at
@@ -117,42 +118,57 @@ class Drawing:
 
     def clear_layer(self, layer=None, color=0):
         layer = layer or self.current
-        self.undos.append(self._build_action(layer, layer.rect))
-        self.redos.clear()
+        self._add_edit(self._build_action(layer, layer.rect))
         layer.clear(value=color)
 
-    def update(self, new, rect, layer=None):
+    def update_layer(self, new, rect, layer=None):
         "Update a part of the layer, keeping track of the change as an 'undo'"
         layer = layer or self.current
-        self.undos.append(self._build_action(layer, rect))
-        self.redos.clear()
+        self._add_edit(self._build_action(layer, new, rect))
         layer.blit_part(new.pic, rect, rect.topleft)
 
-    def _build_action(self, layer, rect):
+    def _add_edit(self, edit):
+        if self.edits_index < -1:
+            del self.edits[self.edits_index + 1:]
+            self.edits_index = -1
+        self.edits.append(edit)
+
+    @try_except_log
+    def _build_action(self, layer, new, rect):
         "An 'action' here means something that can be undone/redone."
         # By using compression on the undo/redo buffers, we save a
         # *lot* of memory.  Some quick tests suggest at least an
         # order of magnitude, but it will certainly depend on the
         # contents.
-        data = layer.get_subimage(rect).data
+        # TODO we only care about the first byte in each long, does
+        # the compression take care of that for us?
+        data = layer.make_diff(new, rect)
         return (layer, rect, zlib.compress(data))
+
+    def change_color(self, i, rgba0, rgba1):
+        r0, g0, b0, a0 = rgba0
+        r1, g1, b1, a1 = rgba1
+        delta = r1-r0, g1-g0, b1-b0, a1-a0
+        action = "color", i, delta
 
     # TODO undo/redo should cover all "destructive" ops, e.g delete layer
     def undo(self):
-        if self.undos:
-            layer, rect, undo_data_z = self.undos.pop()
-            undo_data = zlib.decompress(undo_data_z)
-            self.redos.append(self._build_action(layer, rect))
-            layer.blit(LongPicture(rect.size, undo_data), rect, alpha=False)
+        if -self.edits_index <= len(self.edits):
+            layer, rect, diff_data_z = self.edits[self.edits_index]
+            self.edits_index -= 1
+            diff_data = zlib.decompress(diff_data_z)
+            layer.apply_diff(memoryview(diff_data).cast("h"), rect, True)
             return rect
+        logger.info("No more edits to undo!")
 
     def redo(self):
-        if self.redos:
-            layer, rect, redo_data = self.redos.pop()
-            redo_data = zlib.decompress(redo_data)
-            self.undos.append(self._build_action(layer, rect))
-            layer.blit(LongPicture(rect.size, redo_data), rect, alpha=False)
+        if self.edits_index < -1:
+            self.edits_index += 1
+            layer, rect, diff_data_z = self.edits[self.edits_index]
+            diff_data = zlib.decompress(diff_data_z)
+            layer.apply_diff(memoryview(diff_data).cast("h"), rect, False)
             return rect
+        logger.info("No more edits to redo!")
 
     def make_brush(self, rect=None, layer=None):
         rect = rect or self.selection

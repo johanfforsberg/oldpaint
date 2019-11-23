@@ -15,6 +15,7 @@ from .rect cimport Rectangle
 
 
 cdef byte_array_template = array.array('B', [])   # Used for creating empty arrays quickly
+cdef short_array_template = array.array('h', [])   # Used for creating empty arrays quickly
 cdef long_array_template = array.array('I', [])
 
 
@@ -164,6 +165,43 @@ cdef class LongPicture:
             offset1 += pic.width
             offset2 += self.width
 
+    cpdef short[:] make_diff(self, LongPicture pic, int x, int y, int w, int h):
+        cdef short[:] difference = array.clone(short_array_template, w * h, zero=True)
+        cdef int i, j, offset, start, x1, y1
+        offset = self._get_offset(x, y)
+        start = 0
+        for y1 in range(h):
+            for x1 in range(w):
+                if pic.data[offset+x1] >> 24:
+                    difference[start+x1] = (pic.data[offset+x1] & 255) - (self.data[offset+x1] & 255)
+            offset += self.width
+            start += w
+        return difference
+
+    cpdef void apply_diff(self, const short[:] difference, int x, int y, int w, int h, bint invert):
+        cdef int i, j, offset, start, x1, y1
+        cdef unsigned int value
+        cdef short diff
+
+        offset = self._get_offset(x, y)
+        start = 0
+        if invert:
+            for y1 in range(h):
+                for x1 in range(w):
+                    value = self.data[offset+x1]
+                    diff = difference[start+x1]
+                    self.set_pixel(x + x1, y + y1, value - diff)
+                offset += self.width
+                start += w
+        else:
+            for y1 in range(h):
+                for x1 in range(w):
+                    value = self.data[offset+x1]
+                    diff = difference[start+x1]
+                    self.set_pixel(x + x1, y + y1, value + diff)
+                offset += self.width
+                start += w
+
     # cpdef void paste_byte(self, Picture pic, int x, int y, bint mask):
     #     cdef int w, h, y1, x1, x2, y2, offset1, offset2
     #     cdef unsigned int p
@@ -199,10 +237,9 @@ cdef class LongPicture:
         x1 = min(w, x1)
         y0 = max(0, y0)
         y1 = min(h, y1)
-        with nogil:
-            for x in range(x0, x1):
-                for y in range(y0, y1):
-                    self.data[y * w + x] = value
+        for x in range(x0, x1):
+            for y in range(y0, y1):
+                self.data[y * w + x] = value
 
     cpdef LongPicture flip_vertical(self):
         # TODO this is probably not the fastest way, but this shouldn't be a time critical op

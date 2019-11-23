@@ -63,6 +63,9 @@ cdef class Rectangle:
     cdef (int, int, int, int) get_points(self):
         return self.x, self.y, self.width, self.height
 
+    def __iter__(self):
+        return iter(self.get_points())
+
     @property
     def points(self):
         return self.get_points()

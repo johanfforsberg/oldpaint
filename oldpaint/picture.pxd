@@ -1,6 +1,6 @@
 #cython: language_level=3, boundscheck=False, wraparound=False, initializedcheck=False, cdivision=True
 
-#from cpython cimport array
+from cpython cimport array
 
 cpdef unsigned int _rgba_to_32bit((int, int, int, int) color)
 cpdef unsigned int _rgb_to_32bit((int, int, int) color)
@@ -47,3 +47,5 @@ cdef class LongPicture:
     cpdef LongPicture flip_vertical(self)
     cpdef LongPicture flip_horizontal(self)
     cpdef unsigned int[:] as_rgba(self, palette, bint alpha)
+    cpdef short[:] make_diff(self, LongPicture pic, int x, int y, int w, int h)
+    cpdef void apply_diff(self, const short[:] difference, int x, int y, int w, int h, bint invert)

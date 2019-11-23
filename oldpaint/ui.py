@@ -5,8 +5,13 @@ Helper functions for rendering the user interface.
 import logging
 
 import imgui
+from pyglet.window import key
 
 logger = logging.getLogger(__name__)
+
+
+# A hacky way to keep short-lived UI state. Find a better way!
+temp_vars = {}
 
 
 TOOL_BUTTON_COLORS = [
@@ -26,28 +31,40 @@ def render_tools(tools, icons):
     current_tool = tools.current
     for i, tool in enumerate(tools):
         texture = icons[tool.tool]
-        #imgui.push_style_color(imgui.COLOR_BUTTON, *TOOL_BUTTON_COLORS[tool == current_tool])
-        #with imgui.extra.styled(imgui.COLOR_BUTTON_ACTIVE, TOOL_BUTTON_COLORS[tool == current_tool]):
-        if imgui.core.image_button(texture.name, 16, 16):
+        # imgui.push_style_color(imgui.COLOR_BUTTON,
+        #                        *TOOL_BUTTON_COLORS[tool == current_tool])
+        # with imgui.extra.styled(imgui.COLOR_BUTTON_ACTIVE, TOOL_BUTTON_COLORS[tool == current_tool]):
+        # with imgui.colored(imgui.BUTTON_FRAME_BACKGROUND,
+        #                    *TOOL_BUTTON_COLORS[tool == current_tool]):
+        if imgui.core.image_button(texture.name, 16, 16, border_color=(*TOOL_BUTTON_COLORS[tool == current_tool], 1)):
             tools.select(tool)
         if i % 4 != 3:
             imgui.same_line()
-        #imgui.pop_style_color(1)
+        # imgui.pop_style_color(1)
     imgui.new_line()
 
 
-def render_palette(palette):
+def render_palette(drawing):
     #imgui.set_next_window_size(270, 400)
+
+    palette = drawing.palette
 
     io = imgui.get_io()
 
     imgui.begin("Palette", True)
     fg = palette.foreground
     bg = palette.background
-    changed, color = imgui.drag_int4("RGBA", *palette.foreground_color,
+    fg_color = palette.foreground_color
+    changed, color = imgui.drag_int4("RGBA", *fg_color, change_speed=0.1,
                                      min_value=0, max_value=255)
     if changed:
+        if "palette_fg_change_start" not in temp_vars and imgui.is_mouse_dragging():
+            temp_vars["palette_fg_change_start"] = fg_color
         palette[fg] = color
+
+    if "palette_color_changing" in temp_vars and not imgui.is_mouse_dragging():
+        orig_fg_color = temp_vars.pop("palette_color_changing")
+        print("color edited", fg, orig_fg_color, color)
 
     palette_sizes = [8, 16, 32, 64, 128, 256]
     imgui.same_line()
@@ -62,14 +79,21 @@ def render_palette(palette):
     imgui.begin_child("Palette", border=True)
     imgui.push_style_var(imgui.STYLE_ITEM_SPACING, (0, 0))  # Make layout tighter
     width = int(imgui.get_window_content_region_width()) // 20
+    spread_start = temp_vars.get("spread_start")
     for i, color in enumerate(palette):
         is_foreground = i == fg
         is_background = (i == bg) * 2
         selection = is_foreground | is_background
-        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *SELECTABLE_FRAME_COLORS[selection])
-
+        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND,
+                               *SELECTABLE_FRAME_COLORS[selection])
         if imgui.color_button(f"color {i}", *color[:3], 1, 0, 20, 20):
-            fg = i
+            if io.key_shift:
+                if "spread_start" in temp_vars:
+                    temp_vars["spread_end"] = i
+                else:
+                    temp_vars["spread_start"] = i
+            else:
+                fg = i
         if imgui.core.is_item_clicked(2):
             # Detect right button clicks on the button
             bg = i
@@ -84,6 +108,11 @@ def render_palette(palette):
 
     palette.foreground = fg
     palette.background = bg
+
+    if "spread_start" in temp_vars and "spread_end" in temp_vars:
+        spread_start = temp_vars.pop("spread_start")
+        spread_end = temp_vars.pop("spread_end")
+        palette.spread(spread_start, spread_end)
 
 
 # TODO Consider using https://github.com/mlabbe/nativefiledialog instead of the following?

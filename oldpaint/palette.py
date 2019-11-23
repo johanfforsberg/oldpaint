@@ -87,3 +87,18 @@ class Palette:
     @background_color.setter
     def background_color(self, color):
         self.set_color(self.background, *color)
+
+    def spread(self, index1, index2):
+        "Make a nice smooth color ramp between the given colors."
+        if index1 > index2:
+            index1, index2 = index2, index1
+        r1, g1, b1, a1 = self.colors[index1]
+        r2, g2, b2, a2 = self.colors[index2]
+        n_steps = index2 - index1
+        dr = (r2 - r1) / n_steps
+        dg = (g2 - g1) / n_steps
+        db = (b2 - b1) / n_steps
+        for i in range(1, n_steps):
+            self.colors[index1 + i] = round(r1 + dr * i), round(g1 + dg * i), round(b1 + db * i), 1
+        self.get_rgba.cache_clear()
+        self.get_as_float.cache_clear()

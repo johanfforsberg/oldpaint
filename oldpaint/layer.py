@@ -30,7 +30,7 @@ class Layer:
         # the drawing thread.
         self.lock = RLock()
 
-        self.sublayers = Selectable([])
+        self.sublayers = Selectable()
 
     def save_png(self, path, palette=None):
         save_png(self.pic, path, palette)
@@ -108,6 +108,17 @@ class Layer:
         with self.lock:
             self.pic.paste_part(pic, rect.x, rect.y, rect.width, rect.height, *dest, alpha)
             self.dirty = self.rect.intersect(rect.unite(self.dirty))
+        return self.rect.intersect(rect)
+
+    def make_diff(self, layer, rect):
+        with self.lock:
+            return self.pic.make_diff(layer.pic, *rect)
+
+    def apply_diff(self, diff, rect, invert=False):
+        with self.lock:
+            self.pic.apply_diff(diff, *rect, invert=invert)
+            self.dirty = self.rect.intersect(rect.unite(self.dirty))
+            print(self.dirty)
         return self.rect.intersect(rect)
 
     def __hash__(self):
