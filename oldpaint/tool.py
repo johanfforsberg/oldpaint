@@ -191,11 +191,12 @@ class FillTool(Tool):
     brush_preview = False
 
     def finish(self, layer, point, buttons, modifiers):
-        clone = self.drawing.current.clone()
-        rect = clone.draw_fill(point, color=self.color + 255*2**24)
-        if rect:
-            # Here we don't use the overlay, and therefore handle the updating directly
-            self.drawing.change_layer(clone, rect)
+        if point in layer.rect:
+            clone = self.drawing.current.clone()
+            rect = clone.draw_fill(point, color=self.color + 255*2**24)
+            if rect:
+                # Here we don't use the overlay, and therefore handle the updating directly
+                self.drawing.change_layer(clone, rect)
 
 
 class SelectionTool(Tool):
