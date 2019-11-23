@@ -275,7 +275,7 @@ class OldpaintWindow(pyglet.window.Window):
                 if path.endswith(".ora"):
                     self.drawing.save_ora(path)
         elif symbol == key.O:
-            self._open_drawing()
+            self._load_drawing()
         else:
             super().on_key_press(symbol, modifiers)
 
