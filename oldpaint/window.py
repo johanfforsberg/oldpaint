@@ -240,7 +240,6 @@ class OldpaintWindow(pyglet.window.Window):
         if self.brush_preview_dirty:
             self.overlay.clear(self.brush_preview_dirty)
 
-    @no_imgui_events
     def on_key_press(self, symbol, modifiers):
         if self.stroke:
             return
@@ -384,8 +383,12 @@ class OldpaintWindow(pyglet.window.Window):
                         self.drawing.current.clear()
                     imgui.end_menu()
 
+                # Show some info in the top right corner
+                w, h = self.get_size()
+                imgui.set_cursor_screen_pos((w - 200, 0))
+                imgui.text(f"Zoom: x{2**self.zoom}")
+
                 if self.mouse_position:
-                    w, h = self.get_size()
                     imgui.set_cursor_screen_pos((w - 100, 0))
                     x, y = self._to_image_coords(*self.mouse_position)
                     if self.stroke_tool:
@@ -396,6 +399,7 @@ class OldpaintWindow(pyglet.window.Window):
                             imgui.text(f"{x}, {y}")
                     else:
                         imgui.text(f"{x}, {y}")
+
                 imgui.end_main_menu_bar()
 
             # Tools & brushes
