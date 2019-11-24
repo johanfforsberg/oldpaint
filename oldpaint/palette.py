@@ -22,6 +22,7 @@ class Palette:
 
     def __init__(self, colors=None, transparency=None, size=256):
         # self.colors = (list(zip(*[map(int, colors)] * 3)) if colors
+        self.size = size
         if colors:
             color0 = colors[0]
             if len(color0) == 3:
@@ -29,9 +30,8 @@ class Palette:
             else:
                 self.colors = colors
         else:
-            self.colors = DEFAULT_COLORS + [(0, 0, 0, 255)] * (256 - len(DEFAULT_COLORS))
-        assert len(self.colors) == 256, f"Bad number of colors: {len(self.colors)}"
-        self.size = size
+            self.colors = DEFAULT_COLORS + [(0, 0, 0, 255)] * (self.size - len(DEFAULT_COLORS))
+        assert len(self.colors) == self.size, f"Bad number of colors: {len(self.colors)}"
         # self.transparency = transparency
         self.foreground = 1
         self.background = 0

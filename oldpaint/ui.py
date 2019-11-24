@@ -55,7 +55,7 @@ def render_palette(drawing):
     fg = palette.foreground
     bg = palette.background
     fg_color = palette.foreground_color
-    changed, rgb = imgui.drag_int3("RGBA", *fg_color[:3], change_speed=0.1,
+    changed, rgb = imgui.drag_int3("RGB", *fg_color[:3], change_speed=0.1,
                                    min_value=0, max_value=255)
     if changed:
         if "palette_fg_change_start" not in temp_vars and imgui.is_mouse_dragging():
@@ -67,6 +67,9 @@ def render_palette(drawing):
     if "palette_fg_change_start" in temp_vars and not imgui.is_mouse_dragging():
         orig_fg_color = temp_vars.pop("palette_fg_change_start")
         drawing.change_color(fg, orig_fg_color, (*rgb, 255))
+
+    imgui.same_line()
+    imgui.color_button("fg_color", *palette.get_as_float(fg))
 
     palette_sizes = [8, 16, 32, 64, 128, 256]
     imgui.same_line()

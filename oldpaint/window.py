@@ -242,6 +242,9 @@ class OldpaintWindow(pyglet.window.Window):
 
     @no_imgui_events
     def on_key_press(self, symbol, modifiers):
+        if self.stroke:
+            return
+
         if symbol == key.UP:
             self.drawing.next_layer()
         elif symbol == key.DOWN:
@@ -463,12 +466,10 @@ class OldpaintWindow(pyglet.window.Window):
         if path:
             if path.endswith(".ora"):
                 drawing = Drawing.from_ora(path)
-                self.drawings.add(drawing)
-                self.drawings.select(drawing)
             elif path.endswith(".png"):
-                self.drawing = Drawing.from_png(path)
-                self.drawings.add(drawing)
-                self.drawings.select(drawing)
+                drawing = Drawing.from_png(path)
+            self.drawings.add(drawing)
+            self.drawings.select(drawing)
 
     def _close_drawing(self):
         self.drawings.remove(self.drawing)

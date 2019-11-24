@@ -65,7 +65,7 @@ class Drawing:
     def from_png(cls, path):
         pic, colors = load_png(path)
         layer = Layer(pic)
-        palette = Palette(colors, transparency=0)
+        palette = Palette(colors, transparency=0, size=len(colors))
         return cls(size=layer.size, layers=[layer], palette=palette)
 
     @classmethod

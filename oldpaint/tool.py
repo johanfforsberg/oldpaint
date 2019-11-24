@@ -62,6 +62,7 @@ class PencilTool(Tool):
             self.rect = rect.unite(self.rect)
         self.points.append(point)
 
+
     def finish(self, layer, point, buttons, modifiers):
         # Make sure we draw a point even if the mouse was never moved
         rect = layer.draw_line(self.points[-1], point, brush=self.brush.get_pic(self.color))
