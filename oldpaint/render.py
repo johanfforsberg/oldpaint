@@ -33,13 +33,17 @@ def render_drawing(drawing):
         overlay = drawing.overlay
         overlay_texture = _get_overlay_texture(overlay)
 
-        if overlay.dirty and overlay.lock.acquire(timeout=0.03):
+        if overlay.dirty and overlay.lock.acquire(timeout=0.01):
             # Since we're drawing in a separate thread, we need to be very careful
             # when accessing the overlay, otherwise we can get nasty problems.
             # While we have the lock, the thread won't draw, so we can safely copy data.
+            # The acquire timeout is a compromise; on one hand, we don't wait
+            # so long that the user feels stutter, on the other hand,
+            # if we never wait, and the draw thread is very busy, we might
+            # not get to update for a long time.
             rect = overlay.dirty
             subimage = overlay.get_subimage(rect)
-            data = bytes(subimage.data)  # TODO Is this making a copy?
+            data = bytes(subimage.data)  # TODO Is this making another copy?
 
             # Now update the texture with the changed part of the layer.
             try:
