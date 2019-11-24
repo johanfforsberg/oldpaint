@@ -225,7 +225,6 @@ class PickerTool(Tool):
 
     def __init__(self, drawing, brush, color, initial):
         super().__init__(drawing, brush, color, initial)
-        self.start = initial
         self.color = None
 
     def finish(self, layer, point, buttons, modifiers):
