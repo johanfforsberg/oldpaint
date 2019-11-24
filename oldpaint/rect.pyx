@@ -8,10 +8,12 @@ cdef class Rectangle:
     def __init__(self, (int, int) position=(0, 0), (int, int) size=(0, 0)):
         self.position = position
         self.size = size
+
         self.x = self.left = position[0]
         self.y = self.top = position[1]
         self.width = self.size[0]
         self.height = self.size[1]
+
         self.right = self.x + self.width
         self.bottom = self.y + self.height
         self.topleft = (self.left, self.top)
