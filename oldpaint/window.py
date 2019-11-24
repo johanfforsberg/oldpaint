@@ -112,13 +112,14 @@ class OldpaintWindow(pyglet.window.Window):
 
         io = imgui.get_io()
         self._font = io.fonts.add_font_from_file_ttf(
-            "ttf/Topaznew.ttf", 14, io.fonts.get_glyph_ranges_latin()
+            "ttf/Topaznew.ttf", 16, io.fonts.get_glyph_ranges_latin()
         )
         self.imgui_renderer.refresh_font_texture()
 
         style = imgui.get_style()
         style.window_border_size = 0
         style.window_rounding = 0
+        io.config_resize_windows_from_edges = True  # TODO does not seem to work?
 
         self.selection = None  # Rectangle e.g. for selecting brush region
         self.selection_vao = VertexArrayObject(vertices_class=SimpleVertices)
@@ -322,10 +323,12 @@ class OldpaintWindow(pyglet.window.Window):
     # === Other callbacks ===
 
     def _finish_stroke(self, stroke):
+        "Callback that gets run every time a stroke is finished."
         # Since this is a callback, stroke is a Future and is guaranteed to be finished.
         self.stroke_tool = None
         tool = stroke.result()
         if tool.rect:
+            # If no rect is set, the tool is presumed to not have changed anything.
             self.drawing.change_layer(self.overlay, tool.rect)
             self.overlay.clear(tool.rect)
         self.mouse_event_queue = None
@@ -336,6 +339,8 @@ class OldpaintWindow(pyglet.window.Window):
     def _render_gui(self):
 
         w, h = self.get_size()
+
+        io = imgui.get_io()
 
         imgui.new_frame()
         with imgui.font(self._font):
@@ -437,16 +442,29 @@ class OldpaintWindow(pyglet.window.Window):
                 self.drawing_brush = brush
             imgui.core.separator()
 
-            if imgui.collapsing_header("Layers", None)[0]:
-                self.highlighted_layer = ui.render_layers(self.drawing)
+            imgui.begin_child("Palette", height=300)
+            ui.render_palette(self.drawing)
+            imgui.end_child()
 
-            if imgui.collapsing_header("Edits", None)[0]:
+            # if imgui.collapsing_header("Layers", None)[0]:
+            #     self.highlighted_layer = ui.render_layers(self.drawing)
+
+            if imgui.collapsing_header("Edits", None, flags=imgui.TREE_NODE_DEFAULT_OPEN)[0]:
+                imgui.begin_child("Edits list", height=0)
                 self.highlighted_layer = ui.render_edits(self.drawing)
-
+                imgui.end_child()
 
             imgui.end()
 
-            ui.render_palette(self.drawing)
+            nh = 150
+            imgui.set_next_window_size(w - 135, nh)
+            imgui.set_next_window_position(0, h - nh)
+
+            imgui.begin("Layers", False, flags=(imgui.WINDOW_NO_TITLE_BAR
+                                                | imgui.WINDOW_NO_RESIZE
+                                                | imgui.WINDOW_NO_MOVE))
+            self.highlighted_layer = ui.render_layers(self.drawing)
+            imgui.end()
 
             # imgui.show_metrics_window()
 
@@ -466,8 +484,6 @@ class OldpaintWindow(pyglet.window.Window):
                     self.new_drawing = None
                     imgui.close_current_popup()
                 imgui.end_popup()
-
-            #ui.render_edits(self.drawing)
 
         imgui.render()
         imgui.end_frame()
