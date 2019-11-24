@@ -116,6 +116,10 @@ class OldpaintWindow(pyglet.window.Window):
         )
         self.imgui_renderer.refresh_font_texture()
 
+        style = imgui.get_style()
+        style.window_border_size = 0
+        style.window_rounding = 0
+
         self.selection = None  # Rectangle e.g. for selecting brush region
         self.selection_vao = VertexArrayObject(vertices_class=SimpleVertices)
         self.selection_vertices = self.selection_vao.create_vertices(

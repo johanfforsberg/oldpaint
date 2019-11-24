@@ -45,13 +45,15 @@ def render_tools(tools, icons):
 
 
 def render_palette(drawing):
-    #imgui.set_next_window_size(270, 400)
-
-    palette = drawing.palette
-
     io = imgui.get_io()
+    w, h = io.display_size
+    imgui.set_next_window_size(w, 100)
+    imgui.set_next_window_position(0, h-100)
 
-    imgui.begin("Palette", True)
+    imgui.begin("Palette", True, flags=(imgui.WINDOW_NO_TITLE_BAR
+                                        | imgui.WINDOW_NO_RESIZE
+                                        | imgui.WINDOW_NO_MOVE))
+    palette = drawing.palette
     fg = palette.foreground
     bg = palette.background
     fg_color = palette.foreground_color
