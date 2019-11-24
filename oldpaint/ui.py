@@ -47,7 +47,7 @@ def render_tools(tools, icons):
 def render_palette(drawing):
     io = imgui.get_io()
     w, h = io.display_size
-    imgui.set_next_window_size(w, 100)
+    imgui.set_next_window_size(w-135, 100)
     imgui.set_next_window_position(0, h-100)
 
     imgui.begin("Palette", True, flags=(imgui.WINDOW_NO_TITLE_BAR
@@ -157,9 +157,8 @@ def render_save_file_dialog(loader):
 
 
 def render_layers(drawing):
-    imgui.set_next_window_size(100, 400)
 
-    imgui.begin("Layers", True)
+    # imgui.begin_child("Layers", True)
     if imgui.button("Add"):
         drawing.add_layer()
     imgui.same_line()
@@ -171,7 +170,7 @@ def render_layers(drawing):
     if imgui.button("Up"):
         drawing.move_layer_up()
 
-    imgui.begin_child("Layers", border=True)
+    imgui.begin_child("Layers", border=False, height=200)
     selected = None
     n = len(drawing.layers)
     hovered = None
@@ -207,7 +206,7 @@ def render_layers(drawing):
 
     imgui.columns(1)
     imgui.end_child()
-    imgui.end()
+
     return hovered
 
 
@@ -245,7 +244,7 @@ def render_brushes(brushes, get_texture, compact=False):
 
 def render_edits(drawing):
 
-    imgui.begin("Edits", True)
+    #imgui.begin("Edits", True)
 
     imgui.columns(2, 'layerlist')
     imgui.set_column_offset(1, 40)
@@ -255,4 +254,4 @@ def render_edits(drawing):
         imgui.next_column()
         imgui.text(str(type(edit).__name__))
         imgui.next_column()
-    imgui.end()
+    #imgui.end()

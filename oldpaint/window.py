@@ -335,6 +335,8 @@ class OldpaintWindow(pyglet.window.Window):
 
     def _render_gui(self):
 
+        w, h = self.get_size()
+
         imgui.new_frame()
         with imgui.font(self._font):
 
@@ -388,7 +390,6 @@ class OldpaintWindow(pyglet.window.Window):
                     imgui.end_menu()
 
                 # Show some info in the top right corner
-                w, h = self.get_size()
                 imgui.set_cursor_screen_pos((w - 200, 0))
                 imgui.text(f"Zoom: x{2**self.zoom}")
 
@@ -407,7 +408,13 @@ class OldpaintWindow(pyglet.window.Window):
                 imgui.end_main_menu_bar()
 
             # Tools & brushes
-            imgui.begin("Tools", True)
+
+            imgui.set_next_window_size(135, h - 20)
+            imgui.set_next_window_position(w - 135, 20)
+
+            imgui.begin("Tools", False, flags=(imgui.WINDOW_NO_TITLE_BAR
+                                              | imgui.WINDOW_NO_RESIZE
+                                              | imgui.WINDOW_NO_MOVE))
 
             ui.render_tools(self.tools, self.icons)
             imgui.core.separator()
@@ -418,22 +425,27 @@ class OldpaintWindow(pyglet.window.Window):
                                       compact=True)
             if brush:
                 self.drawing_brush = None
-            imgui.core.separator()
+            imgui.separator()
 
             if imgui.button("Delete"):
                 self.drawing.brushes.remove()
 
-            imgui.begin_child("brushes", border=False)
             brush = ui.render_brushes(self.drawing.brushes,
                                       partial(self.get_brush_preview_texture,
                                               palette=self.drawing.palette))
             if brush:
                 self.drawing_brush = brush
-            imgui.end()
+            imgui.core.separator()
+
+            if imgui.collapsing_header("Layers", None)[0]:
+                self.highlighted_layer = ui.render_layers(self.drawing)
+
+            if imgui.collapsing_header("Edits", None)[0]:
+                self.highlighted_layer = ui.render_edits(self.drawing)
+
 
             imgui.end()
 
-            self.highlighted_layer = ui.render_layers(self.drawing)
             ui.render_palette(self.drawing)
 
             # imgui.show_metrics_window()
@@ -455,7 +467,7 @@ class OldpaintWindow(pyglet.window.Window):
                     imgui.close_current_popup()
                 imgui.end_popup()
 
-            ui.render_edits(self.drawing)
+            #ui.render_edits(self.drawing)
 
         imgui.render()
         imgui.end_frame()
