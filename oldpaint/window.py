@@ -195,7 +195,8 @@ class OldpaintWindow(pyglet.window.Window):
                 self.brush_preview_dirty = None
 
             self.mouse_event_queue = Queue()
-            initial_point = self._to_image_coords(x, y)
+            x, y = self._to_image_coords(x, y)
+            initial_point = int(x), int(y)
             self.mouse_event_queue.put(("mouse_down", (initial_point, button, modifiers)))
             color = (self.drawing.palette.foreground if button == pyglet.window.mouse.LEFT
                      else self.drawing.palette.background)
@@ -207,7 +208,9 @@ class OldpaintWindow(pyglet.window.Window):
 
     def on_mouse_release(self, x, y, button, modifiers):
         if self.mouse_event_queue:
-            self.mouse_event_queue.put(("mouse_up", (self._to_image_coords(x, y), button, modifiers)))
+            x, y = self._to_image_coords(x, y)
+            pos = int(x), int(y)
+            self.mouse_event_queue.put(("mouse_up", (pos, button, modifiers)))
 
     @no_imgui_events
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
@@ -226,7 +229,8 @@ class OldpaintWindow(pyglet.window.Window):
             return
         self._update_cursor(x, y)
         if self.mouse_event_queue:
-            ipos = self._to_image_coords(x, y)
+            x, y = self._to_image_coords(x, y)
+            ipos = int(x), int(y)
             self.mouse_event_queue.put(("mouse_drag", (ipos, button, modifiers)))
         elif button == pyglet.window.mouse.MIDDLE:
             ox, oy = self.offset
@@ -375,7 +379,7 @@ class OldpaintWindow(pyglet.window.Window):
                     imgui.end_menu()
 
                 if imgui.begin_menu("Brush", True):
-                    if imgui.menu_item("Save current", "S", False, True)[0]:
+                    if imgui.menu_item("Save current", "S", False, bool(self.drawing_brush))[0]:
                         path = filedialog.asksaveasfilename(title="Select file",
                                                             filetypes=(#("ORA files", "*.ora"),
                                                                        ("PNG files", "*.png"),
@@ -406,9 +410,9 @@ class OldpaintWindow(pyglet.window.Window):
                         if txt:
                             imgui.text(repr(self.stroke_tool))
                         else:
-                            imgui.text(f"{x}, {y}")
+                            imgui.text(f"{int(x)}, {int(y)}")
                     else:
-                        imgui.text(f"{x}, {y}")
+                        imgui.text(f"{int(x)}, {int(y)}")
 
                 imgui.end_main_menu_bar()
 
@@ -529,7 +533,7 @@ class OldpaintWindow(pyglet.window.Window):
         ox, oy = self.offset
         ix = (x - (ww / 2 + ox)) / scale + w / 2
         iy = -(y - (wh / 2 + oy)) / scale + h / 2
-        return int(ix), int(iy)
+        return ix, iy
 
     def _to_window_coords(self, x, y):
         "Convert image coordinates to window coordinates"
@@ -633,8 +637,8 @@ class OldpaintWindow(pyglet.window.Window):
                     0, 0, -2/(far-near), 0,
                     0, 0, -(far+near)/(far-near), 1)
 
-        x -= ww // 2
-        y -= wh // 2
+        x -= ww / 2
+        y -= wh / 2
         lx = x / iw / scale
         ly = y / ih / scale
 
