@@ -17,7 +17,7 @@ draw_program = Program(VertexShader("glsl/palette_vert.glsl"),
                        FragmentShader("glsl/palette_frag.glsl"))
 
 
-def render_drawing(drawing):
+def render_drawing(drawing, highlighted_layer=None):
     "This function has the job of rendering a drawing to a framebuffer."
 
     offscreen_buffer = _get_offscreen_buffer(drawing)
@@ -58,7 +58,14 @@ def render_drawing(drawing):
 
         for layer in drawing:
 
-            #if not self.highlighted_layer or self.highlighted_layer == layer:
+            if highlighted_layer and highlighted_layer != layer:
+                continue
+
+            # TODO might be a good optimization to draw the layers above and
+            # above into two separate textures, so we don't have
+            # to iterate over them all every frame. Also cuts down on the
+            # number of textures in GPU memory.
+            # Assumes the non-current textures don't change though.
 
             layer_texture = _get_layer_texture(layer)
             if layer.dirty and layer.lock.acquire(timeout=0.03):

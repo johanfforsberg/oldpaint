@@ -289,7 +289,7 @@ class OldpaintWindow(pyglet.window.Window):
     @try_except_log
     def on_draw(self):
 
-        offscreen_buffer = render_drawing(self.drawing)
+        offscreen_buffer = render_drawing(self.drawing, self.highlighted_layer)
 
         window_size = self.get_size()
         gl.glViewport(0, 0, *window_size)
