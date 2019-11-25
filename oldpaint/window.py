@@ -408,7 +408,7 @@ class OldpaintWindow(pyglet.window.Window):
                     if self.stroke_tool:
                         txt = repr(self.stroke_tool)
                         if txt:
-                            imgui.text(repr(self.stroke_tool))
+                            imgui.text(txt)
                         else:
                             imgui.text(f"{int(x)}, {int(y)}")
                     else:

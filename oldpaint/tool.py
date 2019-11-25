@@ -26,23 +26,27 @@ class Tool(metaclass=abc.ABCMeta):
         self.points = []  # Store the coordinates used when drawing
         self.rect = None         # The smallest rectangle covering the edit
 
-    # Both these methods are optional, but without any of them, the tool won't
-    # actually *do* anything.abc
+    # The following methods are optional, but without any of them, the tool won't
+    # actually *do* anything.
+    # They all run on a thread separate from the main UI thread. Make sure
+    # to not do anything to the drawing without acquiring the proper locks.
 
     def start(self, layer, point, buttons, modifiers):
+        "Run once at the beginning of the stroke."
         self.points.append(point)
     
     def draw(self, layer, point, buttons, modifiers):
-        "Runs once per mouse move event, *on a separate thread*. Be careful!"
+        "Runs once per mouse move event."
         # layer: overlay layer (that can safely be drawn to),
         # point: the latest mouse coord,
         # buttons: mouse buttons currently held
         # modifiers: keyboard modifiers held
 
     def finish(self, layer, point, buttons, modifiers):
-        "Runs once at the end, also on the thread."
+        "Runs once right before the stroke is finished."
 
     def __repr__(self):
+        "If this returns a non-empty string it will be displayed while the tool is used."
         return ""
 
 
@@ -61,7 +65,6 @@ class PencilTool(Tool):
         if rect:
             self.rect = rect.unite(self.rect)
         self.points.append(point)
-
 
     def finish(self, layer, point, buttons, modifiers):
         # Make sure we draw a point even if the mouse was never moved
@@ -158,7 +161,7 @@ class RectangleTool(Tool):
     def __repr__(self):
         x0, y0 = self.points[0]
         x1, y1 = self.points[-1]
-        return f"{abs(x1-x0)}, {abs(y1-y0)}"
+        return f"{abs(x1 - x0) + 1}, {abs(y1 - y0) + 1}"
 
 
 class EllipseTool(Tool):
@@ -214,6 +217,12 @@ class SelectionTool(Tool):
     def finish(self, layer, point, buttons, modifiers):
         self.drawing.make_brush()
         self.drawing.selection = None
+
+    def __repr__(self):
+        rect = self.drawing.selection
+        if rect:
+            return f"{rect.width}, {rect.height}"
+        return ""
 
 
 class PickerTool(Tool):
