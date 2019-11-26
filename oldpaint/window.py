@@ -543,6 +543,9 @@ class OldpaintWindow(pyglet.window.Window):
             self.drawings.select(drawing)
 
     def _close_drawing(self):
+        if self.drawing.unsaved:
+            # TODO Pop up something helpful here!
+            return
         self.drawings.remove(self.drawing)
 
     def _quit(self):
