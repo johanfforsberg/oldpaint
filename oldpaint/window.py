@@ -317,6 +317,9 @@ class OldpaintWindow(pyglet.window.Window):
     def on_resize(self, w, h):
         return pyglet.event.EVENT_HANDLED  # Work around pyglet internals
 
+    def on_close(self):
+        self._quit()
+
     # === Other callbacks ===
 
     def _finish_stroke(self, stroke):
@@ -351,15 +354,15 @@ class OldpaintWindow(pyglet.window.Window):
                     if clicked_quit:
                         self._quit()
 
-                    clicked_load, selected_load = imgui.menu_item("Load", "Ctrl+F", False, True)
+                    clicked_load, selected_load = imgui.menu_item("Load", "o", False, True)
                     if clicked_load:
                         self._load_drawing()
 
-                    clicked_save, selected_save = imgui.menu_item("Save", "Ctrl+S", False, True)
+                    clicked_save, selected_save = imgui.menu_item("Save", "s", False, True)
                     if clicked_save:
                         self._save_drawing()
 
-                    clicked_save_as, selected_save = imgui.menu_item("Save as", "Ctrl+S", False, True)
+                    clicked_save_as, selected_save = imgui.menu_item("Save as", "S", False, True)
                     if clicked_save_as:
                         self._save_drawing(ask_for_path=True)
 
