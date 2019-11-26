@@ -62,10 +62,7 @@ class OldpaintWindow(pyglet.window.Window):
         super().__init__(**kwargs, resizable=True, vsync=False)
 
         self.drawings = Drawings([
-            Drawing((640, 480), layers=[Layer(LongPicture((640, 480))),
-                                        Layer(LongPicture((640, 480))),]),
-            Drawing((800, 600), layers=[Layer(LongPicture((800, 600))),
-                                        Layer(LongPicture((800, 600)))])
+            # Drawing((640, 480), layers=[Layer(LongPicture((640, 480)))]),
         ])
         self.tools = Selectable([
             PencilTool, PointsTool, SprayTool,
@@ -186,6 +183,8 @@ class OldpaintWindow(pyglet.window.Window):
 
     @no_imgui_events
     def on_mouse_press(self, x, y, button, modifiers):
+        if not self.drawing:
+            return
         if self.mouse_event_queue:
             return
         if button in (pyglet.window.mouse.LEFT,
@@ -286,29 +285,32 @@ class OldpaintWindow(pyglet.window.Window):
     @try_except_log
     def on_draw(self):
 
-        offscreen_buffer = render_drawing(self.drawing, self.highlighted_layer)
-
-        window_size = self.get_size()
-        gl.glViewport(0, 0, *window_size)
         gl.glClearBufferfv(gl.GL_COLOR, 0, BG_COLOR)
 
-        vm = make_view_matrix(window_size, self.drawing.size, self.zoom, self.offset)
+        if self.drawing:
 
-        with self.vao, self.copy_program, offscreen_buffer["color"]:
-            gl.glEnable(gl.GL_BLEND)
-            gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
-            gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+            window_size = self.get_size()
 
-            self._draw_mouse_cursor()
+            vm = make_view_matrix(window_size, self.drawing.size, self.zoom, self.offset)
+            offscreen_buffer = render_drawing(self.drawing, self.highlighted_layer)
 
-        # Selection rectangle, if any
-        if self.tools.current.tool == "brush" and self.drawing.selection:
-            self.set_selection(self.drawing.selection)
-            with self.selection_vao, self.line_program:
+            gl.glViewport(0, 0, *window_size)
+
+            with self.vao, self.copy_program, offscreen_buffer["color"]:
+                gl.glEnable(gl.GL_BLEND)
                 gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
-                gl.glUniform3f(1, 1., 1., 0.)
-                gl.glLineWidth(1)
-                gl.glDrawArrays(gl.GL_LINE_LOOP, 0, 4)
+                gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+
+                self._draw_mouse_cursor()
+
+            # Selection rectangle, if any
+            if self.tools.current.tool == "brush" and self.drawing.selection:
+                self.set_selection(self.drawing.selection)
+                with self.selection_vao, self.line_program:
+                    gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
+                    gl.glUniform3f(1, 1., 1., 0.)
+                    gl.glLineWidth(1)
+                    gl.glDrawArrays(gl.GL_LINE_LOOP, 0, 4)
 
         self._render_gui()
 
@@ -405,78 +407,84 @@ class OldpaintWindow(pyglet.window.Window):
 
                 imgui.set_cursor_screen_pos((w // 2, 0))
                 drawing = self.drawing
-                imgui.text(f"{drawing.filename} {drawing.size} {'*' if drawing.unsaved else ''}")
+                if drawing:
+                    imgui.text(f"{drawing.filename} {drawing.size} {'*' if drawing.unsaved else ''}")
 
-                imgui.set_cursor_screen_pos((w - 200, 0))
-                imgui.text(f"Zoom: x{2**self.zoom}")
+                    imgui.set_cursor_screen_pos((w - 200, 0))
+                    imgui.text(f"Zoom: x{2**self.zoom}")
 
-                if self.mouse_position:
-                    imgui.set_cursor_screen_pos((w - 100, 0))
-                    x, y = self._to_image_coords(*self.mouse_position)
-                    if self.stroke_tool:
-                        txt = repr(self.stroke_tool)
-                        if txt:
-                            imgui.text(txt)
+                    if self.mouse_position:
+                        imgui.set_cursor_screen_pos((w - 100, 0))
+                        x, y = self._to_image_coords(*self.mouse_position)
+                        if self.stroke_tool:
+                            txt = repr(self.stroke_tool)
+                            if txt:
+                                imgui.text(txt)
+                            else:
+                                imgui.text(f"{int(x)}, {int(y)}")
                         else:
                             imgui.text(f"{int(x)}, {int(y)}")
-                    else:
-                        imgui.text(f"{int(x)}, {int(y)}")
 
                 imgui.end_main_menu_bar()
 
             # Tools & brushes
 
-            imgui.set_next_window_size(135, h - 20)
-            imgui.set_next_window_position(w - 135, 20)
+            if self.drawing:
 
-            imgui.begin("Tools", False, flags=(imgui.WINDOW_NO_TITLE_BAR
-                                              | imgui.WINDOW_NO_RESIZE
-                                              | imgui.WINDOW_NO_MOVE))
+                imgui.set_next_window_size(135, h - 20)
+                imgui.set_next_window_position(w - 135, 20)
 
-            ui.render_tools(self.tools, self.icons)
-            imgui.core.separator()
+                imgui.begin("Tools", False, flags=(imgui.WINDOW_NO_TITLE_BAR
+                                                  | imgui.WINDOW_NO_RESIZE
+                                                  | imgui.WINDOW_NO_MOVE))
 
-            brush = ui.render_brushes(self.brushes,
-                                      partial(self.get_brush_preview_texture,
-                                              palette=self.drawing.palette),
-                                      compact=True)
-            if brush:
-                self.drawing_brush = None
-            imgui.separator()
+                ui.render_tools(self.tools, self.icons)
+                imgui.core.separator()
 
-            if imgui.button("Delete"):
-                self.drawing.brushes.remove()
+                brush = ui.render_brushes(self.brushes,
+                                          partial(self.get_brush_preview_texture,
+                                                  palette=self.drawing.palette),
+                                          compact=True)
+                if brush:
+                    self.drawing_brush = None
+                imgui.separator()
 
-            brush = ui.render_brushes(self.drawing.brushes,
-                                      partial(self.get_brush_preview_texture,
-                                              palette=self.drawing.palette))
-            if brush:
-                self.drawing_brush = brush
-            imgui.core.separator()
+                if imgui.button("Delete"):
+                    self.drawing.brushes.remove()
 
-            imgui.begin_child("Palette", height=300)
-            ui.render_palette(self.drawing)
-            imgui.end_child()
+                brush = ui.render_brushes(self.drawing.brushes,
+                                          partial(self.get_brush_preview_texture,
+                                                  palette=self.drawing.palette))
+                if brush:
+                    self.drawing_brush = brush
+                imgui.core.separator()
 
-            # if imgui.collapsing_header("Layers", None)[0]:
-            #     self.highlighted_layer = ui.render_layers(self.drawing)
-
-            if imgui.collapsing_header("Edits", None, flags=imgui.TREE_NODE_DEFAULT_OPEN)[0]:
-                imgui.begin_child("Edits list", height=0)
-                self.highlighted_layer = ui.render_edits(self.drawing)
+                imgui.begin_child("Palette", height=300)
+                ui.render_palette(self.drawing)
                 imgui.end_child()
 
-            imgui.end()
+                # if imgui.collapsing_header("Layers", None)[0]:
+                #     self.highlighted_layer = ui.render_layers(self.drawing)
 
-            nh = 150
-            imgui.set_next_window_size(w - 135, nh)
-            imgui.set_next_window_position(0, h - nh)
+                if imgui.collapsing_header("Edits", None, flags=imgui.TREE_NODE_DEFAULT_OPEN)[0]:
+                    imgui.begin_child("Edits list", height=0)
+                    self.highlighted_layer = ui.render_edits(self.drawing)
+                    imgui.end_child()
 
-            imgui.begin("Layers", False, flags=(imgui.WINDOW_NO_TITLE_BAR
-                                                | imgui.WINDOW_NO_RESIZE
-                                                | imgui.WINDOW_NO_MOVE))
-            self.highlighted_layer = ui.render_layers(self.drawing)
-            imgui.end()
+                imgui.end()
+
+                nh = 150
+                imgui.set_next_window_size(w - 135, nh)
+                imgui.set_next_window_position(0, h - nh)
+
+                imgui.begin("Layers", False, flags=(imgui.WINDOW_NO_TITLE_BAR
+                                                    | imgui.WINDOW_NO_RESIZE
+                                                    | imgui.WINDOW_NO_MOVE))
+                self.highlighted_layer = ui.render_layers(self.drawing)
+                imgui.end()
+
+                # Exit with unsaved
+                self._unsaved = ui.render_unsaved_exit(self._unsaved)
 
             # Create new drawing
             if self._new_drawing:
@@ -500,16 +508,13 @@ class OldpaintWindow(pyglet.window.Window):
                     imgui.close_current_popup()
                 imgui.end_popup()
 
-            # Exit with unsaved
-            self._unsaved = ui.render_unsaved_exit(self._unsaved)
-
         imgui.render()
         imgui.end_frame()
 
         self.imgui_renderer.render(imgui.get_draw_data())
 
     def _create_drawing(self):
-        size = self.drawing.size
+        size = self.drawing.size if self.drawing else (640, 480)
         self._new_drawing = dict(size=size)
 
     def _save_drawing(self, ask_for_path=False):
@@ -583,11 +588,11 @@ class OldpaintWindow(pyglet.window.Window):
 
     @lru_cache(1)
     def _over_image(self, x, y):
-        ix, iy = self._to_image_coords(x, y)
-        w, h = self.drawing.size
-        return 0 <= ix < w and 0 <= iy < h
+        if self.drawing:
+            ix, iy = self._to_image_coords(x, y)
+            w, h = self.drawing.size
+            return 0 <= ix < w and 0 <= iy < h
 
-    #@lru_cache(128)
     def set_selection(self, rect):
         x0, y0 = rect.topleft
         x1, y1 = rect.bottomright
