@@ -282,8 +282,6 @@ class OldpaintWindow(pyglet.window.Window):
             self._save_drawing()
         elif symbol == key.O:
             self._load_drawing()
-        else:
-            super().on_key_press(symbol, modifiers)
 
     @try_except_log
     def on_draw(self):
