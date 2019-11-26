@@ -142,8 +142,9 @@ class Drawing:
 
     def clear_layer(self, layer=None, color=0):
         layer = layer or self.current
-        self._add_edit(self._build_action(layer, layer.rect))
-        layer.clear(value=color)
+        edit = LayerClear.create(self, layer)
+        edit.perform(self)
+        self._add_edit(edit)
 
     @try_except_log
     def change_layer(self, new, rect, layer=None):
@@ -228,6 +229,32 @@ class LayerEdit(NamedTuple):
 
     def __repr__(self):
         return f"{__class__}(index={self.index}, data={len(self.data)}B, rect={self.rect})"
+
+
+class LayerClear(NamedTuple):
+
+    index: int
+    data: bytes
+
+    @classmethod
+    def create(cls, drawing, orig_layer):
+        data = orig_layer.pic.data
+        index = drawing.layers.index(orig_layer)
+        return cls(index=index, data=zlib.compress(data))
+
+    def perform(self, drawing):
+        layer = drawing.layers[self.index]
+        layer.pic.clear(layer.rect.box(), 0)
+        layer.dirty = layer.rect
+
+    def undo(self, drawing):
+        layer = drawing.layers[self.index]
+        diff_data = zlib.decompress(self.data)
+        layer.pic.paste(LongPicture(layer.size, diff_data), 0, 0, False)
+        layer.dirty = layer.rect
+
+    def __repr__(self):
+        return f"{__class__}(index={self.index}, data={len(self.data)}B)"
 
 
 class PaletteEdit(NamedTuple):
