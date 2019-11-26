@@ -5,6 +5,7 @@ Helper functions for rendering the user interface.
 import logging
 
 import imgui
+import pyglet
 from pyglet.window import key
 
 logger = logging.getLogger(__name__)
@@ -303,3 +304,29 @@ def render_edits(drawing):
         imgui.text(str(type(edit).__name__))
         imgui.next_column()
     #imgui.end()
+
+
+def render_unsaved_exit(unsaved):
+    if unsaved:
+        imgui.open_popup("Really exit?")
+
+    imgui.set_next_window_size(500, 200)
+    if imgui.begin_popup_modal("Really exit?")[0]:
+        imgui.text("You have unsaved work in these drawing(s):")
+
+        imgui.begin_child("unsaved", border=True,
+                          height=imgui.get_content_region_available()[1] - 26)
+        for drawing in unsaved:
+            imgui.text(drawing.filename)
+        imgui.end_child()
+
+        if imgui.button("Yes, exit anyway"):
+            imgui.close_current_popup()
+            pyglet.app.exit()
+        imgui.same_line()
+        if imgui.button("No, cancel"):
+            unsaved = None
+            imgui.close_current_popup()
+        imgui.end_popup()
+
+    return unsaved

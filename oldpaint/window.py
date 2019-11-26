@@ -485,7 +485,7 @@ class OldpaintWindow(pyglet.window.Window):
             if imgui.begin_popup_modal("New drawing")[0]:
                 imgui.text("Creating a new drawing.")
                 imgui.separator()
-                changed, new_size = imgui.drag_int2("new_drawing_size",
+                changed, new_size = imgui.drag_int2("Size",
                                                     *self._new_drawing["size"])
                 if changed:
                     self._new_drawing["size"] = new_size
@@ -501,26 +501,7 @@ class OldpaintWindow(pyglet.window.Window):
                 imgui.end_popup()
 
             # Exit with unsaved
-            if self._unsaved:
-                imgui.open_popup("Unsaved drawing(s)")
-
-            imgui.set_next_window_size(200, 200)
-            if imgui.begin_popup_modal("Unsaved drawing(s)")[0]:
-                imgui.text("You have unsaved work in the following drawings:")
-
-                imgui.begin_child("unsaved", height=imgui.get_content_region_available()[1] - 25)
-                for drawing in self._unsaved:
-                    imgui.text(drawing.filename)
-                imgui.end_child()
-
-                if imgui.button("Exit anyway"):
-                    imgui.close_current_popup()
-                    pyglet.app.exit()
-                imgui.same_line()
-                if imgui.button("Cancel"):
-                    self._unsaved = None
-                    imgui.close_current_popup()
-                imgui.end_popup()
+            self._unsaved = ui.render_unsaved_exit(self._unsaved)
 
         imgui.render()
         imgui.end_frame()
