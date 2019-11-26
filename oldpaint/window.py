@@ -700,7 +700,6 @@ class OldpaintWindow(pyglet.window.Window):
 @lru_cache(32)
 def get_brush_preview_texture(brush, palette):
     texture = render_brush_preview_texture(brush, palette)
-    print("create brush texture", texture)
     return texture
 
 

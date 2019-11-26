@@ -118,7 +118,6 @@ class Layer:
         with self.lock:
             self.pic.apply_diff(diff, *rect, invert=invert)
             self.dirty = self.rect.intersect(rect.unite(self.dirty))
-            print(self.dirty)
         return self.rect.intersect(rect)
 
     def __hash__(self):

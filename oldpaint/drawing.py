@@ -154,7 +154,6 @@ class Drawing:
         layer.blit_part(new.pic, rect, rect.topleft)
 
     def change_color(self, i, rgba0, rgba1):
-        print("change_color", i, rgba0, rgba1)
         r0, g0, b0, a0 = rgba0
         r1, g1, b1, a1 = rgba1
         delta = r1-r0, g1-g0, b1-b0, a1-a0
@@ -246,7 +245,6 @@ class PaletteEdit(NamedTuple):
     def undo(self, drawing):
         for i, (dr, dg, db, da) in enumerate(self.data, start=self.index):
             r0, g0, b0, a0 = drawing.palette.colors[i]
-            print(r0, g0, b0, a0)
             drawing.palette[i] = r0 - dr, g0 - dg, b0 - db, a0 - da
 
 

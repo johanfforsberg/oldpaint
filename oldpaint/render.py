@@ -1,11 +1,12 @@
 from functools import lru_cache
 from itertools import chain
+import logging
 
 from pyglet import gl
 
 from fogl.framebuffer import FrameBuffer
 from fogl.shader import Program, VertexShader, FragmentShader
-from fogl.texture import Texture, ByteTexture, ImageTexture
+from fogl.texture import Texture, ByteTexture
 from fogl.vao import VertexArrayObject
 
 
@@ -52,9 +53,8 @@ def render_drawing(drawing, highlighted_layer=None):
 
                 overlay.dirty = None
                 overlay.lock.release()  # Allow layer to change again.
-            except gl.lib.GLException:
-                print(rect, data)
-                pass
+            except gl.lib.GLException as e:
+                logging.errror(str(e))
 
         for layer in drawing:
 
