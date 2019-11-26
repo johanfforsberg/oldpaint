@@ -24,6 +24,9 @@ class Drawing:
     This is also where most functionality that affects the image is collected,
     e.g. drawing, undo/redo, load/save...
 
+    IMPORTANT! It's a bad idea to directly modify the layers! Always
+    use the corresponding methods in this class instead. Otherwise you will
+    mess up the undo history beyond repair.
     """
 
     def __init__(self, size, layers=None, palette=None, path=None):
@@ -146,6 +149,18 @@ class Drawing:
         edit.perform(self)
         self._add_edit(edit)
 
+    def flip_layer_horizontal(self, layer=None):
+        layer = layer or self.current
+        edit = LayerFlip(self.layers.index(layer), True)
+        edit.perform(self)
+        self._add_edit(edit)
+
+    def flip_layer_vertical(self, layer=None):
+        layer = layer or self.current
+        edit = LayerFlip(self.layers.index(layer), False)
+        edit.perform(self)
+        self._add_edit(edit)
+
     @try_except_log
     def change_layer(self, new, rect, layer=None):
         "Update a part of the layer, keeping track of the change as an 'undo'"
@@ -255,6 +270,26 @@ class LayerClear(NamedTuple):
 
     def __repr__(self):
         return f"{__class__}(index={self.index}, data={len(self.data)}B)"
+
+
+class LayerFlip(NamedTuple):
+
+    "Mirror layer. This is a non-destructive operation, so we don't have to store any of the data."
+
+    index: int
+    horizontal: bool
+
+    def perform(self, drawing):
+        layer = drawing.layers[self.index]
+        if self.horizontal:
+            layer.flip_horizontal()
+        else:
+            layer.flip_vertical()
+
+    undo = perform  # Mirroring is it's own inverse!
+
+    def __repr__(self):
+        return f"{__class__}(index={self.index}, horizontal={self.horizontal})"
 
 
 class PaletteEdit(NamedTuple):

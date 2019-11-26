@@ -394,11 +394,11 @@ class OldpaintWindow(pyglet.window.Window):
 
                 if imgui.begin_menu("Layer", True):
                     if imgui.menu_item("Flip horizontally", "H", False, True)[0]:
-                        self.drawing.current.flip_horizontal()
+                        self.drawing.flip_layer_horizontal()
                     if imgui.menu_item("Flip vertically", "V", False, True)[0]:
-                        self.drawing.current.flip_vertical()
+                        self.drawing.flip__layer_vertical()
                     if imgui.menu_item("Clear", "Delete", False, True)[0]:
-                        self.drawing.current.clear()
+                        self.drawing.clear()
                     imgui.end_menu()
 
                 # Show some info in the right part of the menu bar
