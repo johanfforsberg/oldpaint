@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import NamedTuple
 import zlib
 
@@ -25,7 +26,7 @@ class Drawing:
 
     """
 
-    def __init__(self, size, layers=None, palette=None):
+    def __init__(self, size, layers=None, palette=None, path=None):
         self.size = size
         if layers:
             self.layers = Selectable(layers)
@@ -34,17 +35,19 @@ class Drawing:
         self.overlay = Layer(LongPicture(size=self.size))
         self.palette = palette if palette else Palette(transparency=0)
         self.brushes = Selectable()
-        self.unsaved = False
 
         # History of changes
         self._edits = []
         self._edits_index = -1
+        self._latest_save_index = 0
 
         self.selection = None
 
         # Keep track of what we're looking at
         self.offset = (0, 0)
         self.zoom = 0
+
+        self.path = path
 
     @property
     def current(self):
@@ -56,17 +59,26 @@ class Drawing:
         self.layers.set_item(layer)
 
     @property
+    def filename(self):
+        return os.path.basename(self.path) if self.path else "[Unnamed]"
+
+    @property
     def edits(self):
         if self._edits_index == -1:
             return self._edits
         return self._edits[:self._edits_index + 1]
+
+    @property
+    def unsaved(self):
+        "Return whether there have been edits since last time the drawing was saved."
+        return self._latest_save_index < len(self._edits)
 
     @classmethod
     def from_png(cls, path):
         pic, colors = load_png(path)
         layer = Layer(pic)
         palette = Palette(colors, transparency=0, size=len(colors))
-        return cls(size=layer.size, layers=[layer], palette=palette)
+        return cls(size=layer.size, layers=[layer], palette=palette, path=path)
 
     @classmethod
     def from_ora(cls, path):
@@ -75,10 +87,17 @@ class Drawing:
         size = pic.size
         palette = Palette(colors, transparency=0)
         layers = [Layer(p) for p in layer_pics]
-        return cls(size=size, layers=layers, palette=palette)
+        return cls(size=size, layers=layers, palette=palette, path=path)
 
-    def save_ora(self, path):
-        save_ora(self.size, self.layers, self.palette, path)
+    def save_ora(self, path=None):
+        if path is None and self.path:
+            save_ora(self.size, self.layers, self.palette, self.path)
+        elif path:
+            self.path = path
+            save_ora(self.size, self.layers, self.palette, path)
+        else:
+            raise RuntimeError("Can't save without path")
+        self._latest_save_index = len(self._edits)
 
     def add_layer(self, index=None, layer=None):
         layer = layer or Layer(LongPicture(self.size))

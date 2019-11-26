@@ -201,7 +201,7 @@ def render_save_file_dialog(loader):
 def render_layers(drawing):
 
     imgui.columns(2, "Layers")
-    # imgui.set_column_offset(1, 100)
+    imgui.set_column_offset(1, 100)
     if imgui.button("Add"):
         drawing.add_layer()
     if imgui.button("Remove"):

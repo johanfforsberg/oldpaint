@@ -129,7 +129,8 @@ class OldpaintWindow(pyglet.window.Window):
              ((0, 0, 0),),
              ((0, 0, 0),)])
 
-        self.new_drawing = None  # Set when configuring a new drawing
+        self._new_drawing = None  # Set when configuring a new drawing
+        self._unsaved = None
 
         # tablets = pyglet.input.get_tablets()
         # if tablets:
@@ -278,13 +279,7 @@ class OldpaintWindow(pyglet.window.Window):
 
         # TODO the file dialogs are blocking.
         elif symbol == key.S:
-            path = filedialog.asksaveasfilename(title="Select file",
-                                                filetypes=(("ORA files", "*.ora"),
-                                                           #("PNG files", "*.png"),
-                                                           ("all files", "*.*")))
-            if path:
-                if path.endswith(".ora"):
-                    self.drawing.save_ora(path)
+            self._save_drawing()
         elif symbol == key.O:
             self._load_drawing()
         else:
@@ -356,26 +351,33 @@ class OldpaintWindow(pyglet.window.Window):
                         "Quit", 'Cmd+Q', False, True
                     )
                     if clicked_quit:
-                        #exit(1)
-                        pyglet.app.exit()
+                        self._quit()
 
                     clicked_load, selected_load = imgui.menu_item("Load", "Ctrl+F", False, True)
                     if clicked_load:
-                        self.dispatch_event("on_load_file")
+                        self._load_drawing()
 
                     clicked_save, selected_save = imgui.menu_item("Save", "Ctrl+S", False, True)
                     if clicked_save:
-                        self.dispatch_event("on_save_file")
+                        self._save_drawing()
+
+                    clicked_save_as, selected_save = imgui.menu_item("Save as", "Ctrl+S", False, True)
+                    if clicked_save_as:
+                        self._save_drawing(ask_for_path=True)
 
                     imgui.end_menu()
 
                 if imgui.begin_menu("Drawing", True):
                     if imgui.menu_item("New", "N", False, True)[0]:
-                        self._new_drawing()
-                    if imgui.menu_item("Load", "O", False, True)[0]:
-                        self._load_drawing()
+                        self._create_drawing()
                     if imgui.menu_item("Close", "K", False, True)[0]:
                         self._close_drawing()
+
+                    imgui.separator()
+
+                    for drawing in self.drawings.items:
+                        if imgui.menu_item(f"{drawing.filename} {drawing.size}", None, False, True)[0]:
+                            self.drawings.select(drawing)
                     imgui.end_menu()
 
                 if imgui.begin_menu("Brush", True):
@@ -398,7 +400,12 @@ class OldpaintWindow(pyglet.window.Window):
                         self.drawing.current.clear()
                     imgui.end_menu()
 
-                # Show some info in the top right corner
+                # Show some info in the right part of the menu bar
+
+                imgui.set_cursor_screen_pos((w // 2, 0))
+                drawing = self.drawing
+                imgui.text(f"{drawing.filename} {drawing.size} {'*' if drawing.unsaved else ''}")
+
                 imgui.set_cursor_screen_pos((w - 200, 0))
                 imgui.text(f"Zoom: x{2**self.zoom}")
 
@@ -470,22 +477,47 @@ class OldpaintWindow(pyglet.window.Window):
             self.highlighted_layer = ui.render_layers(self.drawing)
             imgui.end()
 
-            # imgui.show_metrics_window()
-
-            if self.new_drawing:
+            # Create new drawing
+            if self._new_drawing:
                 imgui.open_popup("New drawing")
 
             if imgui.begin_popup_modal("New drawing")[0]:
                 imgui.text("Creating a new drawing.")
                 imgui.separator()
                 changed, new_size = imgui.drag_int2("new_drawing_size",
-                                                *self.new_drawing["size"])
+                                                    *self._new_drawing["size"])
                 if changed:
-                    self.new_drawing["size"] = new_size
-                if imgui.button("Done"):
-                    drawing = Drawing(size=self.new_drawing["size"])
+                    self._new_drawing["size"] = new_size
+                if imgui.button("OK"):
+                    drawing = Drawing(size=self._new_drawing["size"])
                     self.drawings.add(drawing)
-                    self.new_drawing = None
+                    self._new_drawing = None
+                    imgui.close_current_popup()
+                imgui.same_line()
+                if imgui.button("Cancel"):
+                    self._new_drawing = None
+                    imgui.close_current_popup()
+                imgui.end_popup()
+
+            # Exit with unsaved
+            if self._unsaved:
+                imgui.open_popup("Unsaved drawing(s)")
+
+            imgui.set_next_window_size(200, 200)
+            if imgui.begin_popup_modal("Unsaved drawing(s)")[0]:
+                imgui.text("You have unsaved work in the following drawings:")
+
+                imgui.begin_child("unsaved", height=imgui.get_content_region_available()[1] - 25)
+                for drawing in self._unsaved:
+                    imgui.text(drawing.filename)
+                imgui.end_child()
+
+                if imgui.button("Exit anyway"):
+                    imgui.close_current_popup()
+                    pyglet.app.exit()
+                imgui.same_line()
+                if imgui.button("Cancel"):
+                    self._unsaved = None
                     imgui.close_current_popup()
                 imgui.end_popup()
 
@@ -494,9 +526,21 @@ class OldpaintWindow(pyglet.window.Window):
 
         self.imgui_renderer.render(imgui.get_draw_data())
 
-    def _new_drawing(self):
+    def _create_drawing(self):
         size = self.drawing.size
-        self.new_drawing = dict(size=size)
+        self._new_drawing = dict(size=size)
+
+    def _save_drawing(self, ask_for_path=False):
+        if not ask_for_path and self.drawing.path:
+            self.drawing.save_ora()
+        else:
+            path = filedialog.asksaveasfilename(title="Select file",
+                                                filetypes=(("ORA files", "*.ora"),
+                                                           #("PNG files", "*.png"),
+                                                           ("all files", "*.*")))
+            if path:
+                if path.endswith(".ora"):
+                    self.drawing.save_ora(path)
 
     def _load_drawing(self):
         path = filedialog.askopenfilename(title="Select file",
@@ -513,6 +557,16 @@ class OldpaintWindow(pyglet.window.Window):
 
     def _close_drawing(self):
         self.drawings.remove(self.drawing)
+
+    def _quit(self):
+        unsaved = []
+        for drawing in self.drawings:
+            if drawing.unsaved:
+                unsaved.append(drawing)
+        if unsaved:
+            self._unsaved = unsaved
+        else:
+            pyglet.app.exit()
 
     @lru_cache(1)
     def _get_offscreen_buffer(self, drawing):
