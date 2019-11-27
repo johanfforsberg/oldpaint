@@ -145,7 +145,7 @@ class Drawing:
 
     def clear_layer(self, layer=None, color=0):
         layer = layer or self.current
-        edit = LayerClear.create(self, layer)
+        edit = LayerClear.create(self, layer, color=color)
         edit.perform(self)
         self._add_edit(edit)
 
@@ -176,6 +176,19 @@ class Drawing:
         edit = PaletteEdit(index=i, data=[delta])
         self._add_edit(edit)
 
+    def make_brush(self, rect=None, layer=None, clear=False):
+        "Create a brush from part of the given layer."
+        rect = rect or self.selection
+        layer = layer or self.current
+        subimage = layer.get_subimage(rect)
+        if clear:
+            edit = LayerClear.create(self, layer, rect,
+                                     color=self.palette.background)
+            edit.perform(self)
+            self._add_edit(edit)
+        brush = PicBrush(subimage)
+        self.brushes.add(brush)
+
     def _add_edit(self, edit):
         "Insert an edit into the history, keeping track of things"
         if self._edits_index < -1:
@@ -200,13 +213,6 @@ class Drawing:
             edit = self._edits[self._edits_index]
             edit.perform(self)
         logger.info("No more edits to redo!")
-
-    def make_brush(self, rect=None, layer=None):
-        rect = rect or self.selection
-        layer = layer or self.current
-        subimage = layer.get_subimage(rect)
-        brush = PicBrush(subimage)
-        self.brushes.add(brush)
 
     def __repr__(self):
         return f"Drawing(size={self.size}, layers={self.layers}, current={self.get_index()})"
@@ -250,23 +256,27 @@ class LayerClear(NamedTuple):
 
     index: int
     data: bytes
+    rect: Rectangle
+    color: int
 
     @classmethod
-    def create(cls, drawing, orig_layer):
-        data = orig_layer.pic.data
+    def create(cls, drawing, orig_layer, rect=None, color=0):
+        if rect:
+            data = orig_layer.get_subimage(rect).data
+        else:
+            data = orig_layer.pic.data
+            rect = orig_layer.rect
         index = drawing.layers.index(orig_layer)
-        return cls(index=index, data=zlib.compress(data))
+        return cls(index=index, data=zlib.compress(data), rect=rect, color=color)
 
     def perform(self, drawing):
         layer = drawing.layers[self.index]
-        layer.pic.clear(layer.rect.box(), 0)
-        layer.dirty = layer.rect
+        layer.clear(self.rect, value=self.color)
 
     def undo(self, drawing):
         layer = drawing.layers[self.index]
         diff_data = zlib.decompress(self.data)
-        layer.pic.paste(LongPicture(layer.size, diff_data), 0, 0, False)
-        layer.dirty = layer.rect
+        layer.blit(LongPicture(self.rect.size, diff_data), self.rect, alpha=False)
 
     def __repr__(self):
         return f"{__class__}(index={self.index}, data={len(self.data)}B)"

@@ -215,7 +215,7 @@ class SelectionTool(Tool):
         self.drawing.selection = rect
 
     def finish(self, layer, point, buttons, modifiers):
-        self.drawing.make_brush()
+        self.drawing.make_brush(clear=buttons & window.mouse.RIGHT)
         self.drawing.selection = None
 
     def __repr__(self):

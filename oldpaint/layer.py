@@ -84,12 +84,12 @@ class Layer:
     def rect(self):
         return self.pic.rect
 
-    def clear(self, rect:Rectangle=None, value=0, set_dirty=True):
+    def clear(self, rect: Rectangle=None, value=0, set_dirty=True):
         rect = rect or self.rect
         self.pic.clear(rect.box(), value)
-        rect = self.rect.intersect(rect.unite(self.dirty))
-        if set_dirty:
-            self.dirty = rect
+        rect = self.rect.intersect(rect)
+        if set_dirty and rect:
+            self.dirty = rect.unite(self.dirty)
         return rect
 
     def clone(self):

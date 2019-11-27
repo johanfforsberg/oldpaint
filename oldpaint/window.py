@@ -486,9 +486,14 @@ class OldpaintWindow(pyglet.window.Window):
                 # Exit with unsaved
                 self._unsaved = ui.render_unsaved_exit(self._unsaved)
 
+            if not self.drawing:
+                self._new_drawing = dict(size=(640, 480))
+
             # Create new drawing
             if self._new_drawing:
                 imgui.open_popup("New drawing")
+                imgui.set_next_window_size(200, 120)
+                imgui.set_next_window_position(w // 2 - 100, h // 2 - 60)
 
             if imgui.begin_popup_modal("New drawing")[0]:
                 imgui.text("Creating a new drawing.")
