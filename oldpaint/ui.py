@@ -65,32 +65,12 @@ def render_color_editor(rgba):
 
 
 def render_palette(drawing):
-    io = imgui.get_io()
-    # w, h = io.display_size
-    # imgui.set_next_window_size(w-135, 100)
-    # imgui.set_next_window_position(0, h-100)
 
-    # imgui.begin("Palette", True, flags=(imgui.WINDOW_NO_TITLE_BAR
-    #                                     | imgui.WINDOW_NO_RESIZE
-    #                                     | imgui.WINDOW_NO_MOVE))
     palette = drawing.palette
     fg = palette.foreground
     bg = palette.background
 
-    # fg_color = palette.foreground_color
-    # changed, rgb = imgui.drag_int3("RGB", *fg_color[:3], change_speed=0.1,
-    #                                min_value=0, max_value=255)
-    # if changed:
-    #     if "palette_fg_change_start" not in temp_vars and imgui.is_mouse_dragging():
-    #         temp_vars["palette_fg_change_start"] = fg_color
-    #     # TODO there should be an "overlay" here too, so that we don't need to
-    #     # change the actual palette data in real time.
-    #     palette[fg] = (*rgb, 255)
-
-    # if "palette_fg_change_start" in temp_vars and not imgui.is_mouse_dragging():
-    #     orig_fg_color = temp_vars.pop("palette_fg_change_start")
-    #     drawing.change_color(fg, orig_fg_color, (*rgb, 255))
-
+    # Edit foreground color
     if imgui.color_button("Foreground", *palette.get_as_float(fg)):
         imgui.open_popup("Edit foreground color")
         temp_vars["orig_fg_color"] = palette.foreground_color
@@ -105,16 +85,19 @@ def render_palette(drawing):
         imgui.end_popup()
 
     imgui.same_line()
-    imgui.color_button("Background", *palette.get_as_float(bg))
-    #     imgui.open_popup("Edit background color")
-    #     temp_vars["orig_bg_color"] = palette.background_color
-    # if imgui.begin_popup("Edit background color"):
-    #     done, new_color = render_color_editor(palette.background_color)
-    #     if done:
-    #         drawing.change_color(bg, temp_vars.pop("orig_bg_color"), new_color)
-    #     else:
-    #         palette[bg] = new_color
-    #     imgui.end_popup()
+    # Edit background color
+    if imgui.color_button("Background", *palette.get_as_float(bg)):
+        imgui.open_popup("Edit background color")
+        temp_vars["orig_bg_color"] = palette.background_color
+    if imgui.begin_popup("Edit background color"):
+        done, cancelled, new_color = render_color_editor(palette.background_color)
+        if done:
+            drawing.change_color(bg, temp_vars.pop("orig_bg_color"), new_color)
+        elif cancelled:
+            palette[bg] = temp_vars.pop("orig_bg_color")
+        else:
+            palette[bg] = new_color
+        imgui.end_popup()
 
     imgui.same_line()
     palette_sizes = [8, 16, 32, 64, 128, 256]
@@ -137,6 +120,7 @@ def render_palette(drawing):
         imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND,
                                *SELECTABLE_FRAME_COLORS[selection])
         if imgui.color_button(f"color {i}", *color[:3], 1, 0, 20, 20):
+            io = imgui.get_io()
             if io.key_shift:
                 if "spread_start" in temp_vars:
                     temp_vars["spread_end"] = i

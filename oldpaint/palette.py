@@ -82,7 +82,7 @@ class Palette:
 
     @property
     def background_color(self):
-        return self.colors[self.foreground]
+        return self.colors[self.background]
 
     @background_color.setter
     def background_color(self, color):
