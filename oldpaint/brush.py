@@ -23,9 +23,14 @@ class PicBrush(Brush):
         self.size = w, h = pic.size
         self.center = w // 2, h // 2
 
-    @lru_cache(1)
+    @lru_cache(2)
     def get_pic(self, color=None):
-        return self.original
+        if color is None:
+            return self.original
+        else:
+            colorized = LongPicture(self.size)
+            colorized.paste(self.original, 0, 0, mask=True, colorize=True, color=color)
+            return colorized
 
 
 class RectangleBrush(Brush):

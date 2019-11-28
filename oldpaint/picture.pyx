@@ -19,14 +19,14 @@ cdef short_array_template = array.array('h', [])   # Used for creating empty arr
 cdef long_array_template = array.array('I', [])
 
 
-cpdef unsigned int _rgba_to_32bit((int, int, int, int) color):
+cpdef unsigned int _rgba_to_32bit((int, int, int, int) color) nogil:
     cdef int r, g, b, a
     r, g, b, a = color
     cdef unsigned int result = r + g*2**8 + b*2**16 + a*2**24
     return result
 
 
-cpdef unsigned int _rgb_to_32bit((int, int, int) color):
+cpdef unsigned int _rgb_to_32bit((int, int, int) color) nogil:
     cdef int r, g, b
     r, g, b = color
     return _rgba_to_32bit((r, g, b, 255))
@@ -114,7 +114,22 @@ cdef class LongPicture:
             start += w
         return cropped
 
-    cpdef void paste(self, LongPicture pic, int x, int y, bint mask) nogil:
+    cpdef void fix_alpha(self, list colors):
+        """
+        Ensure that the given transparent colors really have 0 alpha.
+        This is important for brushes.
+        """
+        cdef int x, y, w, h
+        cdef unsigned char c
+        w, h = self.size
+        for x in range(w):
+            for y in range(h):
+                c = self.get_pixel(x, y)
+                if self.get_pixel(x, y) % 255 in colors:
+                    self.set_pixel(x, y, c % 255)
+
+    cpdef void paste(self, LongPicture pic, int x, int y, bint mask,
+                     bint colorize=False, unsigned char color=0) nogil:
         "Modify the current picture by overlaying the given picture at the x, y position"
         cdef int w, h, y1, x1, x2, y2, offset1, offset2
         w, h = pic.size
@@ -136,7 +151,10 @@ cdef class LongPicture:
                 if (x2 >= self.width):
                     break
                 if not mask or pic.data[offset1+x1] >> 24:  # Ignore 100% transparent pixels
-                    self.set_pixel(x2, y2, pic.data[offset1+x1])
+                    if colorize:
+                        self.set_pixel(x2, y2, _rgba_to_32bit((color, 0, 0, 255)))
+                    else:
+                        self.set_pixel(x2, y2, pic.data[offset1+x1])
             offset1 += w
             offset2 += self.width
 
@@ -306,6 +324,8 @@ cpdef draw_line(LongPicture pic, (int, int) p0, (int, int) p1, LongPicture brush
     # cdef int col = r + 2**24*a  # turning the color into a 32 bit integer
     cdef int xx, yy
 
+    color = _rgb_to_32bit((color, 0, 0))
+
     with nogil:
         while True:
             if i % step == 0:
@@ -356,7 +376,7 @@ cpdef draw_rectangle(pic, (int, int) pos, (int, int) size, brush=None, unsigned 
     if fill:
         for i in range(y, min(y+h, rows)):
             # TODO fixme
-            draw_line(pic, (x0, i), (x0+w, i), brush, color, step)
+            draw_line(pic, (x0, i), (x0+w, i), None, color, step)
     else:
         draw_line(pic, pos, (x0+w0, y0), brush, color, step)
         draw_line(pic, (x0+w0, y0), (x0+w0, y0+h0), brush, color, step)
@@ -390,7 +410,7 @@ cpdef draw_rectangle(pic, (int, int) pos, (int, int) size, brush=None, unsigned 
 
 
 cpdef draw_ellipse(pic, (int, int) center, (int, int) size, brush=None,
-              unsigned int color=0, bint fill=False):
+                   unsigned int color=0, bint fill=False):
 
     # TODO this does not handle small radii (<5) well
 
@@ -417,7 +437,7 @@ cpdef draw_ellipse(pic, (int, int) center, (int, int) size, brush=None,
     w, h = pic.size
 
     if not (0 <= x0 < w) or not (0 <= y0 < h):
-        # TODO This should be allowed, but right now will crash
+        # TODO This should be allowed, but right now would crash
         return None
 
     # cdef int cr, cg, cb, ca
@@ -462,20 +482,19 @@ cpdef draw_ellipse(pic, (int, int) center, (int, int) size, brush=None,
             xx = x0 + x
             yy = y0 + y
             if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                pic[xx, yy] = color
+                pic.paste(brush, xx - hw, yy - hh, True)
             xx = x0 - x
             yy = y0 + y
             if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                pic[xx, yy] = color
+                pic.paste(brush, xx - hw, yy - hh, True)
             xx = x0 - x
             yy = y0 - y
             if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                pic[xx, yy] = color
+                pic.paste(brush, xx - hw, yy - hh, True)
             xx = x0 + x
             yy = y0 - y
             if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                pic[xx, yy] = color
-
+                pic.paste(brush, xx - hw, yy - hh, True)
         x += 1
         error -= b2 * (x - 1)
         stopy += b2
@@ -504,19 +523,19 @@ cpdef draw_ellipse(pic, (int, int) center, (int, int) size, brush=None,
             xx = x0 + x
             yy = y0 + y
             if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                pic[xx, yy] = color
+                pic.paste(brush, xx - hw, yy - hh, True)
             xx = x0 - x
             yy = y0 + y
             if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                pic[xx, yy] = color
+                pic.paste(brush, xx - hw, yy - hh, True)
             xx = x0 - x
             yy = y0 - y
             if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                pic[xx, yy] = color
+                pic.paste(brush, xx - hw, yy - hh, True)
             xx = x0 + x
             yy = y0 - y
             if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                pic[xx, yy] = color
+                pic.paste(brush, xx - hw, yy - hh, True)
 
         y += 1
         error -= a2 * (y - 1)

@@ -1,5 +1,7 @@
+from dataclasses import dataclass, field
 import logging
 import os
+import struct
 from typing import NamedTuple
 import zlib
 
@@ -145,19 +147,19 @@ class Drawing:
 
     def clear_layer(self, layer=None, color=0):
         layer = layer or self.current
-        edit = LayerClear.create(self, layer, color=color)
+        edit = LayerClearEdit.create(self, layer, color=color)
         edit.perform(self)
         self._add_edit(edit)
 
     def flip_layer_horizontal(self, layer=None):
         layer = layer or self.current
-        edit = LayerFlip(self.layers.index(layer), True)
+        edit = LayerFlipEdit(self.layers.index(layer), True)
         edit.perform(self)
         self._add_edit(edit)
 
     def flip_layer_vertical(self, layer=None):
         layer = layer or self.current
-        edit = LayerFlip(self.layers.index(layer), False)
+        edit = LayerFlipEdit(self.layers.index(layer), False)
         edit.perform(self)
         self._add_edit(edit)
 
@@ -181,9 +183,11 @@ class Drawing:
         rect = rect or self.selection
         layer = layer or self.current
         subimage = layer.get_subimage(rect)
+        subimage.fix_alpha([0])  # TODO Use the proper list of transparent colors
+        # TODO In fact this should not really be needed...
         if clear:
-            edit = LayerClear.create(self, layer, rect,
-                                     color=self.palette.background)
+            edit = LayerClearEdit.create(self, layer, rect,
+                                         color=self.palette.background)
             edit.perform(self)
             self._add_edit(edit)
         brush = PicBrush(subimage)
@@ -223,13 +227,38 @@ class Drawing:
 
 # Edit classes; immutable objects that represent an individual change of the drawing.
 
-class LayerEdit(NamedTuple):
+class Edit:
+
+    @classmethod
+    def get_type_mapping(cls):
+        return {
+            subclass.type: subclass
+            for subclass in cls.__subclasses__
+        }
+
+    def store(self):
+        return struct.pack(self._struct, self._type, self.index, *self.rect) + self.data
+
+    @classmethod
+    def load(cls, stored):
+        index, *rect = struct.unpack(cls._struct, stored[:cls._structsize])
+        z = zlib.decompressobj()
+        data = z.decompress(stored[5:])
+        return cls(index=index, rect=Rectangle(*rect), data=data), z.unused_data
+
+
+@dataclass(frozen=True)
+class LayerEdit(Edit):
 
     "A change in the image data of a particular layer."
 
+    _type = 0
+    _struct = "cchhhh"
+    _structsize = struct.calcsize(_struct)
+
     index: int
-    data: bytes
     rect: Rectangle
+    data: bytes
 
     @classmethod
     def create(cls, drawing, orig_layer, edit_layer, rect):
@@ -252,12 +281,13 @@ class LayerEdit(NamedTuple):
         return f"{__class__}(index={self.index}, data={len(self.data)}B, rect={self.rect})"
 
 
-class LayerClear(NamedTuple):
+@dataclass(frozen=True)
+class LayerClearEdit(Edit):
 
     index: int
-    data: bytes
     rect: Rectangle
     color: int
+    data: bytes
 
     @classmethod
     def create(cls, drawing, orig_layer, rect=None, color=0):
@@ -282,7 +312,8 @@ class LayerClear(NamedTuple):
         return f"{__class__}(index={self.index}, data={len(self.data)}B)"
 
 
-class LayerFlip(NamedTuple):
+@dataclass(frozen=True)
+class LayerFlipEdit(Edit):
 
     "Mirror layer. This is a non-destructive operation, so we don't have to store any of the data."
 
@@ -302,7 +333,8 @@ class LayerFlip(NamedTuple):
         return f"{__class__}(index={self.index}, horizontal={self.horizontal})"
 
 
-class PaletteEdit(NamedTuple):
+@dataclass(frozen=True)
+class PaletteEdit(Edit):
 
     "A change in the color data of the palette."
 
@@ -320,15 +352,16 @@ class PaletteEdit(NamedTuple):
             drawing.palette[i] = r0 - dr, g0 - dg, b0 - db, a0 - da
 
 
-class AddLayerEdit(NamedTuple):
+@dataclass(frozen=True)
+class AddLayerEdit(Edit):
 
     index: int
-    data: bytes
     size: tuple
+    data: bytes
 
     @classmethod
     def create(cls, drawing, layer, index):
-        return cls(index, zlib.compress(layer.pic.data), layer.size)
+        return cls(index=index, data=zlib.compress(layer.pic.data), size=layer.size)
 
     def perform(self, drawing):
         layer = Layer(LongPicture(size=self.size, data=zlib.decompress(self.data)))
@@ -342,16 +375,17 @@ class AddLayerEdit(NamedTuple):
         return f"{__class__}(index={self.index}, data={len(self.data)}B, size={self.size})"
 
 
-class RemoveLayerEdit(NamedTuple):
+@dataclass(frozen=True)
+class RemoveLayerEdit(Edit):
 
     index: int
-    data: bytes
     size: tuple
+    data: bytes
 
     @classmethod
     def create(cls, drawing, layer):
         index = drawing.layers.index(layer)
-        return cls(index, zlib.compress(layer.pic.data), layer.size)
+        return cls(index=index, data=zlib.compress(layer.pic.data), size=layer.size)
 
     # This is the inverse operation of adding a layer
     perform = AddLayerEdit.undo
@@ -361,7 +395,8 @@ class RemoveLayerEdit(NamedTuple):
         return f"{__class__}(index={self.index}, data={len(self.data)}B, size={self.size})"
 
 
-class SwapLayersEdit(NamedTuple):
+@dataclass(frozen=True)
+class SwapLayersEdit(Edit):
 
     index1: int
     index2: int

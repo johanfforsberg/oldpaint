@@ -21,7 +21,7 @@ from fogl.util import try_except_log, enabled
 from fogl.vao import VertexArrayObject
 from fogl.vertex import SimpleVertices
 
-from .brush import RectangleBrush, EllipseBrush
+from .brush import PicBrush, RectangleBrush, EllipseBrush
 from .drawing import Drawing
 from .imgui_pyglet import PygletRenderer
 from .layer import Layer
@@ -636,7 +636,8 @@ class OldpaintWindow(pyglet.window.Window):
         old_rect = Rectangle((ix0 - cx, iy0 - cy), brush.size)
         overlay.clear(old_rect)
         rect = Rectangle((ix - cx, iy - cy), brush.size)
-        overlay.blit(brush.get_pic(color=self.drawing.palette.foreground), rect)
+        color = None if isinstance(self.brush, PicBrush) else self.drawing.palette.foreground
+        overlay.blit(brush.get_pic(color), rect)
         self.brush_preview_dirty = rect
 
     def _update_cursor(self, x, y):

@@ -3,6 +3,7 @@ from random import gauss
 
 from pyglet import window
 
+from .brush import PicBrush
 from .rect import from_points, cover
 from .util import try_except_log
 
@@ -21,10 +22,12 @@ class Tool(metaclass=abc.ABCMeta):
 
     def __init__(self, drawing, brush, color, initial):
         self.drawing = drawing
+
         self.brush = brush
-        self.color = color
-        self.points = []  # Store the coordinates used when drawing
-        self.rect = None         # The smallest rectangle covering the edit
+        self.color = color        # Color used for fills
+        self.brush_color = color  # Color used for drawing the brush, but see start()
+        self.points = []          # Store the coordinates used when drawing
+        self.rect = None          # The smallest rectangle covering the edit
 
     # The following methods are optional, but without any of them, the tool won't
     # actually *do* anything.
@@ -34,7 +37,12 @@ class Tool(metaclass=abc.ABCMeta):
     def start(self, layer, point, buttons, modifiers):
         "Run once at the beginning of the stroke."
         self.points.append(point)
-    
+        # This is a bit messy, but we need to ensure that we don't set color when the
+        # user is wielding a custom brush and drawing with foreground color, because
+        # in that case we should use the original brush colors!
+        if buttons & window.mouse.LEFT and isinstance(self.brush, PicBrush):
+            self.brush_color = None
+
     def draw(self, layer, point, buttons, modifiers):
         "Runs once per mouse move event."
         # layer: overlay layer (that can safely be drawn to),
@@ -61,14 +69,16 @@ class PencilTool(Tool):
         if self.points[-1] == point:
             return
         p0 = tuple(self.points[-1])
-        rect = layer.draw_line(p0, point, brush=self.brush.get_pic(self.color))
+        brush = self.brush.get_pic(self.brush_color)
+        rect = layer.draw_line(p0, point, brush)
         if rect:
             self.rect = rect.unite(self.rect)
         self.points.append(point)
 
     def finish(self, layer, point, buttons, modifiers):
         # Make sure we draw a point even if the mouse was never moved
-        rect = layer.draw_line(self.points[-1], point, brush=self.brush.get_pic(self.color))
+        brush = self.brush.get_pic(self.brush_color)
+        rect = layer.draw_line(self.points[-1], point, brush)
         if rect:
             self.rect = rect.unite(self.rect)
 
@@ -86,13 +96,15 @@ class PointsTool(Tool):
             return
         self.points.append(point)
         if len(self.points) % self.step == 0:
-            rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.color))
+            brush = self.brush.get_pic(self.brush_color)
+            rect = layer.draw_line(point, point, brush)
             if rect:
                 self.rect = rect.unite(self.rect)
 
     def finish(self, layer, point, buttons, modifiers):
         # Make sure we draw a point even if the mouse was never moved
-        rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.color))
+        brush = self.brush.get_pic(self.brush_color)
+        rect = layer.draw_line(point, point, brush)
         if rect:
             self.rect = rect.unite(self.rect)
 
@@ -115,7 +127,7 @@ class SprayTool(Tool):
         xg = gauss(x, self.size)
         yg = gauss(y, self.size)
         p = (xg, yg)
-        rect = layer.draw_line(p, p, brush=self.brush.get_pic(self.color))
+        rect = layer.draw_line(p, p, brush=self.brush.get_pic(self.brush_color))
         if rect:
             self.rect = rect.unite(self.rect)
 
@@ -130,11 +142,11 @@ class LineTool(Tool):
     def draw(self, layer, point, buttons, modifiers):
         p0 = tuple(self.points[0][:2])
         p1 = point
-        self.rect = layer.draw_line(p0, p1, brush=self.brush.get_pic(self.color))
+        self.rect = layer.draw_line(p0, p1, brush=self.brush.get_pic(self.brush_color))
         self.points.append(p1)
 
     def finish(self, layer, point, buttons, modifiers):
-        rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.color))
+        rect = layer.draw_line(point, point, brush=self.brush.get_pic(self.brush_color))
         if rect:
             self.rect = rect.unite(self.rect)
 
@@ -154,8 +166,8 @@ class RectangleTool(Tool):
     def draw(self, layer, point, buttons, modifiers):
         p0 = self.points[0]
         r = from_points([p0, point])
-        self.rect = layer.draw_rectangle(r.position, r.size, brush=self.brush.get_pic(self.color),
-                                         fill=modifiers & window.key.MOD_SHIFT)
+        self.rect = layer.draw_rectangle(r.position, r.size, brush=self.brush.get_pic(self.brush_color),
+                                         fill=modifiers & window.key.MOD_SHIFT, color=self.color)
         self.points.append(point)
 
     def __repr__(self):
@@ -176,7 +188,7 @@ class EllipseTool(Tool):
         x0, y0 = self.points[0]
         x, y = point
         size = (int(abs(x - x0)), int(abs(y - y0)))
-        self.rect = layer.draw_ellipse((x0, y0), size, brush=self.brush.get_pic(self.color),
+        self.rect = layer.draw_ellipse((x0, y0), size, brush=self.brush.get_pic(self.brush_color),
                                        color=self.color + 255*2**24,
                                        fill=modifiers & window.key.MOD_SHIFT)
         self.points.append(point)
