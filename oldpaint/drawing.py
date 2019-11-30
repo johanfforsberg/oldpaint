@@ -172,19 +172,15 @@ class Drawing:
         layer.blit_part(new.pic, rect, rect.topleft)
 
     @try_except_log
-    def change_color(self, i, color):
-        r0, g0, b0, a0 = self.palette[i]
-        r1, g1, b1, a1 = color
-        delta = r1-r0, g1-g0, b1-b0, a1-a0
-        edit = PaletteEdit(index=i, data=[delta])
+    def change_colors(self, i, colors):
+        data = []
+        for j, color in enumerate(colors):
+            r0, g0, b0, a0 = self.palette[i + j]
+            r1, g1, b1, a1 = color
+            delta = r1-r0, g1-g0, b1-b0, a1-a0
+            data.append(delta)
+        edit = PaletteEdit(index=i, data=data)
         edit.perform(self)
-        self._add_edit(edit)
-
-    def change_colors(self, i1, rgba0s, rgba1):
-        r0, g0, b0, a0 = rgba0
-        r1, g1, b1, a1 = rgba1
-        delta = r1-r0, g1-g0, b1-b0, a1-a0
-        edit = PaletteEdit(index=i, data=[delta])
         self._add_edit(edit)
 
     def make_brush(self, rect=None, layer=None, clear=False):

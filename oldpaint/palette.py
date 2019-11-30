@@ -108,6 +108,7 @@ class Palette:
 
     def spread(self, index1, index2):
         "Make a nice smooth color ramp between the given colors."
+        print("spread", index1, index2)
         if index1 > index2:
             index1, index2 = index2, index1
         r1, g1, b1, a1 = self.colors[index1]
@@ -116,8 +117,8 @@ class Palette:
         dr = (r2 - r1) / n_steps
         dg = (g2 - g1) / n_steps
         db = (b2 - b1) / n_steps
-        for i in range(1, n_steps):
-            self.colors[index1 + i] = round(r1 + dr * i), round(g1 + dg * i), round(b1 + db * i), 1
-        self.as_float.cache_clear()
-        self.overlayed_color.cache_clear()
-        self.get_rgba.cache_clear()
+
+        return [
+            (round(r1 + dr * i), round(g1 + dg * i), round(b1 + db * i), 1)
+            for i in range(1, n_steps)
+        ]

@@ -81,7 +81,6 @@ def render_palette(drawing):
     palette = drawing.palette
     fg = palette.foreground
     bg = palette.background
-
     fg_color = palette.foreground_color
     bg_color = palette.background_color
 
@@ -91,7 +90,7 @@ def render_palette(drawing):
     if imgui.begin_popup("Edit foreground color"):
         done, cancelled, new_color = render_color_editor(palette.colors[fg], fg_color)
         if done:
-            drawing.change_color(fg, new_color)
+            drawing.change_colors(fg, [new_color])
             palette.clear_overlay()
         elif cancelled:
             palette.clear_overlay()
@@ -100,13 +99,14 @@ def render_palette(drawing):
         imgui.end_popup()
 
     imgui.same_line()
+
     # Edit background color
     if imgui.color_button("Background", *palette.as_float(bg_color), 0, 30, 30):
         imgui.open_popup("Edit background color")
     if imgui.begin_popup("Edit background color"):
         done, cancelled, new_color = render_color_editor(palette.colors[bg], bg_color)
         if done:
-            drawing.change_color(bg, new_color)
+            drawing.change_colors(bg, [new_color])
             palette.clear_overlay()
         elif cancelled:
             palette.clear_overlay()
@@ -145,7 +145,6 @@ def render_palette(drawing):
                     temp_vars["spread_end"] = i
                 else:
                     temp_vars["spread_start"] = i
-                print(temp_vars)
             else:
                 fg = i
         if imgui.core.is_item_clicked(2):
@@ -166,7 +165,10 @@ def render_palette(drawing):
     if "spread_start" in temp_vars and "spread_end" in temp_vars:
         spread_start = temp_vars.pop("spread_start")
         spread_end = temp_vars.pop("spread_end")
-        palette.spread(spread_start, spread_end)
+        from_index = min(spread_start, spread_end)
+        to_index = max(spread_start, spread_end)
+        spread_colors = palette.spread(from_index, to_index)
+        drawing.change_colors(from_index + 1, spread_colors)
 
 
 # TODO Consider using https://github.com/mlabbe/nativefiledialog instead of the following?

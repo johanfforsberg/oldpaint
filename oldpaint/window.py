@@ -185,7 +185,6 @@ class OldpaintWindow(pyglet.window.Window):
 
     @no_imgui_events
     def on_mouse_press(self, x, y, button, modifiers):
-        print("hej")
         if not self.drawing:
             return
         if self.mouse_event_queue:
