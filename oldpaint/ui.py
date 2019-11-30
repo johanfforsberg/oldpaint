@@ -171,40 +171,6 @@ def render_palette(drawing):
         drawing.change_colors(from_index + 1, spread_colors)
 
 
-# TODO Consider using https://github.com/mlabbe/nativefiledialog instead of the following?
-
-def render_open_file_dialog(loader):
-    imgui.begin("File list", True)
-    imgui.text(loader.path)
-    imgui.text(loader.input)
-    if imgui.button("Load"):
-        loader.finish()
-    imgui.begin_child("Dir", border=True)
-    listing = loader.get_alternatives()
-    for item in listing:
-        _, sel = imgui.selectable(item, False)
-        if sel:
-            loader.select(item)
-    imgui.end_child()
-    imgui.end()
-
-
-def render_save_file_dialog(loader):
-    imgui.begin("File list", True)
-    imgui.text(loader.path)
-    changed, loader.input = imgui.input_text("Filename:", loader.input, 100)
-    if imgui.button("Save"):
-        loader.finish()
-    imgui.begin_child("Dir", border=True)
-    listing = loader.get_alternatives()
-    for item in listing:
-        _, sel = imgui.selectable(item, False)
-        if sel:
-            loader.input = item
-    imgui.end_child()
-    imgui.end()
-
-
 def render_layers(drawing):
 
     imgui.columns(2, "Layers")
