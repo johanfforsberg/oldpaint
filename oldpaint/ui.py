@@ -51,18 +51,25 @@ def as_float(color):
 
 def render_color_editor(orig, color):
     r, g, b, a = color
-    # changed, (r, g, b) = imgui.drag_int3("RGB", r, g, b, change_speed=0.2,
-    #                                      min_value=0, max_value=255)
-    _, r = imgui.slider_int("Red", r, min_value=0, max_value=255)
-    _, g = imgui.slider_int("Green", g, min_value=0, max_value=255)
-    _, b = imgui.slider_int("Blue", b, min_value=0, max_value=255)
-    # r2, g2, b2, _ = as_rgba(color)
+
+    imgui.push_id("R")
+    _, r = imgui.v_slider_int("", 30, 255, r, min_value=0, max_value=255)
+    imgui.pop_id()
+    imgui.same_line()
+    imgui.push_id("G")
+    _, g = imgui.v_slider_int("", 30, 255, g, min_value=0, max_value=255)
+    imgui.pop_id()
+    imgui.same_line()
+    imgui.push_id("B")
+    _, b = imgui.v_slider_int("", 30, 255, b, min_value=0, max_value=255)
+    imgui.pop_id()
+
     imgui.color_button("Current color", *as_float(orig))
     imgui.same_line()
     imgui.text("->")
     imgui.same_line()
     imgui.color_button("Current color", *as_float(color))
-    imgui.same_line()
+
     if imgui.button("OK"):
         imgui.close_current_popup()
         return True, False, (r, g, b, a)
@@ -86,7 +93,10 @@ def render_palette(drawing):
 
     # Edit foreground color
     if imgui.color_button("Foreground", *palette.as_float(fg_color), 0, 30, 30):
+        io = imgui.get_io()
+        w, h = io.display_size
         imgui.open_popup("Edit foreground color")
+        imgui.set_next_window_position(w - 115 - 120, 200)
     if imgui.begin_popup("Edit foreground color"):
         done, cancelled, new_color = render_color_editor(palette.colors[fg], fg_color)
         if done:
@@ -103,25 +113,15 @@ def render_palette(drawing):
     # Edit background color
     if imgui.color_button("Background", *palette.as_float(bg_color), 0, 30, 30):
         imgui.open_popup("Edit background color")
-    if imgui.begin_popup("Edit background color"):
-        done, cancelled, new_color = render_color_editor(palette.colors[bg], bg_color)
-        if done:
-            drawing.change_colors(bg, [new_color])
-            palette.clear_overlay()
-        elif cancelled:
-            palette.clear_overlay()
-        else:
-            palette.set_overlay(bg, new_color)
-        imgui.end_popup()
-
-    # imgui.same_line()
-    # palette_sizes = [8, 16, 32, 64, 128, 256]
-    # imgui.text(f"  #: {palette.size}")
-    # if imgui.begin_popup_context_item("#Colors", mouse_button=0):
-    #     for size in palette_sizes:
-    #         _, selected = imgui.selectable(str(size), size == palette.size)
-    #         if selected:
-    #             palette.size = size
+    # if imgui.begin_popup("Edit background color"):
+    #     done, cancelled, new_color = render_color_editor(palette.colors[bg], bg_color)
+    #     if done:
+    #         drawing.change_colors(bg, [new_color])
+    #         palette.clear_overlay()
+    #     elif cancelled:
+    #         palette.clear_overlay()
+    #     else:
+    #         palette.set_overlay(bg, new_color)
     #     imgui.end_popup()
 
     imgui.begin_child("Palette", border=False)
