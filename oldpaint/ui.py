@@ -2,6 +2,7 @@
 Helper functions for rendering the user interface.
 """
 
+from functools import lru_cache
 import logging
 
 import imgui
@@ -30,29 +31,37 @@ SELECTABLE_FRAME_COLORS = [
 
 def render_tools(tools, icons):
     current_tool = tools.current
+    selected = False
     for i, tool in enumerate(tools):
         texture = icons[tool.tool]
-        # imgui.push_style_color(imgui.COLOR_BUTTON,
-        #                        *TOOL_BUTTON_COLORS[tool == current_tool])
-        # with imgui.extra.styled(imgui.COLOR_BUTTON_ACTIVE, TOOL_BUTTON_COLORS[tool == current_tool]):
-        # with imgui.colored(imgui.BUTTON_FRAME_BACKGROUND,
-        #                    *TOOL_BUTTON_COLORS[tool == current_tool]):
-        if imgui.core.image_button(texture.name, 16, 16, border_color=(*TOOL_BUTTON_COLORS[tool == current_tool], 1)):
-            tools.select(tool)
-        if i % 4 != 3:
-            imgui.same_line()
-        # imgui.pop_style_color(1)
-    imgui.new_line()
+        with imgui.colored(imgui.COLOR_BUTTON, *TOOL_BUTTON_COLORS[tool == current_tool]):
+            if imgui.core.image_button(texture.name, 16, 16):
+                tools.select(tool)
+                selected = True
+            if i % 3 != 2:
+                imgui.same_line()
+    return selected
 
 
-def render_color_editor(rgba):
-    r, g, b, a = rgba
+@lru_cache(256)
+def as_float(color):
+    r, g, b, a = color
+    return (r/256, g/256, b/256, a/256)
+
+
+def render_color_editor(orig, color):
+    r, g, b, a = color
     # changed, (r, g, b) = imgui.drag_int3("RGB", r, g, b, change_speed=0.2,
     #                                      min_value=0, max_value=255)
     _, r = imgui.slider_int("Red", r, min_value=0, max_value=255)
     _, g = imgui.slider_int("Green", g, min_value=0, max_value=255)
     _, b = imgui.slider_int("Blue", b, min_value=0, max_value=255)
-    imgui.color_button("Current color", r / 256, g / 256, b / 256, 1)
+    # r2, g2, b2, _ = as_rgba(color)
+    imgui.color_button("Current color", *as_float(orig))
+    imgui.same_line()
+    imgui.text("->")
+    imgui.same_line()
+    imgui.color_button("Current color", *as_float(color))
     imgui.same_line()
     if imgui.button("OK"):
         imgui.close_current_popup()
@@ -64,50 +73,56 @@ def render_color_editor(rgba):
     return False, False, (r, g, b, a)
 
 
+palette_overlay = {}
+
+
 def render_palette(drawing):
 
     palette = drawing.palette
     fg = palette.foreground
     bg = palette.background
 
+    fg_color = palette.foreground_color
+    bg_color = palette.background_color
+
     # Edit foreground color
-    if imgui.color_button("Foreground", *palette.get_as_float(fg)):
+    if imgui.color_button("Foreground", *palette.as_float(fg_color), 0, 30, 30):
         imgui.open_popup("Edit foreground color")
-        temp_vars["orig_fg_color"] = palette.foreground_color
     if imgui.begin_popup("Edit foreground color"):
-        done, cancelled, new_color = render_color_editor(palette.foreground_color)
+        done, cancelled, new_color = render_color_editor(palette.colors[fg], fg_color)
         if done:
-            drawing.change_color(fg, temp_vars.pop("orig_fg_color"), new_color)
+            drawing.change_color(fg, new_color)
+            palette.clear_overlay()
         elif cancelled:
-            palette[fg] = temp_vars.pop("orig_fg_color")
+            palette.clear_overlay()
         else:
-            palette[fg] = new_color
+            palette.set_overlay(fg, new_color)
         imgui.end_popup()
 
     imgui.same_line()
     # Edit background color
-    if imgui.color_button("Background", *palette.get_as_float(bg)):
+    if imgui.color_button("Background", *palette.as_float(bg_color), 0, 30, 30):
         imgui.open_popup("Edit background color")
-        temp_vars["orig_bg_color"] = palette.background_color
     if imgui.begin_popup("Edit background color"):
-        done, cancelled, new_color = render_color_editor(palette.background_color)
+        done, cancelled, new_color = render_color_editor(palette.colors[bg], bg_color)
         if done:
-            drawing.change_color(bg, temp_vars.pop("orig_bg_color"), new_color)
+            drawing.change_color(bg, new_color)
+            palette.clear_overlay()
         elif cancelled:
-            palette[bg] = temp_vars.pop("orig_bg_color")
+            palette.clear_overlay()
         else:
-            palette[bg] = new_color
+            palette.set_overlay(bg, new_color)
         imgui.end_popup()
 
-    imgui.same_line()
-    palette_sizes = [8, 16, 32, 64, 128, 256]
-    imgui.text(f"  #: {palette.size}")
-    if imgui.begin_popup_context_item("#Colors", mouse_button=0):
-        for size in palette_sizes:
-            _, selected = imgui.selectable(str(size), size == palette.size)
-            if selected:
-                palette.size = size
-        imgui.end_popup()
+    # imgui.same_line()
+    # palette_sizes = [8, 16, 32, 64, 128, 256]
+    # imgui.text(f"  #: {palette.size}")
+    # if imgui.begin_popup_context_item("#Colors", mouse_button=0):
+    #     for size in palette_sizes:
+    #         _, selected = imgui.selectable(str(size), size == palette.size)
+    #         if selected:
+    #             palette.size = size
+    #     imgui.end_popup()
 
     imgui.begin_child("Palette", border=False)
     imgui.push_style_var(imgui.STYLE_ITEM_SPACING, (0, 0))  # Make layout tighter
@@ -117,6 +132,10 @@ def render_palette(drawing):
         is_foreground = i == fg
         is_background = (i == bg) * 2
         selection = is_foreground | is_background
+        if i in palette.overlay:
+            color = palette.as_float(palette.overlay[i])
+        else:
+            color = as_float(color)
         imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND,
                                *SELECTABLE_FRAME_COLORS[selection])
         if imgui.color_button(f"color {i}", *color[:3], 1, 0, 20, 20):
@@ -126,6 +145,7 @@ def render_palette(drawing):
                     temp_vars["spread_end"] = i
                 else:
                     temp_vars["spread_start"] = i
+                print(temp_vars)
             else:
                 fg = i
         if imgui.core.is_item_clicked(2):
@@ -314,3 +334,15 @@ def render_unsaved_exit(unsaved):
         imgui.end_popup()
 
     return unsaved
+
+
+def render_tool_menu(tools, icons):
+    # TODO find out a way to close if user clicks outside the window
+    imgui.open_popup("Tools menu")
+    if imgui.begin_popup("Tools menu", flags=(imgui.WINDOW_NO_TITLE_BAR
+                                              | imgui.WINDOW_NO_RESIZE)):
+        done = render_tools(tools, icons)
+        if done:
+            imgui.core.close_current_popup()
+        imgui.end_popup()
+        return done

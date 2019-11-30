@@ -35,7 +35,8 @@ class Palette:
         # self.transparency = transparency
         self.foreground = 1
         self.background = 0
-        self.dirty = False   # Set to true whenever the palette changes, to signal the UI
+
+        self.overlay = {}
 
     def get_index(self, button):
         # TODO Would be nice to keep pyglet out of here...
@@ -44,36 +45,53 @@ class Palette:
         elif button & mouse.RIGHT:
             return self.background
 
+    def set_overlay(self, i, color):
+        self.overlay[i] = color
+        self.as_float.cache_clear()
+        self.overlayed_color.cache_clear()
+        self.get_rgba.cache_clear()
+
+    @lru_cache(256)
+    def overlayed_color(self, i):
+        return self.overlay.get(i, self.colors[i])
+
+    def clear_overlay(self):
+        self.overlay.clear()
+        self.as_float.cache_clear()
+
     @lru_cache(maxsize=1)
     def get_rgba(self):
-        return tuple(self.get_as_float(i) for i in range(len(self.colors)))
+        return tuple(self.as_float(self.overlayed_color(i)) for i in range(self.size))
 
     @lru_cache(maxsize=256)
-    def get_as_float(self, index):
-        r, g, b, a = self.colors[index]
+    def as_float(self, color):
+        r, g, b, a = color
         return (r/255, g/255, b/255, a/255)
 
     def __getitem__(self, index):
-        return self.get_rgba()[index]
+        return self.colors[index]
 
     def __iter__(self):
-        return islice(self.get_rgba(), 0, self.size)
+        # return islice(self.get_rgba(), 0, self.size)
+        return islice(self.colors, 0, self.size)
 
     def set_color(self, index, r, g, b, a):
         if isinstance(r, int):
             self.colors[index] = r, g, b, a
         else:
             self.colors[index] = int(r*256), int(g*256), int(b*256), int(a*256)
+        self.as_float.cache_clear()
         self.get_rgba.cache_clear()
-        self.get_as_float.cache_clear()
-        # self.get_alpha.cache_clear()
-        self.dirty = True
+        self.overlayed_color.cache_clear()
 
     def __setitem__(self, index, value):
         self.set_color(index, *value)
 
     @property
     def foreground_color(self):
+        overlay_color = self.overlay.get(self.foreground)
+        if overlay_color is not None:
+            return overlay_color
         return self.colors[self.foreground]
 
     @foreground_color.setter
@@ -100,5 +118,6 @@ class Palette:
         db = (b2 - b1) / n_steps
         for i in range(1, n_steps):
             self.colors[index1 + i] = round(r1 + dr * i), round(g1 + dg * i), round(b1 + db * i), 1
+        self.as_float.cache_clear()
+        self.overlayed_color.cache_clear()
         self.get_rgba.cache_clear()
-        self.get_as_float.cache_clear()

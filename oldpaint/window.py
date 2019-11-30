@@ -98,6 +98,8 @@ class OldpaintWindow(pyglet.window.Window):
         self.brush_preview_dirty = None  # A hacky way to keep brush preview dirt away
 
         # UI stuff
+        self.keyboard_stack = []
+        self.show_ui = None
         self.imgui_renderer = PygletRenderer(self)
         self.icons = {
             name: ImageTexture(*load_png(f"icons/{name}.png"))
@@ -183,6 +185,7 @@ class OldpaintWindow(pyglet.window.Window):
 
     @no_imgui_events
     def on_mouse_press(self, x, y, button, modifiers):
+        print("hej")
         if not self.drawing:
             return
         if self.mouse_event_queue:
@@ -282,6 +285,34 @@ class OldpaintWindow(pyglet.window.Window):
         elif symbol == key.O:
             self._load_drawing()
 
+        elif symbol == key.ESCAPE:
+            self.keyboard_stack.clear()
+            self._handle_shortcuts()
+        else:
+            self.keyboard_stack.append((symbol, None))
+            self._handle_shortcuts()
+
+    keyboard_map = {
+        (key.T, None): {
+            "show": "tool_popup",
+            "keys": {
+                #(key.P, None): partial(self.drawing.tools.select, self.drawing.tools[])
+            }
+        }
+    }
+
+    def _handle_shortcuts(self):
+        keys = self.keyboard_map
+        config = {}
+        for combo in self.keyboard_stack:
+            config = keys.get(combo, {})
+            if not config:
+                self.keyboard_stack.clear()
+                self.show_ui = None
+                return
+            keys = config.get("keys")
+        self.show_ui = config.get("show")
+
     @try_except_log
     def on_draw(self):
 
@@ -341,8 +372,8 @@ class OldpaintWindow(pyglet.window.Window):
     def _render_gui(self):
 
         w, h = self.get_size()
-
         io = imgui.get_io()
+        drawing = self.drawing
 
         imgui.new_frame()
         with imgui.font(self._font):
@@ -371,20 +402,28 @@ class OldpaintWindow(pyglet.window.Window):
                     imgui.end_menu()
 
                 if imgui.begin_menu("Drawing", True):
-                    if imgui.menu_item("New", "N", False, True)[0]:
+                    if imgui.menu_item("New", None, False, True)[0]:
                         self._create_drawing()
-                    if imgui.menu_item("Close", "K", False, True)[0]:
+                    if imgui.menu_item("Close", None, False, True)[0]:
                         self._close_drawing()
 
                     imgui.separator()
 
+                    if imgui.menu_item("Undo", "z", False, self.drawing)[0]:
+                        self.drawing.undo()
+                    if imgui.menu_item("Redo", "y", False, self.drawing)[0]:
+                        self.drawing.redo()
+
+                    imgui.separator()
+
                     for drawing in self.drawings.items:
-                        if imgui.menu_item(f"{drawing.filename} {drawing.size}", None, False, True)[0]:
+                        if imgui.menu_item(f"{drawing.filename} {drawing.size}",
+                                           None, drawing == self.drawing, True)[0]:
                             self.drawings.select(drawing)
                     imgui.end_menu()
 
                 if imgui.begin_menu("Brush", True):
-                    if imgui.menu_item("Save current", "S", False, bool(self.drawing_brush))[0]:
+                    if imgui.menu_item("Save current", None, False, bool(self.drawing_brush))[0]:
                         path = filedialog.asksaveasfilename(title="Select file",
                                                             filetypes=(#("ORA files", "*.ora"),
                                                                        ("PNG files", "*.png"),
@@ -395,13 +434,42 @@ class OldpaintWindow(pyglet.window.Window):
                     imgui.end_menu()
 
                 if imgui.begin_menu("Layer", True):
+                    layer = self.drawing.layers.current
+                    index = self.drawing.layers.index(layer)
+                    n_layers = len(self.drawing.layers)
+                    if imgui.menu_item("Add", "L", False, True)[0]:
+                        self.drawing.add_layer()
+                    if imgui.menu_item("Remove", None, False, True)[0]:
+                        self.drawing.remove_layer()
+                    if imgui.menu_item("Toggle visibility", "v", False, True)[0]:
+                        layer.visible = not layer.visible
+                    if imgui.menu_item("Move up", "W", False, index < n_layers-1)[0]:
+                        self.drawing.move_layer_up()
+                    if imgui.menu_item("Move down", "S", False, index > 0)[0]:
+                        self.drawing.move_layer_down()
+
+                    imgui.separator()
+
                     if imgui.menu_item("Flip horizontally", "H", False, True)[0]:
                         self.drawing.flip_layer_horizontal()
                     if imgui.menu_item("Flip vertically", "V", False, True)[0]:
-                        self.drawing.flip__layer_vertical()
+                        self.drawing.flip_layer_vertical()
                     if imgui.menu_item("Clear", "Delete", False, True)[0]:
                         self.drawing.clear()
+
+                    imgui.separator()
+
+                    n = len(self.drawing.layers) - 1
+                    for i, layer in enumerate(reversed(self.drawing.layers)):
+                        selected = self.drawing.layers.current == layer
+                        index = n_layers - i - 1
+                        if imgui.menu_item(f"{index} {'v' if layer.visible else ''}", str(index), selected, True)[0]:
+                            self.drawing.layers.select(layer)
+                        if imgui.is_item_hovered():
+                            self.highlighted_layer = layer
                     imgui.end_menu()
+                else:
+                    self.highlighted_layer = None
 
                 # Show some info in the right part of the menu bar
 
@@ -431,8 +499,8 @@ class OldpaintWindow(pyglet.window.Window):
 
             if self.drawing:
 
-                imgui.set_next_window_size(135, h - 20)
-                imgui.set_next_window_position(w - 135, 20)
+                imgui.set_next_window_size(115, h - 20)
+                imgui.set_next_window_position(w - 115, 20)
 
                 imgui.begin("Tools", False, flags=(imgui.WINDOW_NO_TITLE_BAR
                                                   | imgui.WINDOW_NO_RESIZE
@@ -459,29 +527,29 @@ class OldpaintWindow(pyglet.window.Window):
                     self.drawing_brush = brush
                 imgui.core.separator()
 
-                imgui.begin_child("Palette", height=300)
+                imgui.begin_child("Palette", height=0)
                 ui.render_palette(self.drawing)
                 imgui.end_child()
 
                 # if imgui.collapsing_header("Layers", None)[0]:
                 #     self.highlighted_layer = ui.render_layers(self.drawing)
 
-                if imgui.collapsing_header("Edits", None, flags=imgui.TREE_NODE_DEFAULT_OPEN)[0]:
-                    imgui.begin_child("Edits list", height=0)
-                    self.highlighted_layer = ui.render_edits(self.drawing)
-                    imgui.end_child()
+                # if imgui.collapsing_header("Edits", None, flags=imgui.TREE_NODE_DEFAULT_OPEN)[0]:
+                #     imgui.begin_child("Edits list", height=0)
+                #     self.highlighted_layer = ui.render_edits(self.drawing)
+                #     imgui.end_child()
 
                 imgui.end()
 
-                nh = 150
-                imgui.set_next_window_size(w - 135, nh)
-                imgui.set_next_window_position(0, h - nh)
+                # nh = 150
+                # imgui.set_next_window_size(w - 135, nh)
+                # imgui.set_next_window_position(0, h - nh)
 
-                imgui.begin("Layers", False, flags=(imgui.WINDOW_NO_TITLE_BAR
-                                                    | imgui.WINDOW_NO_RESIZE
-                                                    | imgui.WINDOW_NO_MOVE))
-                self.highlighted_layer = ui.render_layers(self.drawing)
-                imgui.end()
+                # imgui.begin("Layers", False, flags=(imgui.WINDOW_NO_TITLE_BAR
+                #                                     | imgui.WINDOW_NO_RESIZE
+                #                                     | imgui.WINDOW_NO_MOVE))
+                # ui.render_layers(self.drawing)
+                # imgui.end()
 
                 # Exit with unsaved
                 self._unsaved = ui.render_unsaved_exit(self._unsaved)
@@ -512,6 +580,20 @@ class OldpaintWindow(pyglet.window.Window):
                     self._new_drawing = None
                     imgui.close_current_popup()
                 imgui.end_popup()
+
+            # if self.keyboard_stack:
+            #     first_key = self.keyboard_stack[0]
+            #     if first_key == "t":
+            #         if self.mouse_position:
+            #             x, y = self.mouse_position
+            #             imgui.set_next_window_position(x, h - y)
+            #         if ui.render_tool_menu(self.tools, self.icons):
+            #             self.keyboard_stack.clear()
+            if self.show_ui:
+                if self.show_ui == "tool_popup":
+                    if ui.render_tool_menu(self.tools, self.icons):
+                        self.keyboard_stack.clear()
+                        self.show_ui = None
 
         imgui.render()
         imgui.end_frame()

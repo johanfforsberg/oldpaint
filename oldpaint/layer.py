@@ -17,6 +17,12 @@ class Layer:
         # Here lies the image data for the layer.
         self.pic = pic
 
+        # This lock is important to hold while drawing, since otherwise
+        # the main thread might start reading from it while we're writing.
+        # It's reentrant so we don't have to worry about collisions within
+        # the drawing thread.
+        self.lock = RLock()
+
         # "dirty" is a rect that tells the visualisation that part of the
         # picture has changed and must be refreshed, after which it should
         # set the dirty rect to None. From this side, we should never shrink
@@ -24,13 +30,6 @@ class Layer:
         self.dirty = self.rect
 
         self.visible = True
-        # This lock is important to hold while drawing, since otherwise
-        # the main thread might start reading from it while we're writing.
-        # It's reentrant so we don't have to worry about collisions within
-        # the drawing thread.
-        self.lock = RLock()
-
-        self.sublayers = Selectable()
 
     def save_png(self, path, palette=None):
         save_png(self.pic, path, palette)
