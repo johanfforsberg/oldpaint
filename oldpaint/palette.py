@@ -49,7 +49,7 @@ class Palette:
         self.overlay[i] = color
         self.as_float.cache_clear()
         self.overlayed_color.cache_clear()
-        self.get_rgba.cache_clear()
+        self.as_tuple.cache_clear()
 
     @lru_cache(256)
     def overlayed_color(self, i):
@@ -60,13 +60,8 @@ class Palette:
         self.as_float.cache_clear()
 
     @lru_cache(maxsize=1)
-    def get_rgba(self):
-        return tuple(self.as_float(self.overlayed_color(i)) for i in range(self.size))
-
-    @lru_cache(maxsize=256)
-    def as_float(self, color):
-        r, g, b, a = color
-        return (r/255, g/255, b/255, a/255)
+    def as_tuple(self):
+        return tuple(self.overlayed_color(i) for i in range(self.size))
 
     def __getitem__(self, index):
         return self.colors[index]
@@ -81,7 +76,7 @@ class Palette:
         else:
             self.colors[index] = int(r*256), int(g*256), int(b*256), int(a*256)
         self.as_float.cache_clear()
-        self.get_rgba.cache_clear()
+        self.as_tuple.cache_clear()
         self.overlayed_color.cache_clear()
 
     def __setitem__(self, index, value):

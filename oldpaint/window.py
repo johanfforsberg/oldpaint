@@ -403,14 +403,14 @@ class OldpaintWindow(pyglet.window.Window):
                 if imgui.begin_menu("Drawing", True):
                     if imgui.menu_item("New", None, False, True)[0]:
                         self._create_drawing()
-                    if imgui.menu_item("Close", None, False, True)[0]:
+                    elif imgui.menu_item("Close", None, False, True)[0]:
                         self._close_drawing()
 
                     imgui.separator()
 
                     if imgui.menu_item("Undo", "z", False, self.drawing)[0]:
                         self.drawing.undo()
-                    if imgui.menu_item("Redo", "y", False, self.drawing)[0]:
+                    elif imgui.menu_item("Redo", "y", False, self.drawing)[0]:
                         self.drawing.redo()
 
                     imgui.separator()
@@ -430,6 +430,14 @@ class OldpaintWindow(pyglet.window.Window):
                         if path:
                             with open(path, "wb") as f:
                                 save_png(self.brush.original, f, self.drawing.palette.colors)
+
+                    imgui.separator()
+
+                    for i, brush in enumerate(self.drawing.brushes):
+                        if imgui.menu_item(f"{brush.size}", None, self.brush == brush, True):
+                            self.drawing.brushes.select(brush)
+                            self.drawing_brush = brush
+
                     imgui.end_menu()
 
                 if imgui.begin_menu("Layer", True):
@@ -510,7 +518,7 @@ class OldpaintWindow(pyglet.window.Window):
 
                 brush = ui.render_brushes(self.brushes,
                                           partial(self.get_brush_preview_texture,
-                                                  palette=self.drawing.palette),
+                                                  colors=self.drawing.palette.as_tuple()),
                                           compact=True)
                 if brush:
                     self.drawing_brush = None
@@ -521,7 +529,7 @@ class OldpaintWindow(pyglet.window.Window):
 
                 brush = ui.render_brushes(self.drawing.brushes,
                                           partial(self.get_brush_preview_texture,
-                                                  palette=self.drawing.palette))
+                                                  colors=self.drawing.palette.as_tuple()))
                 if brush:
                     self.drawing_brush = brush
                 imgui.core.separator()
@@ -778,17 +786,20 @@ class OldpaintWindow(pyglet.window.Window):
         return frust * view
 
     @lru_cache(32)
-    def get_brush_preview_texture(self, brush, palette):
-        texture = Texture(brush.size)
-
+    def get_brush_preview_texture(self, brush, colors):
+        bw, bh = brush.size
+        w, h = size = max(8, bw), max(8, bh)
+        texture = Texture(size)
+        texture.clear()
         # if isinstance(brush.original, Picture):
         #     data = bytes(brush.original.as_rgba(self.drawing.palette.colors, False).data)
         # else:
         #data = bytes(brush.original.data)
-        data = brush.original.as_rgba(palette.colors, True)
-        w, h = brush.size
+        data = brush.original.as_rgba(colors, True)
         gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
-        gl.glTextureSubImage2D(texture.name, 0, 0, 0, w, h, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, bytes(data))
+        gl.glTextureSubImage2D(texture.name, 0,
+                               max(0, w//2-bw//2), max(0, w//2-bw//2), min(w, bw), min(w, bh),
+                               gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, bytes(data))
         return texture
 
 

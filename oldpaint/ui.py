@@ -4,6 +4,7 @@ Helper functions for rendering the user interface.
 
 from functools import lru_cache
 import logging
+from math import floor, ceil
 
 import imgui
 import pyglet
@@ -92,7 +93,7 @@ def render_palette(drawing):
     bg_color = palette.background_color
 
     # Edit foreground color
-    if imgui.color_button("Foreground", *palette.as_float(fg_color), 0, 30, 30):
+    if imgui.color_button("Foreground", *as_float(fg_color), 0, 30, 30):
         io = imgui.get_io()
         w, h = io.display_size
         imgui.open_popup("Edit foreground color")
@@ -111,7 +112,7 @@ def render_palette(drawing):
     imgui.same_line()
 
     # Edit background color
-    if imgui.color_button("Background", *palette.as_float(bg_color), 0, 30, 30):
+    if imgui.color_button("Background", *as_float(bg_color), 0, 30, 30):
         imgui.open_popup("Edit background color")
     # if imgui.begin_popup("Edit background color"):
     #     done, cancelled, new_color = render_color_editor(palette.colors[bg], bg_color)
@@ -133,7 +134,7 @@ def render_palette(drawing):
         is_background = (i == bg) * 2
         selection = is_foreground | is_background
         if i in palette.overlay:
-            color = palette.as_float(palette.overlay[i])
+            color = as_float(palette.overlay[i])
         else:
             color = as_float(color)
         imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND,
@@ -235,29 +236,36 @@ def render_brushes(brushes, get_texture, compact=False):
 
     clicked = False
 
-    for brush in brushes:
+    for i, brush in enumerate(brushes):
         is_selected = brush == brushes.current
         texture = get_texture(brush)
         if texture:
             w, h = brush.size
-            if w > 50 or h > 50:
-                aspect = w / h
-                if w > h:
-                    w = 50
-                    h = w / aspect
-                else:
-                    h = 50
-                    w = h * aspect
+            # if w > 50 or h > 50:
+            #     aspect = w / h
+            #     if w > h:
+            #         w = 50
+            #         h = w / aspect
+            #     else:
+            #         h = 50
+            #         w = h * aspect
 
-            #imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *SELECTABLE_FRAME_COLORS[is_selected])
-            imgui.image(texture.name, w*2, h*2, border_color=(1, 1, 1, 1) if is_selected else (.5, .5, .5, 1))
-            #imgui.pop_style_color(1)
+            with imgui.colored(imgui.COLOR_BUTTON, *TOOL_BUTTON_COLORS[is_selected]):
+                if imgui.core.image_button(texture.name, 16, 16):
+                    brushes.select(brush)
+                    clicked = True
+                if i % 3 != 2:
+                    imgui.same_line()
 
-            if imgui.core.is_item_clicked(0):
-                brushes.select(brush)
-                clicked = brush
-        if compact:
-            imgui.same_line()
+            # #imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *SELECTABLE_FRAME_COLORS[is_selected])
+            # imgui.image(texture.name, w*2, h*2, border_color=(1, 1, 1, 1) if is_selected else (.5, .5, .5, 1))
+            # #imgui.pop_style_color(1)
+
+            # if imgui.core.is_item_clicked(0):
+            #     brushes.select(brush)
+            #     clicked = brush
+        # if compact:
+        #     imgui.same_line()
 
     imgui.new_line()
     return clicked

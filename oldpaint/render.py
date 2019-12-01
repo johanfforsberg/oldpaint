@@ -86,11 +86,11 @@ def render_drawing(drawing, highlighted_layer=None):
                 if layer == drawing.current:
                     # The overlay is combined with the layer
                     with overlay_texture:
-                        gl.glUniform4fv(1, 256, _get_colors(drawing.palette.get_rgba()))
+                        gl.glUniform4fv(1, 256, _get_colors(drawing.palette.as_tuple()))
                         gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
                 else:
                     with _get_empty_texture(drawing):
-                        gl.glUniform4fv(1, 256, _get_colors(drawing.palette.get_rgba()))
+                        gl.glUniform4fv(1, 256, _get_colors(drawing.palette.as_tuple()))
                         gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 
     return offscreen_buffer
@@ -124,5 +124,6 @@ def _get_offscreen_buffer(drawing):
 
 @lru_cache(1)
 def _get_colors(colors):
-    colors = chain.from_iterable(colors)
-    return (gl.GLfloat*(4*256))(*colors)
+    float_colors = chain.from_iterable((r / 255, g / 255, b / 255, a / 255)
+                                       for r, g, b, a in colors)
+    return (gl.GLfloat*(4*256))(*float_colors)
