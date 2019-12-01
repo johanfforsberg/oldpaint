@@ -1,7 +1,8 @@
 from functools import lru_cache
 from math import floor
 
-from .picture import LongPicture, draw_ellipse, draw_rectangle
+from .picture import LongPicture
+from .draw import draw_ellipse, draw_rectangle
 
 
 class Brush:
