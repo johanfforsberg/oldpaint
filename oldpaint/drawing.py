@@ -186,6 +186,8 @@ class Drawing:
     def make_brush(self, rect=None, layer=None, clear=False):
         "Create a brush from part of the given layer."
         rect = rect or self.selection
+        if rect.area() == 0:
+            return
         layer = layer or self.current
         subimage = layer.get_subimage(rect)
         subimage.fix_alpha([0])  # TODO Use the proper list of transparent colors
