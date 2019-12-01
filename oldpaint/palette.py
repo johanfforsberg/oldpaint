@@ -47,7 +47,6 @@ class Palette:
 
     def set_overlay(self, i, color):
         self.overlay[i] = color
-        self.as_float.cache_clear()
         self.overlayed_color.cache_clear()
         self.as_tuple.cache_clear()
 
@@ -57,7 +56,6 @@ class Palette:
 
     def clear_overlay(self):
         self.overlay.clear()
-        self.as_float.cache_clear()
 
     @lru_cache(maxsize=1)
     def as_tuple(self):
@@ -75,7 +73,6 @@ class Palette:
             self.colors[index] = r, g, b, a
         else:
             self.colors[index] = int(r*256), int(g*256), int(b*256), int(a*256)
-        self.as_float.cache_clear()
         self.as_tuple.cache_clear()
         self.overlayed_color.cache_clear()
 
