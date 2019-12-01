@@ -1,9 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from functools import lru_cache, partial
-from itertools import chain
 from queue import Queue
-from threading import Thread
 from tkinter import Tk, filedialog
 
 from euclid3 import Matrix4
@@ -16,16 +14,15 @@ from pyglet.window import key
 from fogl.framebuffer import FrameBuffer
 from fogl.glutil import load_png
 from fogl.shader import Program, VertexShader, FragmentShader
-from fogl.texture import Texture, ByteTexture, ImageTexture
-from fogl.util import try_except_log, enabled
+from fogl.texture import Texture, ImageTexture
+from fogl.util import try_except_log
 from fogl.vao import VertexArrayObject
 from fogl.vertex import SimpleVertices
 
 from .brush import PicBrush, RectangleBrush, EllipseBrush
 from .drawing import Drawing
 from .imgui_pyglet import PygletRenderer
-from .layer import Layer
-from .picture import LongPicture, save_png
+from .picture import save_png
 from .rect import Rectangle
 from .render import render_drawing
 from .stroke import make_stroke
@@ -403,8 +400,16 @@ class OldpaintWindow(pyglet.window.Window):
                 if imgui.begin_menu("Drawing", True):
                     if imgui.menu_item("New", None, False, True)[0]:
                         self._create_drawing()
+
                     elif imgui.menu_item("Close", None, False, True)[0]:
                         self._close_drawing()
+
+                    imgui.separator()
+
+                    if imgui.menu_item("Flip horizontally", "H", False, True)[0]:
+                        self.drawing.flip_horizontal()
+                    if imgui.menu_item("Flip vertically", "V", False, True)[0]:
+                        self.drawing.flip_vertical()
 
                     imgui.separator()
 
@@ -567,9 +572,6 @@ class OldpaintWindow(pyglet.window.Window):
 
                 # Exit with unsaved
                 self._unsaved = ui.render_unsaved_exit(self._unsaved)
-
-            elif not self._new_drawing:
-                self._new_drawing = dict(size=(640, 480))
 
             # Create new drawing
             if self._new_drawing:

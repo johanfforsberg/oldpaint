@@ -151,6 +151,16 @@ class Drawing:
         edit.perform(self)
         self._add_edit(edit)
 
+    def flip_horizontal(self):
+        edit = DrawingFlipEdit(True)
+        edit.perform(self)
+        self._add_edit(edit)
+
+    def flip_vertical(self):
+        edit = DrawingFlipEdit(False)
+        edit.perform(self)
+        self._add_edit(edit)
+
     def flip_layer_horizontal(self, layer=None):
         layer = layer or self.current
         edit = LayerFlipEdit(self.layers.index(layer), True)
@@ -333,6 +343,26 @@ class LayerFlipEdit(Edit):
             layer.flip_horizontal()
         else:
             layer.flip_vertical()
+
+    undo = perform  # Mirroring is it's own inverse!
+
+    def __repr__(self):
+        return f"{__class__}(index={self.index}, horizontal={self.horizontal})"
+
+
+@dataclass(frozen=True)
+class DrawingFlipEdit(Edit):
+
+    "Mirror layer. This is a non-destructive operation, so we don't have to store any of the data."
+
+    horizontal: bool
+
+    def perform(self, drawing):
+        for layer in drawing.layers:
+            if self.horizontal:
+                layer.flip_horizontal()
+            else:
+                layer.flip_vertical()
 
     undo = perform  # Mirroring is it's own inverse!
 
