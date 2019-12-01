@@ -421,25 +421,6 @@ class OldpaintWindow(pyglet.window.Window):
                             self.drawings.select(drawing)
                     imgui.end_menu()
 
-                if imgui.begin_menu("Brush", True):
-                    if imgui.menu_item("Save current", None, False, bool(self.drawing_brush))[0]:
-                        path = filedialog.asksaveasfilename(title="Select file",
-                                                            filetypes=(#("ORA files", "*.ora"),
-                                                                       ("PNG files", "*.png"),
-                                                                       ("all files", "*.*")))
-                        if path:
-                            with open(path, "wb") as f:
-                                save_png(self.brush.original, f, self.drawing.palette.colors)
-
-                    imgui.separator()
-
-                    for i, brush in enumerate(self.drawing.brushes):
-                        if imgui.menu_item(f"{brush.size}", None, self.brush == brush, True):
-                            self.drawing.brushes.select(brush)
-                            self.drawing_brush = brush
-
-                    imgui.end_menu()
-
                 if imgui.begin_menu("Layer", True):
                     layer = self.drawing.layers.current
                     index = self.drawing.layers.index(layer)
@@ -477,6 +458,44 @@ class OldpaintWindow(pyglet.window.Window):
                     imgui.end_menu()
                 else:
                     self.highlighted_layer = None
+
+                if imgui.begin_menu("Brush", True):
+                    if imgui.menu_item("Save current", None, False, bool(self.drawing_brush))[0]:
+                        path = filedialog.asksaveasfilename(title="Select file",
+                                                            filetypes=(#("ORA files", "*.ora"),
+                                                                       ("PNG files", "*.png"),
+                                                                       ("all files", "*.*")))
+                        if path:
+                            with open(path, "wb") as f:
+                                save_png(self.brush.original, f, self.drawing.palette.colors)
+
+                    elif imgui.menu_item("Remove", None, False, bool(self.drawing_brush))[0]:
+                        self.drawing.brushes.remove(self.drawing_brush)
+                        self.drawing_brush = self.drawing.brushes.current
+
+                    imgui.separator()
+
+                    for i, brush in enumerate(reversed(self.drawing.brushes[-10:])):
+                        imgui.begin_group()
+                        is_selected = self.drawing_brush == brush
+
+                        texture = self.get_brush_preview_texture(brush,
+                                                                 colors=self.drawing.palette.as_tuple())
+                        imgui.image(texture.name, *texture.size,
+                                    border_color=(1, 1, 1, 1) if is_selected else (.25, .25, .25, 1))
+                        imgui.same_line()
+                        imgui.text(f"{brush.size}")
+                        imgui.end_group()
+
+                        if imgui.is_item_clicked():
+                            self.drawing.brushes.select(brush)
+                            self.drawing_brush = brush
+                            imgui.close_current_popup()
+
+                    imgui.end_menu()
+
+                if imgui.begin_popup("popup-brush"):
+                    imgui.text("hej")
 
                 # Show some info in the right part of the menu bar
 
@@ -519,19 +538,20 @@ class OldpaintWindow(pyglet.window.Window):
                 brush = ui.render_brushes(self.brushes,
                                           partial(self.get_brush_preview_texture,
                                                   colors=self.drawing.palette.as_tuple()),
-                                          compact=True)
+                                          compact=True, size=(16, 16))
                 if brush:
                     self.drawing_brush = None
                 imgui.separator()
 
-                if imgui.button("Delete"):
-                    self.drawing.brushes.remove()
+                # if imgui.button("Delete"):
+                #     self.drawing.brushes.remove()
 
-                brush = ui.render_brushes(self.drawing.brushes,
-                                          partial(self.get_brush_preview_texture,
-                                                  colors=self.drawing.palette.as_tuple()))
-                if brush:
-                    self.drawing_brush = brush
+                # brush = ui.render_brushes(self.drawing.brushes,
+                #                           partial(self.get_brush_preview_texture,
+                #                                   colors=self.drawing.palette.as_tuple()),
+                #                           size=None)
+                # if brush:
+                #     self.drawing_brush = brush
                 imgui.core.separator()
 
                 imgui.begin_child("Palette", height=0)
@@ -786,9 +806,10 @@ class OldpaintWindow(pyglet.window.Window):
         return frust * view
 
     @lru_cache(32)
-    def get_brush_preview_texture(self, brush, colors):
+    def get_brush_preview_texture(self, brush, colors, size=(8, 8)):
         bw, bh = brush.size
-        w, h = size = max(8, bw), max(8, bh)
+        w, h = size
+        w, h = size = max(w, bw), max(h, bh)
         texture = Texture(size)
         texture.clear()
         # if isinstance(brush.original, Picture):
@@ -797,8 +818,9 @@ class OldpaintWindow(pyglet.window.Window):
         #data = bytes(brush.original.data)
         data = brush.original.as_rgba(colors, True)
         gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
+        print(w, h, max(0, w//2-bw//2), max(0, w//2-bw//2), bw, bh, len(data))
         gl.glTextureSubImage2D(texture.name, 0,
-                               max(0, w//2-bw//2), max(0, w//2-bw//2), min(w, bw), min(w, bh),
+                               max(0, w//2-bw//2), max(0, h//2-bh//2), bw, bh, # min(w, bw), min(w, bh),
                                gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, bytes(data))
         return texture
 

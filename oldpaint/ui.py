@@ -232,30 +232,37 @@ def render_layers(drawing):
     return hovered
 
 
-def render_brushes(brushes, get_texture, compact=False):
+def render_brushes(brushes, get_texture, size=None, compact=False):
 
     clicked = False
 
     for i, brush in enumerate(brushes):
         is_selected = brush == brushes.current
-        texture = get_texture(brush)
+        size1 = size or brush.size
+        texture = get_texture(brush=brush, size=size1)
         if texture:
             w, h = brush.size
-            # if w > 50 or h > 50:
-            #     aspect = w / h
-            #     if w > h:
-            #         w = 50
-            #         h = w / aspect
-            #     else:
-            #         h = 50
-            #         w = h * aspect
+            if w > 50 or h > 50:
+                aspect = w / h
+                if w > h:
+                    w = 50
+                    h = w / aspect
+                else:
+                    h = 50
+                    w = h * aspect
 
-            with imgui.colored(imgui.COLOR_BUTTON, *TOOL_BUTTON_COLORS[is_selected]):
-                if imgui.core.image_button(texture.name, 16, 16):
-                    brushes.select(brush)
-                    clicked = True
-                if i % 3 != 2:
-                    imgui.same_line()
+            # with imgui.colored(imgui.COLOR_BUTTON, *TOOL_BUTTON_COLORS[is_selected]):
+            imgui.image(texture.name, *size1,
+                        border_color=(1, 1, 1, 1) if is_selected else (.5, .5, .5, 1))
+            if imgui.core.is_item_clicked(0):
+                brushes.select(brush)
+                clicked = brush
+
+            # if imgui.core.image_button(texture.name, *size):
+            #     brushes.select(brush)
+            #     clicked = True
+            if i % 3 != 2:
+                imgui.same_line()
 
             # #imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *SELECTABLE_FRAME_COLORS[is_selected])
             # imgui.image(texture.name, w*2, h*2, border_color=(1, 1, 1, 1) if is_selected else (.5, .5, .5, 1))
