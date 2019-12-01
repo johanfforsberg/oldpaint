@@ -529,8 +529,8 @@ class OldpaintWindow(pyglet.window.Window):
                 imgui.set_next_window_position(w - 115, 20)
 
                 imgui.begin("Tools", False, flags=(imgui.WINDOW_NO_TITLE_BAR
-                                                  | imgui.WINDOW_NO_RESIZE
-                                                  | imgui.WINDOW_NO_MOVE))
+                                                   | imgui.WINDOW_NO_RESIZE
+                                                   | imgui.WINDOW_NO_MOVE))
 
                 ui.render_tools(self.tools, self.icons)
                 imgui.core.separator()
@@ -541,25 +541,12 @@ class OldpaintWindow(pyglet.window.Window):
                                           compact=True, size=(16, 16))
                 if brush:
                     self.drawing_brush = None
-                imgui.separator()
 
-                # if imgui.button("Delete"):
-                #     self.drawing.brushes.remove()
-
-                # brush = ui.render_brushes(self.drawing.brushes,
-                #                           partial(self.get_brush_preview_texture,
-                #                                   colors=self.drawing.palette.as_tuple()),
-                #                           size=None)
-                # if brush:
-                #     self.drawing_brush = brush
                 imgui.core.separator()
 
                 imgui.begin_child("Palette", height=0)
                 ui.render_palette(self.drawing)
                 imgui.end_child()
-
-                # if imgui.collapsing_header("Layers", None)[0]:
-                #     self.highlighted_layer = ui.render_layers(self.drawing)
 
                 # if imgui.collapsing_header("Edits", None, flags=imgui.TREE_NODE_DEFAULT_OPEN)[0]:
                 #     imgui.begin_child("Edits list", height=0)
@@ -581,7 +568,7 @@ class OldpaintWindow(pyglet.window.Window):
                 # Exit with unsaved
                 self._unsaved = ui.render_unsaved_exit(self._unsaved)
 
-            if not self.drawing:
+            elif not self._new_drawing:
                 self._new_drawing = dict(size=(640, 480))
 
             # Create new drawing
@@ -812,34 +799,9 @@ class OldpaintWindow(pyglet.window.Window):
         w, h = size = max(w, bw), max(h, bh)
         texture = Texture(size)
         texture.clear()
-        # if isinstance(brush.original, Picture):
-        #     data = bytes(brush.original.as_rgba(self.drawing.palette.colors, False).data)
-        # else:
-        #data = bytes(brush.original.data)
         data = brush.original.as_rgba(colors, True)
         gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
-        print(w, h, max(0, w//2-bw//2), max(0, w//2-bw//2), bw, bh, len(data))
         gl.glTextureSubImage2D(texture.name, 0,
                                max(0, w//2-bw//2), max(0, h//2-bh//2), bw, bh, # min(w, bw), min(w, bh),
                                gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, bytes(data))
         return texture
-
-
-@lru_cache(32)
-def get_brush_preview_texture(brush, palette):
-    texture = render_brush_preview_texture(brush, palette)
-    return texture
-
-
-def render_brush_preview_texture(brush, colors):
-    texture = Texture(brush.size)
-    #brush.original.putpalette(self.drawing.palette.get_pil_palette())  # TODO do this when palette changes
-    #brush.set_palette(self.drawing.palette)
-    #rawdata = brush.original.convert("RGBA").getdata()
-    rgbdata = brush.original.as_rgba(palette.colors, False).data
-    # TODO alpha mask
-    data = (gl.GLuint * len(rgbdata))(*rgbdata)
-    w, h = brush.size
-    gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
-    gl.glTextureSubImage2D(texture.name, 0, 0, 0, w, h, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, data)
-    return texture
