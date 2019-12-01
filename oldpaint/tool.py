@@ -4,6 +4,7 @@ from random import gauss
 from pyglet import window
 
 from .brush import PicBrush
+from .drawing import Drawing
 from .rect import from_points, cover
 from .util import try_except_log
 
@@ -20,7 +21,7 @@ class Tool(metaclass=abc.ABCMeta):
     brush_preview = True  # Whether to show the current brush on top of the image while not drawing
     period = None
 
-    def __init__(self, drawing, brush, color, initial):
+    def __init__(self, drawing: Drawing, brush, color, initial):
         self.drawing = drawing
 
         self.brush = brush
