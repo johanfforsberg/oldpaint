@@ -198,7 +198,7 @@ class Drawing:
             edit.perform(self)
             self._add_edit(edit)
         brush = PicBrush(subimage)
-        self.brushes.add(brush)
+        self.brushes.append(brush)
 
     def _add_edit(self, edit):
         "Insert an edit into the history, keeping track of things"

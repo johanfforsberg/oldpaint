@@ -70,6 +70,10 @@ class Selectable:
             self.items.append(item)
         self.current = item
 
+    def append(self, item):
+        self.items.append(item)
+        self.current = item
+
     def remove(self, item=None):
         item = item or self.current
         try:
