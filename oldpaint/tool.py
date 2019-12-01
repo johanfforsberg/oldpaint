@@ -250,7 +250,12 @@ class PickerTool(Tool):
         self.color = None
 
     def finish(self, layer, point, buttons, modifiers):
-        index = self.drawing.current.pic.get_pixel(*point)
+        # Find the pixel that is visible at the given point.
+        for layer in reversed(self.drawing.layers):
+            if layer.visible:
+                index = layer.pic.get_pixel(*point)
+                if index != 0:
+                    break
         if buttons == window.mouse.LEFT:
             self.drawing.palette.foreground = index
         elif buttons == window.mouse.RIGHT:
