@@ -350,12 +350,6 @@ class OldpaintWindow(pyglet.window.Window):
             if imgui.begin_main_menu_bar():
                 if imgui.begin_menu("File", True):
 
-                    clicked_quit, selected_quit = imgui.menu_item(
-                        "Quit", 'Cmd+Q', False, True
-                    )
-                    if clicked_quit:
-                        self._quit()
-
                     clicked_load, selected_load = imgui.menu_item("Load", "o", False, True)
                     if clicked_load:
                         self._load_drawing()
@@ -367,6 +361,12 @@ class OldpaintWindow(pyglet.window.Window):
                     clicked_save_as, selected_save = imgui.menu_item("Save as", "S", False, True)
                     if clicked_save_as:
                         self._save_drawing(ask_for_path=True)
+
+                    clicked_quit, selected_quit = imgui.menu_item(
+                        "Quit", 'Cmd+Q', False, True
+                    )
+                    if clicked_quit:
+                        self._quit()
 
                     imgui.end_menu()
 
