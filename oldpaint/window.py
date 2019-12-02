@@ -290,7 +290,7 @@ class OldpaintWindow(pyglet.window.Window):
         elif symbol == key.TAB and modifiers & key.MOD_ALT:
             # TODO make this toggle to most-recently-used instead
             self.overlay.clear()
-            self.drawings.cycle_forward()
+            self.drawings.cycle_forward(cyclic=True)
 
     @try_except_log
     def on_draw(self):
@@ -371,6 +371,8 @@ class OldpaintWindow(pyglet.window.Window):
                                 self._load_drawing(path)
                         imgui.end_menu()
 
+                    imgui.separator()
+
                     clicked_save, selected_save = imgui.menu_item("Save", "s", False, True)
                     if clicked_save:
                         self._save_drawing()
@@ -378,6 +380,8 @@ class OldpaintWindow(pyglet.window.Window):
                     clicked_save_as, selected_save = imgui.menu_item("Save as", "S", False, True)
                     if clicked_save_as:
                         self._save_drawing(ask_for_path=True)
+
+                    imgui.separator()
 
                     clicked_quit, selected_quit = imgui.menu_item(
                         "Quit", 'Cmd+Q', False, True
@@ -391,14 +395,14 @@ class OldpaintWindow(pyglet.window.Window):
                     if imgui.menu_item("New", None, False, True)[0]:
                         self._create_drawing()
 
-                    elif imgui.menu_item("Close", None, False, True)[0]:
+                    elif imgui.menu_item("Close", None, False, self.drawing)[0]:
                         self._close_drawing()
 
                     imgui.separator()
 
-                    if imgui.menu_item("Flip horizontally", "H", False, True)[0]:
+                    if imgui.menu_item("Flip horizontally", "H", False, self.drawing)[0]:
                         self.drawing.flip_horizontal()
-                    if imgui.menu_item("Flip vertically", "V", False, True)[0]:
+                    if imgui.menu_item("Flip vertically", "V", False, self.drawing)[0]:
                         self.drawing.flip_vertical()
 
                     imgui.separator()
@@ -416,7 +420,7 @@ class OldpaintWindow(pyglet.window.Window):
                             self.drawings.select(drawing)
                     imgui.end_menu()
 
-                if imgui.begin_menu("Layer", True):
+                if imgui.begin_menu("Layer", bool(self.drawing)) :
                     layer = self.drawing.layers.current
                     index = self.drawing.layers.index(layer)
                     n_layers = len(self.drawing.layers)
@@ -454,7 +458,7 @@ class OldpaintWindow(pyglet.window.Window):
                 else:
                     self.highlighted_layer = None
 
-                if imgui.begin_menu("Brush", True):
+                if imgui.begin_menu("Brush", bool(self.drawing)):
                     if imgui.menu_item("Save current", None, False, bool(self.drawing_brush))[0]:
                         path = filedialog.asksaveasfilename(title="Select file",
                                                             filetypes=(#("ORA files", "*.ora"),
