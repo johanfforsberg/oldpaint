@@ -84,6 +84,9 @@ class Layer:
     def rect(self):
         return self.pic.rect
 
+    def toggle_visibility(self):
+        self.visible = not self.visible
+
     def clear(self, rect: Rectangle=None, value=0, set_dirty=True):
         rect = rect or self.rect
         self.pic.clear(rect.box(), value)

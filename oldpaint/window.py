@@ -270,44 +270,17 @@ class OldpaintWindow(pyglet.window.Window):
         elif symbol == key.Y:
             self.drawing.redo()
 
+        elif symbol == key.W:
+            self.drawing.next_layer()
+        elif symbol == key.S:
+            self.drawing.prev_layer()
+        elif symbol == key.V:
+            self.drawing.current.toggle_visibility()
+
         elif symbol == key.TAB and modifiers & key.MOD_ALT:
             # TODO make this toggle to most-recently-used instead
             self.overlay.clear()
             self.drawings.cycle_forward()
-
-        # TODO the file dialogs are blocking.
-        elif symbol == key.S:
-            self._save_drawing()
-        elif symbol == key.O:
-            self._load_drawing()
-
-        elif symbol == key.ESCAPE:
-            self.keyboard_stack.clear()
-            self._handle_shortcuts()
-        else:
-            self.keyboard_stack.append((symbol, None))
-            self._handle_shortcuts()
-
-    keyboard_map = {
-        (key.T, None): {
-            "show": "tool_popup",
-            "keys": {
-                #(key.P, None): partial(self.drawing.tools.select, self.drawing.tools[])
-            }
-        }
-    }
-
-    def _handle_shortcuts(self):
-        keys = self.keyboard_map
-        config = {}
-        for combo in self.keyboard_stack:
-            config = keys.get(combo, {})
-            if not config:
-                self.keyboard_stack.clear()
-                self.show_ui = None
-                return
-            keys = config.get("keys")
-        self.show_ui = config.get("show")
 
     @try_except_log
     def on_draw(self):
