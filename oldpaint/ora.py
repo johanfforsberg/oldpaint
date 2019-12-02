@@ -1,5 +1,7 @@
 """
 Utilities for working with OpenRaster files, as specified by https://www.openraster.org/
+ORA is a simple, open format that can be loaded by some other graphics software,
+e.g. Krita.
 """
 
 from typing import List, Tuple
@@ -10,7 +12,7 @@ from xml.etree import ElementTree as ET
 from .picture import LongPicture, load_png, save_png
 
 
-def save_ora(size: Tuple[int, int], layers: List[LongPicture], palette, path: str):
+def save_ora(size: Tuple[int, int], layers: List[LongPicture], palette, path):
     w, h = size
     image_el = ET.Element("image", version="0.0.3", w=str(w), h=str(h))
     stack_el = ET.SubElement(image_el, "stack")
@@ -29,6 +31,8 @@ def save_ora(size: Tuple[int, int], layers: List[LongPicture], palette, path: st
 
 
 def load_ora(path):
+    # TODO we should not allow loading arbitrary ORA, only those
+    # conforming to what oldpaint can handle.
     with zipfile.ZipFile(path, mode="r") as orafile:
         stack_xml = orafile.read("stack.xml")
         image_el = ET.fromstring(stack_xml)
@@ -39,4 +43,4 @@ def load_ora(path):
             with orafile.open(path) as imgf:
                 pic, palette = load_png(imgf)
                 layers.append(pic)
-    return list(reversed(layers)), palette
+    return layers, palette

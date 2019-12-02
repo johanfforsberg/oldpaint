@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 import logging
 import os
+import shutil
 import struct
-from typing import NamedTuple
 import zlib
 
 from .brush import PicBrush
@@ -87,22 +87,32 @@ class Drawing:
 
     @classmethod
     def from_ora(cls, path):
+        """Load a drawing"""
         layer_pics, colors = load_ora(path)
-        pic = layer_pics[0]
-        size = pic.size
         palette = Palette(colors, transparency=0)
-        layers = [Layer(p) for p in layer_pics]
-        return cls(size=size, layers=layers, palette=palette, path=path)
+        layers = [Layer(p) for p in reversed(layer_pics)]
+        return cls(size=layers[0].size, layers=layers, palette=palette, path=path)
 
     def save_ora(self, path=None):
+        """Save in ORA format, which keeps all layers intact."""
         if path is None and self.path:
-            save_ora(self.size, self.layers, self.palette, self.path)
+            self._save_ora(self.path)
         elif path:
+            self._save_ora(path)
             self.path = path
-            save_ora(self.size, self.layers, self.palette, path)
         else:
             raise RuntimeError("Can't save without path")
         self._latest_save_index = len(self._edits)
+
+    def _save_ora(self, path):
+        """
+        Save the drawing in a temporary file before moving it to the path
+        This should prevent us from leaving the user with a broken file in case
+        something bad happens while writing.
+        """
+        tmp_path = path + ".tmp"
+        save_ora(self.size, self.layers, self.palette, tmp_path)
+        shutil.move(tmp_path, path)
 
     def add_layer(self, index=None, layer=None):
         layer = layer or Layer(LongPicture(self.size))
