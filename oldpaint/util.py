@@ -83,12 +83,18 @@ class Selectable:
         except (ValueError, IndexError):
             self.current = None
 
-    def cycle_forward(self):
+    def cycle_forward(self, cyclic=False):
+        index = self.get_current_index()
+        if not cyclic and index == len(self) - 1:
+            return
         index = (self.get_current_index() + 1) % len(self.items)
         self.current = self.items[index]
 
-    def cycle_backward(self):
-        index = (self.get_current_index() - 1) % len(self.items)
+    def cycle_backward(self, cyclic=False):
+        index = self.get_current_index()
+        if not cyclic and index == 0:
+            return
+        index = (index - 1) % len(self.items)
         self.current = self.items[index]
 
     def swap(self, a, b=None):
