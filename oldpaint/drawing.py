@@ -210,8 +210,7 @@ class Drawing:
             return
         layer = layer or self.current
         subimage = layer.get_subimage(rect)
-        subimage.fix_alpha([0])  # TODO Use the proper list of transparent colors
-        # TODO In fact this should not really be needed...
+        subimage.fix_alpha({0})  # TODO Use the proper list of transparent colors
         if clear:
             edit = LayerClearEdit.create(self, layer, rect,
                                          color=self.palette.background)

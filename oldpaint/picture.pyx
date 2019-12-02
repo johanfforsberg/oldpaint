@@ -114,7 +114,7 @@ cdef class LongPicture:
             start += w
         return cropped
 
-    cpdef void fix_alpha(self, list colors):
+    cpdef void fix_alpha(self, set transparent_colors):
         """
         Ensure that the given transparent colors really have 0 alpha.
         This is important for brushes.
@@ -125,8 +125,10 @@ cdef class LongPicture:
         for x in range(w):
             for y in range(h):
                 c = self.get_pixel(x, y)
-                if self.get_pixel(x, y) % 255 in colors:
+                if c % 255 in transparent_colors:
                     self.set_pixel(x, y, c % 255)
+                else:
+                    self.set_pixel(x, y, _rgb_to_32bit((c, 0, 0)))
 
     cpdef void paste(self, LongPicture pic, int x, int y, bint mask,
                      bint colorize=False, unsigned char color=0) nogil:
