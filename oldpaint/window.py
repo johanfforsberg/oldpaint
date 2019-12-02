@@ -1,6 +1,8 @@
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from functools import lru_cache, partial
+import os
 from queue import Queue
 from tkinter import Tk, filedialog
 
@@ -54,7 +56,7 @@ class Drawings(Selectable):
 
 class OldpaintWindow(pyglet.window.Window):
 
-    def __init__(self, **kwargs):
+    def __init__(self, recent_files,  **kwargs):
 
         super().__init__(**kwargs, resizable=True, vsync=False)
 
@@ -127,6 +129,7 @@ class OldpaintWindow(pyglet.window.Window):
 
         self._new_drawing = None  # Set when configuring a new drawing
         self._unsaved = None
+        self.recent_files = OrderedDict((k, None) for k in recent_files)
 
         # tablets = pyglet.input.get_tablets()
         # if tablets:
@@ -179,6 +182,13 @@ class OldpaintWindow(pyglet.window.Window):
     @offset.setter
     def offset(self, offset):
         self.drawings.current.offset = offset
+
+    def add_recent_file(self, filename, maxsize=10):
+        self.recent_files[filename] = None
+        if len(self.recent_files) > maxsize:
+            for f in self.recent_files:
+                del self.recent_files[f]
+                break
 
     @no_imgui_events
     def on_mouse_press(self, x, y, button, modifiers):
@@ -353,6 +363,13 @@ class OldpaintWindow(pyglet.window.Window):
                     clicked_load, selected_load = imgui.menu_item("Load", "o", False, True)
                     if clicked_load:
                         self._load_drawing()
+
+                    if imgui.begin_menu("Load recent...", self.recent_files):
+                        for path in reversed(self.recent_files):
+                            clicked, _ = imgui.menu_item(os.path.basename(path), None, False, True)
+                            if clicked:
+                                self._load_drawing(path)
+                        imgui.end_menu()
 
                     clicked_save, selected_save = imgui.menu_item("Save", "s", False, True)
                     if clicked_save:
@@ -604,12 +621,14 @@ class OldpaintWindow(pyglet.window.Window):
             if path:
                 if path.endswith(".ora"):
                     self.drawing.save_ora(path)
+                    self.add_recent_file(path)
 
-    def _load_drawing(self):
-        path = filedialog.askopenfilename(title="Select file",
-                                          filetypes=(("ORA files", "*.ora"),
-                                                     ("PNG files", "*.png"),
-                                                     ("all files", "*.*")))
+    def _load_drawing(self, path=None):
+        if not path:
+            path = filedialog.askopenfilename(title="Select file",
+                                              filetypes=(("ORA files", "*.ora"),
+                                                         ("PNG files", "*.png"),
+                                                         ("all files", "*.*")))
         if path:
             if path.endswith(".ora"):
                 drawing = Drawing.from_ora(path)
@@ -617,6 +636,7 @@ class OldpaintWindow(pyglet.window.Window):
                 drawing = Drawing.from_png(path)
             self.drawings.add(drawing)
             self.drawings.select(drawing)
+            self.add_recent_file(path)
 
     def _close_drawing(self):
         if self.drawing.unsaved:
