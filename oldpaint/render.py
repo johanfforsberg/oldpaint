@@ -86,6 +86,8 @@ def render_drawing(drawing, highlighted_layer=None):
                 if layer == drawing.current:
                     # The overlay is combined with the layer
                     with overlay_texture:
+                        # TODO is it possible to send the palette without converting
+                        # to float first?
                         gl.glUniform4fv(1, 256, _get_colors(drawing.palette.as_tuple()))
                         gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
                 else:
