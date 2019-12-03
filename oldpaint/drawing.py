@@ -161,6 +161,19 @@ class Drawing:
         edit.perform(self)
         self._add_edit(edit)
 
+    @try_except_log
+    def merge_layers(self, layer1, layer2):
+        edit = MergeLayersEdit.create(self, layer1, layer2)
+        edit.perform(self)
+        self._add_edit(edit)
+
+    def merge_layer_down(self, layer=None):
+        layer1 = layer or self.layers.current
+        index = self.layers.index(layer1)
+        if index > 0:
+            layer2 = self.layers[index - 1]
+            self.merge_layers(layer1, layer2)
+
     def flip_horizontal(self):
         edit = DrawingFlipEdit(True)
         edit.perform(self)
@@ -188,8 +201,8 @@ class Drawing:
         "Update a part of the layer, keeping track of the change as an 'undo'"
         layer = layer or self.current
         edit = LayerEdit.create(self, layer, new, rect)
+        edit.perform(self)
         self._add_edit(edit)
-        layer.blit_part(new.pic, rect, rect.topleft)
 
     @try_except_log
     def change_colors(self, i, colors):
@@ -231,7 +244,7 @@ class Drawing:
         "Restore the drawing to the state it was in before the current edit was made."
         if -self._edits_index <= len(self._edits):
             edit = self._edits[self._edits_index]
-            edit.undo(self)
+            edit.revert(self)
             self._edits_index -= 1
         logger.info("No more edits to undo!")
 
@@ -289,7 +302,7 @@ class LayerEdit(Edit):
     @classmethod
     def create(cls, drawing, orig_layer, edit_layer, rect):
         "Helper to handle compressing the data."
-        data = orig_layer.make_diff(edit_layer, rect)
+        data = orig_layer.make_diff(edit_layer, rect, alpha=False)
         index = drawing.layers.index(orig_layer)
         return cls(index=index, data=zlib.compress(data), rect=rect)
 
@@ -298,7 +311,7 @@ class LayerEdit(Edit):
         diff_data = zlib.decompress(self.data)
         layer.apply_diff(memoryview(diff_data).cast("h"), self.rect, False)
 
-    def undo(self, drawing):
+    def revert(self, drawing):
         layer = drawing.layers[self.index]
         diff_data = zlib.decompress(self.data)
         layer.apply_diff(memoryview(diff_data).cast("h"), self.rect, True)
@@ -329,7 +342,7 @@ class LayerClearEdit(Edit):
         layer = drawing.layers[self.index]
         layer.clear(self.rect, value=self.color)
 
-    def undo(self, drawing):
+    def revert(self, drawing):
         layer = drawing.layers[self.index]
         diff_data = zlib.decompress(self.data)
         layer.blit(LongPicture(self.rect.size, diff_data), self.rect, alpha=False)
@@ -353,7 +366,7 @@ class LayerFlipEdit(Edit):
         else:
             layer.flip_vertical()
 
-    undo = perform  # Mirroring is it's own inverse!
+    revert = perform  # Mirroring is it's own inverse!
 
     def __repr__(self):
         return f"{__class__}(index={self.index}, horizontal={self.horizontal})"
@@ -373,7 +386,7 @@ class DrawingFlipEdit(Edit):
             else:
                 layer.flip_vertical()
 
-    undo = perform  # Mirroring is it's own inverse!
+    revert = perform  # Mirroring is it's own inverse!
 
     def __repr__(self):
         return f"{__class__}(index={self.index}, horizontal={self.horizontal})"
@@ -392,7 +405,7 @@ class PaletteEdit(Edit):
             r0, g0, b0, a0 = drawing.palette.colors[i]
             drawing.palette[i] = r0 + dr, g0 + dg, b0 + db, a0 + da
 
-    def undo(self, drawing):
+    def revert(self, drawing):
         for i, (dr, dg, db, da) in enumerate(self.data, start=self.index):
             r0, g0, b0, a0 = drawing.palette.colors[i]
             drawing.palette[i] = r0 - dr, g0 - dg, b0 - db, a0 - da
@@ -413,7 +426,7 @@ class AddLayerEdit(Edit):
         layer = Layer(LongPicture(size=self.size, data=zlib.decompress(self.data)))
         drawing.layers.add(layer, index=self.index)
 
-    def undo(self, drawing):
+    def revert(self, drawing):
         layer = drawing.layers[self.index]
         drawing.layers.remove(layer)
 
@@ -434,8 +447,8 @@ class RemoveLayerEdit(Edit):
         return cls(index=index, data=zlib.compress(layer.pic.data), size=layer.size)
 
     # This is the inverse operation of adding a layer
-    perform = AddLayerEdit.undo
-    undo = AddLayerEdit.perform
+    perform = AddLayerEdit.revert
+    revert = AddLayerEdit.perform
 
     def __repr__(self):
         return f"{__class__}(index={self.index}, data={len(self.data)}B, size={self.size})"
@@ -450,4 +463,31 @@ class SwapLayersEdit(Edit):
     def perform(self, drawing):
         drawing.layers.swap(self.index1, self.index2)
 
-    undo = perform
+    revert = perform
+
+
+@dataclass(frozen=True)
+class MultiEdit:
+
+    "An edit that consists of several other edits in sequence."
+
+    edits: list
+
+    def perform(self, drawing):
+        for edit in self.edits:
+            edit.perform(drawing)
+
+    def revert(self, drawing):
+        for edit in reversed(self.edits):
+            edit.revert(drawing)
+
+
+class MergeLayersEdit(MultiEdit):
+
+    @classmethod
+    def create(cls, drawing, source_layer, destination_layer):
+        source_layer.pic.fix_alpha({0})
+        return MultiEdit([
+            LayerEdit.create(drawing, destination_layer, source_layer, source_layer.rect),
+            RemoveLayerEdit.create(drawing, source_layer)
+        ])

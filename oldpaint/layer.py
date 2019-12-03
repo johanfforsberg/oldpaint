@@ -113,9 +113,9 @@ class Layer:
             self.dirty = self.rect.intersect(rect.unite(self.dirty))
         return self.rect.intersect(rect)
 
-    def make_diff(self, layer, rect):
+    def make_diff(self, layer, rect, alpha=True):
         with self.lock:
-            return self.pic.make_diff(layer.pic, *rect)
+            return self.pic.make_diff(layer.pic, *rect, alpha=alpha)
 
     def apply_diff(self, diff, rect, invert=False):
         with self.lock:

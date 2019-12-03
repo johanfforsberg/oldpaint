@@ -48,5 +48,5 @@ cdef class LongPicture:
     cpdef LongPicture flip_vertical(self)
     cpdef LongPicture flip_horizontal(self)
     cpdef unsigned int[:] as_rgba(self, palette, bint alpha)
-    cpdef short[:] make_diff(self, LongPicture pic, int x, int y, int w, int h)
+    cpdef short[:] make_diff(self, LongPicture pic, int x, int y, int w, int h, bint alpha=*)
     cpdef void apply_diff(self, const short[:] difference, int x, int y, int w, int h, bint invert)

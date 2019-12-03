@@ -433,6 +433,9 @@ class OldpaintWindow(pyglet.window.Window):
                         self.drawing.add_layer()
                     if imgui.menu_item("Remove", None, False, True)[0]:
                         self.drawing.remove_layer()
+                    if imgui.menu_item("Merge down", None, False, index > 0)[0]:
+                        self.drawing.merge_layer_down()
+
                     if imgui.menu_item("Toggle visibility", "v", False, True)[0]:
                         layer.visible = not layer.visible
                     if imgui.menu_item("Move up", "W", False, index < n_layers-1)[0]:

@@ -185,7 +185,7 @@ cdef class LongPicture:
             offset1 += pic.width
             offset2 += self.width
 
-    cpdef short[:] make_diff(self, LongPicture pic, int x, int y, int w, int h):
+    cpdef short[:] make_diff(self, LongPicture pic, int x, int y, int w, int h, bint alpha=True):
         cdef short[:] difference = array.clone(short_array_template, w * h, zero=True)
         cdef int i, j, offset, start, x1, y1
         offset = self._get_offset(x, y)
