@@ -262,35 +262,40 @@ class OldpaintWindow(pyglet.window.Window):
         if self.stroke:
             return
 
-        if symbol == key.UP:
-            self.drawing.next_layer()
-        elif symbol == key.DOWN:
-            self.drawing.prev_layer()
+        if self.drawing:
 
-        if symbol == key.E:
-            self.drawing.palette.foreground += 1
-        elif symbol == key.D:
-            self.drawing.palette.foreground -= 1
+            if symbol == key.E:
+                self.drawing.palette.foreground += 1
+            elif symbol == key.D:
+                self.drawing.palette.foreground -= 1
 
-        elif symbol == key.DELETE:
-            self.drawing.clear_layer(color=self.drawing.palette.background)
+            elif symbol == key.DELETE:
+                self.drawing.clear_layer(color=self.drawing.palette.background)
 
-        elif symbol == key.Z:
-            self.drawing.undo()
-        elif symbol == key.Y:
-            self.drawing.redo()
+            elif symbol == key.Z:
+                self.drawing.undo()
+            elif symbol == key.Y:
+                self.drawing.redo()
 
-        elif symbol == key.W:
-            self.drawing.next_layer()
-        elif symbol == key.S:
-            self.drawing.prev_layer()
-        elif symbol == key.V:
-            self.drawing.current.toggle_visibility()
+            elif symbol == key.W:
+                self.drawing.next_layer()
+                self.highlighted_layer = self.drawing.layers.current
+            elif symbol == key.S:
+                self.drawing.prev_layer()
+                self.highlighted_layer = self.drawing.layers.current
+            elif symbol == key.V:
+                if modifiers & key.MOD_SHIFT:
+                    self.highlighted_layer = self.drawing.layers.current
+                else:
+                    self.drawing.current.toggle_visibility()
 
-        elif symbol == key.TAB and modifiers & key.MOD_ALT:
-            # TODO make this toggle to most-recently-used instead
-            self.overlay.clear()
-            self.drawings.cycle_forward(cyclic=True)
+            elif symbol == key.TAB and modifiers & key.MOD_ALT:
+                # TODO make this toggle to most-recently-used instead
+                self.overlay.clear()
+                self.drawings.cycle_forward(cyclic=True)
+
+    def on_key_release(self, symbol, modifiers):
+        self.highlighted_layer = None
 
     @try_except_log
     def on_draw(self):
@@ -373,11 +378,11 @@ class OldpaintWindow(pyglet.window.Window):
 
                     imgui.separator()
 
-                    clicked_save, selected_save = imgui.menu_item("Save", "s", False, True)
+                    clicked_save, selected_save = imgui.menu_item("Save", "s", False, self.drawing)
                     if clicked_save:
                         self._save_drawing()
 
-                    clicked_save_as, selected_save = imgui.menu_item("Save as", "S", False, True)
+                    clicked_save_as, selected_save = imgui.menu_item("Save as", "S", False, self.drawing)
                     if clicked_save_as:
                         self._save_drawing(ask_for_path=True)
 
@@ -447,16 +452,17 @@ class OldpaintWindow(pyglet.window.Window):
                     imgui.separator()
 
                     n = len(self.drawing.layers) - 1
+                    hovered_layer = None
                     for i, layer in enumerate(reversed(self.drawing.layers)):
                         selected = self.drawing.layers.current == layer
                         index = n_layers - i - 1
                         if imgui.menu_item(f"{index} {'v' if layer.visible else ''}", str(index), selected, True)[0]:
                             self.drawing.layers.select(layer)
                         if imgui.is_item_hovered():
-                            self.highlighted_layer = layer
+                            hovered_layer = layer
+                    if hovered_layer:
+                        self.highlighted_layer = hovered_layer
                     imgui.end_menu()
-                else:
-                    self.highlighted_layer = None
 
                 if imgui.begin_menu("Brush", bool(self.drawing)):
                     if imgui.menu_item("Save current", None, False, bool(self.drawing_brush))[0]:

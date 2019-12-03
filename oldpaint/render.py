@@ -79,7 +79,7 @@ def render_drawing(drawing, highlighted_layer=None):
                 layer.dirty = None
                 layer.lock.release()
 
-            if not layer.visible:
+            if not layer.visible and highlighted_layer != layer:
                 continue
 
             with layer_texture:
