@@ -190,6 +190,11 @@ class OldpaintWindow(pyglet.window.Window):
                 del self.recent_files[f]
                 break
 
+    def get_latest_dir(self):
+        if self.recent_files:
+            f = list(self.recent_files.keys())[-1]
+            return os.path.dirname(f)
+
     @no_imgui_events
     def on_mouse_press(self, x, y, button, modifiers):
         if not self.drawing:
@@ -285,9 +290,9 @@ class OldpaintWindow(pyglet.window.Window):
                 self.highlighted_layer = self.drawing.layers.current
             elif symbol == key.V:
                 if modifiers & key.MOD_SHIFT:
-                    self.highlighted_layer = self.drawing.layers.current
-                else:
                     self.drawing.current.toggle_visibility()
+                else:
+                    self.highlighted_layer = self.drawing.layers.current
 
             elif symbol == key.TAB and modifiers & key.MOD_ALT:
                 # TODO make this toggle to most-recently-used instead
@@ -638,7 +643,9 @@ class OldpaintWindow(pyglet.window.Window):
 
     def _load_drawing(self, path=None):
         if not path:
+            last_dir = self.get_latest_dir()
             path = filedialog.askopenfilename(title="Select file",
+                                              initialdir=last_dir,
                                               filetypes=(("ORA files", "*.ora"),
                                                          ("PNG files", "*.png"),
                                                          ("all files", "*.*")))
