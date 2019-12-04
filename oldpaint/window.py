@@ -4,7 +4,6 @@ from contextlib import contextmanager
 from functools import lru_cache, partial
 import os
 from queue import Queue
-from tkinter import Tk, filedialog
 
 from euclid3 import Matrix4
 import imgui
@@ -24,14 +23,13 @@ from fogl.vertex import SimpleVertices
 from .brush import PicBrush, RectangleBrush, EllipseBrush
 from .drawing import Drawing
 from .imgui_pyglet import PygletRenderer
-from .picture import save_png
 from .rect import Rectangle
 from .render import render_drawing
 from .stroke import make_stroke
 from .tool import (PencilTool, PointsTool, SprayTool,
                    LineTool, RectangleTool, EllipseTool,
                    SelectionTool, PickerTool, FillTool)
-from .util import Selectable, make_view_matrix
+from .util import Selectable, make_view_matrix, show_load_dialog, show_save_dialog
 from . import ui
 
 
@@ -141,8 +139,6 @@ class OldpaintWindow(pyglet.window.Window):
         #         self._update_cursor(x, y)
         #         if self.mouse_event_queue:
         #             self.mouse_event_queue.put(("mouse_drag", (self._to_image_coords(x, y), 0, 0)))
-
-        Tk().withdraw() # disables TkInter GUI
 
         @contextmanager
         def blah():
@@ -286,8 +282,11 @@ class OldpaintWindow(pyglet.window.Window):
                 self.drawing.next_layer()
                 self.highlighted_layer = self.drawing.layers.current
             elif symbol == key.S:
-                self.drawing.prev_layer()
-                self.highlighted_layer = self.drawing.layers.current
+                if modifiers & key.MOD_CTRL:
+                    self.drawing and self._save_drawing()
+                else:
+                    self.drawing.prev_layer()
+                    self.highlighted_layer = self.drawing.layers.current
             elif symbol == key.V:
                 if modifiers & key.MOD_SHIFT:
                     self.drawing.current.toggle_visibility()
@@ -372,24 +371,24 @@ class OldpaintWindow(pyglet.window.Window):
 
                     clicked_load, selected_load = imgui.menu_item("Load", "o", False, True)
                     if clicked_load:
-                        self._load_drawing()
+                        self.load_drawing()
 
                     if imgui.begin_menu("Load recent...", self.recent_files):
                         for path in reversed(self.recent_files):
                             clicked, _ = imgui.menu_item(os.path.basename(path), None, False, True)
                             if clicked:
-                                self._load_drawing(path)
+                                self.load_drawing(path)
                         imgui.end_menu()
 
                     imgui.separator()
 
                     clicked_save, selected_save = imgui.menu_item("Save", "s", False, self.drawing)
                     if clicked_save:
-                        self._save_drawing()
+                        self.save_drawing()
 
                     clicked_save_as, selected_save = imgui.menu_item("Save as", "S", False, self.drawing)
                     if clicked_save_as:
-                        self._save_drawing(ask_for_path=True)
+                        self.save_drawing(ask_for_path=True)
 
                     imgui.separator()
 
@@ -474,13 +473,19 @@ class OldpaintWindow(pyglet.window.Window):
 
                 if imgui.begin_menu("Brush", bool(self.drawing)):
                     if imgui.menu_item("Save current", None, False, bool(self.drawing_brush))[0]:
-                        path = filedialog.asksaveasfilename(title="Select file",
-                                                            filetypes=(#("ORA files", "*.ora"),
-                                                                       ("PNG files", "*.png"),
-                                                                       ("all files", "*.*")))
-                        if path:
-                            with open(path, "wb") as f:
-                                save_png(self.brush.original, f, self.drawing.palette.colors)
+                        fut = self.executor.submit(show_save_dialog,
+                                                   title="Select file",
+                                                   filetypes=(#("ORA files", "*.ora"),
+                                                       ("PNG files", "*.png"),
+                                                       ("all files", "*.*")))
+
+                        def save_brush(fut):
+                            path = fut.result()
+                            if path:
+                                self.add_recent_file(path)
+                                self.drawing_brush.save_png(path, self.drawing.palette.colors)
+
+                        fut.add_done_callback(save_brush)
 
                     elif imgui.menu_item("Remove", None, False, bool(self.drawing_brush))[0]:
                         self.drawing.brushes.remove(self.drawing_brush)
@@ -628,27 +633,43 @@ class OldpaintWindow(pyglet.window.Window):
         size = self.drawing.size if self.drawing else (640, 480)
         self._new_drawing = dict(size=size)
 
-    def _save_drawing(self, ask_for_path=False):
+    def save_drawing(self, ask_for_path=False):
         if not ask_for_path and self.drawing.path:
             self.drawing.save_ora()
         else:
-            path = filedialog.asksaveasfilename(title="Select file",
-                                                filetypes=(("ORA files", "*.ora"),
-                                                           #("PNG files", "*.png"),
-                                                           ("all files", "*.*")))
-            if path:
-                if path.endswith(".ora"):
-                    self.drawing.save_ora(path)
-                    self.add_recent_file(path)
-
-    def _load_drawing(self, path=None):
-        if not path:
             last_dir = self.get_latest_dir()
-            path = filedialog.askopenfilename(title="Select file",
-                                              initialdir=last_dir,
-                                              filetypes=(("ORA files", "*.ora"),
-                                                         ("PNG files", "*.png"),
-                                                         ("all files", "*.*")))
+            # The point here is to not block the UI redraws while showing the
+            # dialog. May be a horrible idea but it seems to work...
+            fut = self.executor.submit(show_save_dialog,
+                                       title="Select file",
+                                       initialdir=last_dir,
+                                       filetypes=(("ORA files", "*.ora"),
+                                                  #("PNG files", "*.png"),
+                                                  ("all files", "*.*")))
+            fut.add_done_callback(
+                lambda fut: self._really_save_drawing(fut.result()))
+
+    def _really_save_drawing(self, path):
+        if path:
+            if path.endswith(".ora"):
+                self.drawing.save_ora(path)
+                self.add_recent_file(path)
+
+    def load_drawing(self, path=None):
+        if path:
+            self._really_load_drawing(path)
+        else:
+            last_dir = self.get_latest_dir()
+            fut = self.executor.submit(show_load_dialog,
+                                       title="Select file",
+                                       initialdir=last_dir,
+                                       filetypes=(("ORA files", "*.ora"),
+                                                  ("PNG files", "*.png"),
+                                                  ("all files", "*.*")))
+            fut.add_done_callback(
+                lambda fut: self._really_load_drawing(fut.result()))
+
+    def _really_load_drawing(self, path):
         if path:
             if path.endswith(".ora"):
                 drawing = Drawing.from_ora(path)

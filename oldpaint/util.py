@@ -1,6 +1,7 @@
 from functools import lru_cache
 import logging
 from time import time
+from tkinter import Tk, filedialog
 from traceback import format_exc
 
 from euclid3 import Matrix4
@@ -155,3 +156,13 @@ def make_view_matrix(window_size, image_size, zoom, offset):
 @lru_cache(1)
 def make_view_matrix_inverse(window_size, image_size, zoom, offset):
     return make_view_matrix(window_size, image_size, zoom, offset).inverse()
+
+
+def show_load_dialog(**args):
+    Tk().withdraw()  # disables TkInter GUI
+    return filedialog.askopenfilename(**args)
+
+
+def show_save_dialog(**args):
+    Tk().withdraw()
+    return filedialog.asksaveasfilename(**args)

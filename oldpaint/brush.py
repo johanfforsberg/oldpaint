@@ -1,7 +1,7 @@
 from functools import lru_cache
 from math import floor
 
-from .picture import LongPicture
+from .picture import LongPicture, save_png
 from .draw import draw_ellipse, draw_rectangle
 
 
@@ -32,6 +32,10 @@ class PicBrush(Brush):
             colorized = LongPicture(self.size)
             colorized.paste(self.original, 0, 0, mask=True, colorize=True, color=color)
             return colorized
+
+    def save_png(self, path, colors):
+        with open(path, "wb") as f:
+            save_png(self.original, f, colors)
 
 
 class RectangleBrush(Brush):
