@@ -1,4 +1,5 @@
 from argparse import ArgumentParser, ArgumentTypeError
+import os
 import re
 
 import pyglet
@@ -11,16 +12,18 @@ from .window import OldpaintWindow
 
 
 def parse_drawing_spec(spec):
-    m = re.match(r"(\d+)x(\d+)", spec)
+    m = re.match(r"@(\d+)x(\d+)", spec)
     if m:
         width = int(m.group(1))
         height = int(m.group(2))
         return width, height
-    raise ArgumentTypeError("Could not parse '{spec}' as drawing specification.")
+    elif os.path.exists:
+        return spec
+    raise ArgumentTypeError("Could not understand '{spec}' as drawing specification.")
 
 
 parser = ArgumentParser()
-parser.add_argument("-d", "--drawing", type=parse_drawing_spec, action="append")
+parser.add_argument("drawing", type=parse_drawing_spec, nargs="*")
 
 args = parser.parse_args()
 

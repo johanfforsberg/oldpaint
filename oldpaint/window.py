@@ -62,7 +62,8 @@ class OldpaintWindow(pyglet.window.Window):
 
         self.drawings = Drawings([
             # Drawing((640, 480), layers=[Layer(LongPicture((640, 480)))]),
-            Drawing((s[0], s[1]), layers=[Layer(LongPicture((s[0], s[1])))])
+            (Drawing((s[0], s[1]), layers=[Layer(LongPicture((s[0], s[1])))])
+             if isinstance(s, tuple) else Drawing.from_ora(s))
             for s in drawing_specs or []
         ])
         self.tools = Selectable([
