@@ -251,28 +251,13 @@ def render_brushes(brushes, get_texture, size=None, compact=False):
                     h = 50
                     w = h * aspect
 
-            # with imgui.colored(imgui.COLOR_BUTTON, *TOOL_BUTTON_COLORS[is_selected]):
             imgui.image(texture.name, *size1,
                         border_color=(1, 1, 1, 1) if is_selected else (.5, .5, .5, 1))
             if imgui.core.is_item_clicked(0):
-                brushes.select(brush)
                 clicked = brush
 
-            # if imgui.core.image_button(texture.name, *size):
-            #     brushes.select(brush)
-            #     clicked = True
             if i % 3 != 2:
                 imgui.same_line()
-
-            # #imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *SELECTABLE_FRAME_COLORS[is_selected])
-            # imgui.image(texture.name, w*2, h*2, border_color=(1, 1, 1, 1) if is_selected else (.5, .5, .5, 1))
-            # #imgui.pop_style_color(1)
-
-            # if imgui.core.is_item_clicked(0):
-            #     brushes.select(brush)
-            #     clicked = brush
-        # if compact:
-        #     imgui.same_line()
 
     imgui.new_line()
     return clicked

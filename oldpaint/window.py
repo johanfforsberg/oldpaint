@@ -61,7 +61,6 @@ class OldpaintWindow(pyglet.window.Window):
         super().__init__(**kwargs, resizable=True, vsync=False)
 
         self.drawings = Drawings([
-            # Drawing((640, 480), layers=[Layer(LongPicture((640, 480)))]),
             (Drawing((s[0], s[1]), layers=[Layer(LongPicture((s[0], s[1])))])
              if isinstance(s, tuple) else Drawing.from_ora(s))
             for s in drawing_specs or []
@@ -79,7 +78,6 @@ class OldpaintWindow(pyglet.window.Window):
             EllipseBrush((10, 20)),
         ])
         self.highlighted_layer = None
-        self.drawing_brush = None
 
         # Some gl setup
         self.copy_program = Program(VertexShader("glsl/copy_vert.glsl"),
@@ -100,7 +98,6 @@ class OldpaintWindow(pyglet.window.Window):
         self.brush_preview_dirty = None  # A hacky way to keep brush preview dirt away
 
         # UI stuff
-        self.keyboard_stack = []
         self.show_ui = None
         self.imgui_renderer = PygletRenderer(self)
         self.icons = {
@@ -134,6 +131,7 @@ class OldpaintWindow(pyglet.window.Window):
         self._unsaved = None
         self.recent_files = OrderedDict((k, None) for k in recent_files)
 
+        # TODO This is the basics for using tablet pressure info
         # tablets = pyglet.input.get_tablets()
         # if tablets:
         #     self.tablet = tablets[0]
@@ -166,7 +164,7 @@ class OldpaintWindow(pyglet.window.Window):
 
     @property
     def brush(self):
-        return self.drawing_brush or self.brushes.current
+        return self.drawing.brushes.current or self.brushes.current
 
     @property
     def zoom(self):
@@ -501,7 +499,7 @@ class OldpaintWindow(pyglet.window.Window):
                     imgui.end_menu()
 
                 if imgui.begin_menu("Brush", bool(self.drawing)):
-                    if imgui.menu_item("Save current", None, False, bool(self.drawing_brush))[0]:
+                    if imgui.menu_item("Save current", None, False, bool(self.drawing.brushes.current))[0]:
                         fut = self.executor.submit(show_save_dialog,
                                                    title="Select file",
                                                    filetypes=(#("ORA files", "*.ora"),
@@ -512,26 +510,24 @@ class OldpaintWindow(pyglet.window.Window):
                             path = fut.result()
                             if path:
                                 self.add_recent_file(path)
-                                self.drawing_brush.save_png(path, self.drawing.palette.colors)
+                                self.drawing.brushes.current.save_png(path, self.drawing.palette.colors)
 
                         fut.add_done_callback(save_brush)
 
-                    elif imgui.menu_item("Remove", None, False, bool(self.drawing_brush))[0]:
-                        self.drawing.brushes.remove(self.drawing_brush)
-                        self.drawing_brush = self.drawing.brushes.current
+                    elif imgui.menu_item("Remove", None, False, bool(self.drawing.brushes.current))[0]:
+                        self.drawing.brushes.remove()
 
                     imgui.separator()
 
                     for i, brush in enumerate(reversed(self.drawing.brushes[-10:])):
 
-                        is_selected = self.drawing_brush == brush
+                        is_selected = self.drawing.brushes.current == brush
 
                         bw, bh = brush.size
                         clicked, selected = imgui.menu_item(f"{bw}x{bh}", None, is_selected, True)
 
                         if selected:
                             self.drawing.brushes.select(brush)
-                            self.drawing_brush = brush
 
                         if imgui.is_item_hovered():
                             imgui.begin_tooltip()
@@ -541,9 +537,6 @@ class OldpaintWindow(pyglet.window.Window):
                             imgui.end_tooltip()
 
                     imgui.end_menu()
-
-                if imgui.begin_popup("popup-brush"):
-                    imgui.text("hej")
 
                 # Show some info in the right part of the menu bar
 
@@ -588,7 +581,8 @@ class OldpaintWindow(pyglet.window.Window):
                                                   colors=self.drawing.palette.as_tuple()),
                                           compact=True, size=(16, 16))
                 if brush:
-                    self.drawing_brush = None
+                    self.brushes.select(brush)
+                    self.drawing.brushes.current = None
 
                 imgui.core.separator()
 
@@ -640,18 +634,9 @@ class OldpaintWindow(pyglet.window.Window):
                     imgui.close_current_popup()
                 imgui.end_popup()
 
-            # if self.keyboard_stack:
-            #     first_key = self.keyboard_stack[0]
-            #     if first_key == "t":
-            #         if self.mouse_position:
-            #             x, y = self.mouse_position
-            #             imgui.set_next_window_position(x, h - y)
-            #         if ui.render_tool_menu(self.tools, self.icons):
-            #             self.keyboard_stack.clear()
             if self.show_ui:
                 if self.show_ui == "tool_popup":
                     if ui.render_tool_menu(self.tools, self.icons):
-                        self.keyboard_stack.clear()
                         self.show_ui = None
 
         imgui.render()
