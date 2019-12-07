@@ -10,9 +10,8 @@ fogl = {path = "/home/jofo/Sync/progg/fogl"}
 cython = "^0.29.14"
 euclid3 = "^0.1.0"
 imgui = "^1.0"
-
-[tool.poetry.dev-dependencies]
-
+python-language-server = {version = "^0.31.1", extras = ["all"]}
+xdg = "^4.0"
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
