@@ -222,6 +222,7 @@ class Drawing:
         if rect.area() == 0:
             return
         layer = layer or self.current
+        rect = layer.rect.intersect(rect)
         subimage = layer.get_subimage(rect)
         subimage.fix_alpha({0})  # TODO Use the proper list of transparent colors
         if clear:
