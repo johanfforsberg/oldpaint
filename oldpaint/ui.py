@@ -41,6 +41,10 @@ def render_tools(tools, icons):
                 selected = True
             if i % 3 != 2:
                 imgui.same_line()
+        if imgui.is_item_hovered():
+            imgui.begin_tooltip()
+            imgui.text(tool.tool)
+            imgui.end_tooltip()
     return selected
 
 
