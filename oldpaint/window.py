@@ -434,9 +434,11 @@ class OldpaintWindow(pyglet.window.Window):
                     imgui.end_menu()
 
                 if imgui.begin_menu("Layer", bool(self.drawing)) :
+
                     layer = self.drawing.layers.current
                     index = self.drawing.layers.index(layer)
                     n_layers = len(self.drawing.layers)
+
                     if imgui.menu_item("Add", "L", False, True)[0]:
                         self.drawing.add_layer()
                     if imgui.menu_item("Remove", None, False, True)[0]:
@@ -446,9 +448,9 @@ class OldpaintWindow(pyglet.window.Window):
 
                     if imgui.menu_item("Toggle visibility", "v", False, True)[0]:
                         layer.visible = not layer.visible
-                    if imgui.menu_item("Move up", "W", False, index < n_layers-1)[0]:
+                    if imgui.menu_item("Move up", "w", False, index < n_layers-1)[0]:
                         self.drawing.move_layer_up()
-                    if imgui.menu_item("Move down", "S", False, index > 0)[0]:
+                    if imgui.menu_item("Move down", "s", False, index > 0)[0]:
                         self.drawing.move_layer_down()
 
                     imgui.separator()
@@ -462,12 +464,11 @@ class OldpaintWindow(pyglet.window.Window):
 
                     imgui.separator()
 
-                    n = len(self.drawing.layers) - 1
                     hovered_layer = None
                     for i, layer in enumerate(reversed(self.drawing.layers)):
                         selected = self.drawing.layers.current == layer
                         index = n_layers - i - 1
-                        if imgui.menu_item(f"{index} {'v' if layer.visible else ''}", str(index), selected, True)[0]:
+                        if imgui.menu_item(f"{index} {'v' if layer.visible else ''}", str(index), selected, True)[1]:
                             self.drawing.layers.select(layer)
                         if imgui.is_item_hovered():
                             hovered_layer = layer
