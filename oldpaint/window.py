@@ -211,9 +211,17 @@ class OldpaintWindow(pyglet.window.Window):
             x, y = self._to_image_coords(x, y)
             initial_point = int(x), int(y)
             self.mouse_event_queue.put(("mouse_down", (initial_point, button, modifiers)))
-            color = (self.drawing.palette.foreground if button == pyglet.window.mouse.LEFT
-                     else self.drawing.palette.background)
-            tool = self.tools.current(self.drawing, self.brush, color, initial_point)
+            if button == pyglet.window.mouse.LEFT:
+                color = self.drawing.palette.foreground
+                if isinstance(self.brush, PicBrush):
+                    # Use original brush colors when drawing with a custom brush
+                    brush_color = None
+                else:
+                    brush_color = self.drawing.palette.foreground
+            else:
+                # Erasing always uses background color
+                color = brush_color = self.drawing.palette.background
+            tool = self.tools.current(self.drawing, self.brush, color, brush_color)
 
             self.stroke = self.executor.submit(make_stroke, self.overlay, self.mouse_event_queue, tool)
             self.stroke.add_done_callback(lambda s: self.executor.submit(self._finish_stroke, s))
