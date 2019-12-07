@@ -516,7 +516,7 @@ class OldpaintWindow(pyglet.window.Window):
                     imgui.end_menu()
 
                 if imgui.begin_menu("Brush", bool(self.drawing)):
-                    if imgui.menu_item("Save current", None, False, bool(self.drawing.brushes.current))[0]:
+                    if imgui.menu_item("Save current", None, False, self.drawing.brushes.current)[0]:
                         fut = self.executor.submit(show_save_dialog,
                                                    title="Select file",
                                                    filetypes=(#("ORA files", "*.ora"),
@@ -531,8 +531,15 @@ class OldpaintWindow(pyglet.window.Window):
 
                         fut.add_done_callback(save_brush)
 
-                    elif imgui.menu_item("Remove", None, False, bool(self.drawing.brushes.current))[0]:
+                    elif imgui.menu_item("Remove", None, False, self.drawing.brushes.current)[0]:
                         self.drawing.brushes.remove()
+
+                    elif imgui.menu_item("Flip horizontally", None, False, self.drawing.brushes.current)[0]:
+                        self.brush.flip_horizontal()
+                        # self.get_brush_preview_texture.cache_clear()
+
+                    elif imgui.menu_item("Flip vertically", None, False, self.drawing.brushes.current)[0]:
+                        self.brush.flip_vertical()
 
                     imgui.separator()
 

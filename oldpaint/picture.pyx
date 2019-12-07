@@ -3,7 +3,6 @@
 # TODO Clean up this mess.
 
 from cpython cimport array
-import ctypes
 import cython
 from cython cimport view
 from itertools import chain
@@ -264,19 +263,21 @@ cdef class LongPicture:
     cpdef LongPicture flip_vertical(self):
         # TODO this is probably not the fastest way, but this shouldn't be a time critical op
         cdef LongPicture flipped = LongPicture(self.size)
-        cdef x, y, y2
+        cdef int x, y, y2, offset
         for y in range(self.height):
             y2 = self.height - y - 1
             for x in range(self.width):
-                flipped[x, y] = self.get_pixel(x, y2)
+                offset = self._get_offset(x, y2)
+                flipped[x, y] = self.data[offset]
         return flipped
 
     cpdef LongPicture flip_horizontal(self):
         cdef LongPicture flipped = LongPicture(self.size)
-        cdef x, y
+        cdef int x, y, offset
         for y in range(self.height):
             for x in range(self.width):
-                flipped[x, y] = self.get_pixel(self.width-x-1, y)
+                offset = self._get_offset(self.width-x-1, y)
+                flipped[x, y] = self.data[offset]
         return flipped
 
     cpdef unsigned int[:] as_rgba(self, palette, bint alpha):

@@ -37,6 +37,17 @@ class PicBrush(Brush):
         with open(path, "wb") as f:
             save_png(self.original, f, colors)
 
+    def flip_vertical(self):
+        self.original = self.original.flip_vertical()
+        self.get_pic.cache_clear()
+
+    def flip_horizontal(self):
+        self.original = self.original.flip_horizontal()
+        self.get_pic.cache_clear()
+
+    def __hash__(self):
+        return id(self.original)
+
 
 class RectangleBrush(Brush):
 
