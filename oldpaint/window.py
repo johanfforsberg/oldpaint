@@ -287,7 +287,7 @@ class OldpaintWindow(pyglet.window.Window):
                 self.highlighted_layer = self.drawing.layers.current
             elif symbol == key.S:
                 if modifiers & key.MOD_CTRL:
-                    self.drawing and self._save_drawing()
+                    self.drawing and self.save_drawing()
                 else:
                     self.drawing.prev_layer()
                     self.highlighted_layer = self.drawing.layers.current
