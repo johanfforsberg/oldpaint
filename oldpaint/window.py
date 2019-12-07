@@ -356,6 +356,7 @@ class OldpaintWindow(pyglet.window.Window):
             # If no rect is set, the tool is presumed to not have changed anything.
             self.drawing.change_layer(self.overlay, tool.rect)
             self.overlay.clear(tool.rect)
+            self.get_layer_preview_texture.cache_clear()
         self.mouse_event_queue = None
         self.stroke = None
 
@@ -364,7 +365,7 @@ class OldpaintWindow(pyglet.window.Window):
     def _render_gui(self):
 
         w, h = self.get_size()
-        io = imgui.get_io()
+
         drawing = self.drawing
 
         imgui.new_frame()
@@ -472,8 +473,24 @@ class OldpaintWindow(pyglet.window.Window):
                             self.drawing.layers.select(layer)
                         if imgui.is_item_hovered():
                             hovered_layer = layer
-                    if hovered_layer:
-                        self.highlighted_layer = hovered_layer
+
+                            imgui.begin_tooltip()
+                            texture = self.get_layer_preview_texture(layer,
+                                                                     colors=self.drawing.palette.as_tuple())
+                            lw, lh = texture.size
+                            aspect = w / h
+                            max_size = 256
+                            if aspect > 1:
+                                pw = max_size
+                                ph = int(max_size / aspect)
+                            else:
+                                pw = int(max_size * aspect)
+                                ph = max_size
+                            imgui.image(texture.name, pw, ph, border_color=(.25, .25, .25, 1))
+                            imgui.end_tooltip()
+
+                    self.highlighted_layer = hovered_layer
+
                     imgui.end_menu()
 
                 if imgui.begin_menu("Brush", bool(self.drawing)):
@@ -499,21 +516,22 @@ class OldpaintWindow(pyglet.window.Window):
                     imgui.separator()
 
                     for i, brush in enumerate(reversed(self.drawing.brushes[-10:])):
-                        imgui.begin_group()
+
                         is_selected = self.drawing_brush == brush
 
-                        texture = self.get_brush_preview_texture(brush,
-                                                                 colors=self.drawing.palette.as_tuple())
-                        imgui.image(texture.name, *texture.size,
-                                    border_color=(1, 1, 1, 1) if is_selected else (.25, .25, .25, 1))
-                        imgui.same_line()
-                        imgui.text(f"{brush.size}")
-                        imgui.end_group()
+                        bw, bh = brush.size
+                        clicked, selected = imgui.menu_item(f"{bw}x{bh}", None, is_selected, True)
 
-                        if imgui.is_item_clicked():
+                        if selected:
                             self.drawing.brushes.select(brush)
                             self.drawing_brush = brush
-                            imgui.close_current_popup()
+
+                        if imgui.is_item_hovered():
+                            imgui.begin_tooltip()
+                            texture = self.get_brush_preview_texture(brush,
+                                                                     colors=self.drawing.palette.as_tuple())
+                            imgui.image(texture.name, *texture.size, border_color=(.25, .25, .25, 1))
+                            imgui.end_tooltip()
 
                     imgui.end_menu()
 
@@ -844,5 +862,18 @@ class OldpaintWindow(pyglet.window.Window):
         gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
         gl.glTextureSubImage2D(texture.name, 0,
                                max(0, w//2-bw//2), max(0, h//2-bh//2), bw, bh, # min(w, bw), min(w, bh),
+                               gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, bytes(data))
+        return texture
+
+    @lru_cache(32)
+    def get_layer_preview_texture(self, layer, colors, size=(32, 32)):
+        w, h = layer.size
+        size = w, h
+        texture = Texture(size, params={gl.GL_TEXTURE_MIN_FILTER: gl.GL_LINEAR})
+        texture.clear()
+        data = layer.pic.as_rgba(colors, True)
+        gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
+        gl.glTextureSubImage2D(texture.name, 0,
+                               0, 0, w, h,  # min(w, bw), min(w, bh),
                                gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, bytes(data))
         return texture
