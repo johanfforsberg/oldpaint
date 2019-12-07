@@ -23,6 +23,8 @@ from fogl.vertex import SimpleVertices
 from .brush import PicBrush, RectangleBrush, EllipseBrush
 from .drawing import Drawing
 from .imgui_pyglet import PygletRenderer
+from .layer import Layer
+from .picture import LongPicture
 from .rect import Rectangle
 from .render import render_drawing
 from .stroke import make_stroke
@@ -54,12 +56,14 @@ class Drawings(Selectable):
 
 class OldpaintWindow(pyglet.window.Window):
 
-    def __init__(self, recent_files,  **kwargs):
+    def __init__(self, recent_files, drawing_specs, **kwargs):
 
         super().__init__(**kwargs, resizable=True, vsync=False)
 
         self.drawings = Drawings([
             # Drawing((640, 480), layers=[Layer(LongPicture((640, 480)))]),
+            Drawing((s[0], s[1]), layers=[Layer(LongPicture((s[0], s[1])))])
+            for s in drawing_specs or []
         ])
         self.tools = Selectable([
             PencilTool, PointsTool, SprayTool,

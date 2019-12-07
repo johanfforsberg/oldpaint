@@ -1,3 +1,6 @@
+from argparse import ArgumentParser, ArgumentTypeError
+import re
+
 import pyglet
 import pyximport
 
@@ -5,6 +8,21 @@ pyximport.install()  # Setup cython to autocompile pyx modules
 
 from .config import load_config, save_config
 from .window import OldpaintWindow
+
+
+def parse_drawing_spec(spec):
+    m = re.match(r"(\d+)x(\d+)", spec)
+    if m:
+        width = int(m.group(1))
+        height = int(m.group(2))
+        return width, height
+    raise ArgumentTypeError("Could not parse '{spec}' as drawing specification.")
+
+
+parser = ArgumentParser()
+parser.add_argument("-d", "--drawing", type=parse_drawing_spec, action="append")
+
+args = parser.parse_args()
 
 
 gl_config = pyglet.gl.Config(major_version=4, minor_version=5,  # Minimum OpenGL requirement
@@ -15,7 +33,7 @@ config = load_config()
 width, height = config["window_size"]
 
 window = OldpaintWindow(width=width, height=height, recent_files=config["recent_files"],
-                        config=gl_config)
+                        config=gl_config, drawing_specs=args.drawing)
 
 
 class OldpaintEventLoop(pyglet.app.EventLoop):
