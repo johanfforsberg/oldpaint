@@ -283,14 +283,20 @@ class OldpaintWindow(pyglet.window.Window):
                 self.drawing.redo()
 
             elif symbol == key.W:
-                self.drawing.next_layer()
-                self.highlighted_layer = self.drawing.layers.current
+                if modifiers & key.MOD_SHIFT:
+                    self.drawing.move_layer_up()
+                else:
+                    self.drawing.next_layer()
+                    self.highlighted_layer = self.drawing.layers.current
             elif symbol == key.S:
-                if modifiers & key.MOD_CTRL:
+                if modifiers & key.MOD_SHIFT:
+                    self.drawing.move_layer_down()
+                elif modifiers & key.MOD_CTRL:
                     self.drawing and self.save_drawing()
                 else:
                     self.drawing.prev_layer()
                     self.highlighted_layer = self.drawing.layers.current
+
             elif symbol == key.V:
                 if modifiers & key.MOD_SHIFT:
                     self.drawing.current.toggle_visibility()
