@@ -16,7 +16,7 @@ def make_stroke(layer, event_queue, tool):
 
     event_type = None
 
-    event_type, args = event_queue.get()
+    event_type, *args = event_queue.get()
     assert event_type == "mouse_down"
     tool.start(layer, *args)
 
@@ -24,17 +24,20 @@ def make_stroke(layer, event_queue, tool):
 
         # First check for events
         if tool.period is None:
-            event_type, args = event_queue.get()
+            event_type, *args = event_queue.get()
             while not event_queue.empty():
                 # In case something gets slow, let's skip any accumulated events
-                event_type, args = event_queue.get()
+                event_type, *args = event_queue.get()
         else:
             sleep(tool.period)
             while not event_queue.empty():
-                event_type, args = event_queue.get()
+                event_type, *args = event_queue.get()
 
             if event_type is None:
                 continue
+
+        if event_type == "abort":
+            return None
 
         # Now use the tool appropriately
         if event_type == "mouse_drag":

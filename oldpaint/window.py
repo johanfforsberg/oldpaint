@@ -210,7 +210,7 @@ class OldpaintWindow(pyglet.window.Window):
             self.mouse_event_queue = Queue()
             x, y = self._to_image_coords(x, y)
             initial_point = int(x), int(y)
-            self.mouse_event_queue.put(("mouse_down", (initial_point, button, modifiers)))
+            self.mouse_event_queue.put(("mouse_down", initial_point, button, modifiers))
             if button == pyglet.window.mouse.LEFT:
                 color = self.drawing.palette.foreground
                 if isinstance(self.brush, PicBrush):
@@ -231,7 +231,7 @@ class OldpaintWindow(pyglet.window.Window):
         if self.mouse_event_queue:
             x, y = self._to_image_coords(x, y)
             pos = int(x), int(y)
-            self.mouse_event_queue.put(("mouse_up", (pos, button, modifiers)))
+            self.mouse_event_queue.put(("mouse_up", pos, button, modifiers))
 
     @no_imgui_events
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
@@ -252,7 +252,7 @@ class OldpaintWindow(pyglet.window.Window):
         if self.mouse_event_queue:
             x, y = self._to_image_coords(x, y)
             ipos = int(x), int(y)
-            self.mouse_event_queue.put(("mouse_drag", (ipos, button, modifiers)))
+            self.mouse_event_queue.put(("mouse_drag", ipos, button, modifiers))
         elif button == pyglet.window.mouse.MIDDLE:
             ox, oy = self.offset
             self.offset = ox + dx, oy + dy
@@ -271,7 +271,10 @@ class OldpaintWindow(pyglet.window.Window):
             self.overlay.clear(self.brush_preview_dirty)
 
     def on_key_press(self, symbol, modifiers):
+
         if self.stroke:
+            if symbol == key.ESCAPE:
+                self.mouse_event_queue.put(("abort",))
             return
 
         if self.drawing:
@@ -314,6 +317,10 @@ class OldpaintWindow(pyglet.window.Window):
                 # TODO make this toggle to most-recently-used instead
                 self.overlay.clear()
                 self.drawings.cycle_forward(cyclic=True)
+
+            elif symbol == key.ESCAPE:
+                self.drawing.brushes.current = None
+                self.overlay.clear()
 
     def on_key_release(self, symbol, modifiers):
         self.highlighted_layer = None
@@ -365,11 +372,13 @@ class OldpaintWindow(pyglet.window.Window):
         # Since this is a callback, stroke is a Future and is guaranteed to be finished.
         self.stroke_tool = None
         tool = stroke.result()
-        if tool.rect:
+        if tool and tool.rect:
             # If no rect is set, the tool is presumed to not have changed anything.
             self.drawing.change_layer(self.overlay, tool.rect)
             self.overlay.clear(tool.rect)
             self.get_layer_preview_texture.cache_clear()
+        else:
+            self.overlay.clear()
         self.mouse_event_queue = None
         self.stroke = None
 
