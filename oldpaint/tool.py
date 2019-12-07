@@ -148,7 +148,7 @@ class LineTool(Tool):
     def __repr__(self):
         x0, y0 = self.points[0]
         x1, y1 = self.points[-1]
-        return f"{x1-x0}, {y1-y0}"
+        return f"{abs(x1 - x0) + 1}, {abs(y1 - y0) + 1}"
 
 
 class RectangleTool(Tool):
