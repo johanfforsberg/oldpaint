@@ -141,8 +141,9 @@ cpdef draw_ellipse(LongPicture pic, (int, int) center, (int, int) size, LongPict
                    unsigned int color=0, bint fill=False):
 
     # TODO this does not handle small radii (<5) well
+    # TODO support rotated ellipses
 
-    cdef int w, h, a, b, x0, y0, a2, b2, error, x, y, stopx, stopy, hw, hh
+    cdef int w, h, a, b, x0, y0, a2, b2, error, x, y, stopx, stopy, bw, bh, hw, hh
 
     a, b = size
     if a <= 0 or b <= 0:
@@ -180,12 +181,9 @@ cpdef draw_ellipse(LongPicture pic, (int, int) center, (int, int) size, LongPict
             rx = max(0, min(w, x0 + a + 1))
             draw_line(pic, (lx, y0), (rx, y0), color)
             rect = Rectangle((x0-a, y0), (2*a+1, 1))
-            # image.dirty = rect
         else:
             rect = draw_line(pic, (x0-a, y0), (x0+a+1, y0), brush, color)
         return pic.rect.intersect(rect)
-        # layer.dirty = rect.unite(layer.dirty)
-        # return rect
 
     if a == 0:
         if fill and color:
@@ -193,8 +191,6 @@ cpdef draw_ellipse(LongPicture pic, (int, int) center, (int, int) size, LongPict
         else:
             rect = draw_line(pic, (x0, y0-b), (x0, y0+b+1), brush, color)
         return pic.rect.intersect(rect)
-        # layer.dirty = rect.unite(layer.dirty)
-        # return rect
 
     # TODO Simplify.
     if fill:
@@ -202,7 +198,7 @@ cpdef draw_ellipse(LongPicture pic, (int, int) center, (int, int) size, LongPict
             topy = y0 - y
             boty = y0 + y
             lx = min(w-1, max(0, x0 - x))
-            rx = max(0, min(w, x0 + x + 1))
+            rx = max(0, min(w, x0 + x))
             if topy >= 0:
                 draw_line(pic, (lx, topy), (rx, topy), None, color)
             if boty < h:
@@ -224,8 +220,8 @@ cpdef draw_ellipse(LongPicture pic, (int, int) center, (int, int) size, LongPict
         while stopy >= stopx:
             topy = y0 - y
             boty = y0 + y
-            lx = min(w-1, max(0, x0 - x))
-            rx = max(0, min(w, x0 + x + 1))
+            lx = max(0, x0 - x)
+            rx = min(w, x0 + x)
             if topy >= 0:
                 draw_line(pic, (lx, topy), (rx, topy), None, color)
             if boty < h:
@@ -244,23 +240,22 @@ cpdef draw_ellipse(LongPicture pic, (int, int) center, (int, int) size, LongPict
             while stopy <= stopx:
                 topy = y0 - y
                 boty = y0 + y
-                xx = x0 + x
-                yy = y0 + y
-                if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                    pic.paste(brush, xx - hw, yy - hh, True)
-                xx = x0 - x
-                yy = y0 + y
-                if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                    pic.paste(brush, xx - hw, yy - hh, True)
-                xx = x0 - x
-                yy = y0 - y
-                if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                    pic.paste(brush, xx - hw, yy - hh, True)
-                xx = x0 + x
-                yy = y0 - y
-                if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                    pic.paste(brush, xx - hw, yy - hh, True)
-
+                xx = x0 + x - hw
+                yy = y0 + y - hh
+                if (xx + bw) >= 0 and xx < w and (yy + bh) >= 0 and yy < h:
+                    pic.paste(brush, xx, yy, True)
+                xx = x0 - x - hw
+                yy = y0 + y - hh
+                if xx + bw >= 0 and xx < w and yy + bh >= 0 and yy < h:
+                    pic.paste(brush, xx, yy, True)
+                xx = x0 - x - hw
+                yy = y0 - y - hh
+                if xx + bw >= 0 and xx < w and yy + bh >= 0 and yy < h:
+                    pic.paste(brush, xx, yy, True)
+                xx = x0 + x - hw
+                yy = y0 - y - hh
+                if xx + bw >= 0 and xx < w and yy + bh >= 0 and yy < h:
+                    pic.paste(brush, xx, yy, True)
                 x += 1
                 error -= b2 * (x - 1)
                 stopy += b2
@@ -278,22 +273,22 @@ cpdef draw_ellipse(LongPicture pic, (int, int) center, (int, int) size, LongPict
             while stopy >= stopx:
                 topy = y0 - y
                 boty = y0 + y
-                xx = x0 + x
-                yy = y0 + y
-                if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                    pic.paste(brush, xx - hw, yy - hh, True)
-                xx = x0 - x
-                yy = y0 + y
-                if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                    pic.paste(brush, xx - hw, yy - hh, True)
-                xx = x0 - x
-                yy = y0 - y
-                if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                    pic.paste(brush, xx - hw, yy - hh, True)
-                xx = x0 + x
-                yy = y0 - y
-                if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                    pic.paste(brush, xx - hw, yy - hh, True)
+                xx = x0 + x - hw
+                yy = y0 + y - hh
+                if xx + bw >= 0 and xx < w and yy + bh >= 0 and yy < h:
+                    pic.paste(brush, xx, yy, True)
+                xx = x0 - x - hw
+                yy = y0 + y - hh
+                if xx + bw >= 0 and xx < w and yy + bh >= 0 and yy < h:
+                    pic.paste(brush, xx, yy, True)
+                xx = x0 - x - hw
+                yy = y0 - y - hh
+                if xx + bw >= 0 and xx < w and yy + bh >= 0 and yy < h:
+                    pic.paste(brush, xx, yy, True)
+                xx = x0 + x - hw
+                yy = y0 - y - hh
+                if xx + bw >= 0 and xx < w and yy + bh >= 0 and yy < h:
+                    pic.paste(brush, xx, yy, True)
 
                 y += 1
                 error -= a2 * (y - 1)
