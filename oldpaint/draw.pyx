@@ -1,3 +1,7 @@
+# from libc.math cimport abs
+# from libcpp.complex cimport abs
+from libc.stdlib cimport abs as iabs
+
 from .picture cimport LongPicture
 from .rect cimport Rectangle
 
@@ -23,13 +27,13 @@ cpdef draw_line(LongPicture pic, (int, int) p0, (int, int) p1, LongPicture brush
     x, y = p0
     x0, y0 = p0
     x1, y1 = p1
-    dx = abs(x1 - x)
+    dx = iabs(x1 - x)
     sx = 1 if x < x1 else -1
-    dy = -abs(y1 - y)
+    dy = -iabs(y1 - y)
     sy = 1 if y < y1 else -1
     err = dx+dy
-    bw = brush.size[0] if brush else 1
-    bh = brush.size[1] if brush else 1
+    bw = brush.size[0] if brush is not None else 1
+    bh = brush.size[1] if brush is not None else 1
     hw = bw // 2
     hh = bh // 2
     w, h = pic.size
@@ -133,7 +137,7 @@ cpdef draw_rectangle(LongPicture pic, (int, int) pos, (int, int) size, brush=Non
 #         image.data[4*(ymin*cols+x):4*(ymax*cols+x):4*cols] = col
 
 
-cpdef draw_ellipse(LongPicture pic, (int, int) center, (int, int) size, brush=None,
+cpdef draw_ellipse(LongPicture pic, (int, int) center, (int, int) size, LongPicture brush=None,
                    unsigned int color=0, bint fill=False):
 
     # TODO this does not handle small radii (<5) well
@@ -192,82 +196,112 @@ cpdef draw_ellipse(LongPicture pic, (int, int) center, (int, int) size, brush=No
         # layer.dirty = rect.unite(layer.dirty)
         # return rect
 
-    while stopy <= stopx:
-        topy = y0 - y
-        boty = y0 + y
-        if fill:
+    # TODO Simplify.
+    if fill:
+        while stopy <= stopx:
+            topy = y0 - y
+            boty = y0 + y
             lx = min(w-1, max(0, x0 - x))
             rx = max(0, min(w, x0 + x + 1))
             if topy >= 0:
                 draw_line(pic, (lx, topy), (rx, topy), None, color)
             if boty < h:
                 draw_line(pic, (lx, boty), (rx, boty), None, color)
-        else:
-            xx = x0 + x
-            yy = y0 + y
-            if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                pic.paste(brush, xx - hw, yy - hh, True)
-            xx = x0 - x
-            yy = y0 + y
-            if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                pic.paste(brush, xx - hw, yy - hh, True)
-            xx = x0 - x
-            yy = y0 - y
-            if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                pic.paste(brush, xx - hw, yy - hh, True)
-            xx = x0 + x
-            yy = y0 - y
-            if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                pic.paste(brush, xx - hw, yy - hh, True)
-        x += 1
-        error -= b2 * (x - 1)
-        stopy += b2
-        if error <= 0:
-            error += a2 * (y - 1)
-            y -= 1
-            stopx -= a2
+            x += 1
+            error -= b2 * (x - 1)
+            stopy += b2
+            if error <= 0:
+                error += a2 * (y - 1)
+                y -= 1
+                stopx -= a2
 
-    error = b*b*a
-    x = a
-    y = 0
-    stopy = b2 * a
-    stopx = 0
+        error = b*b*a
+        x = a
+        y = 0
+        stopy = b2 * a
+        stopx = 0
 
-    while stopy >= stopx:
-        topy = y0 - y
-        boty = y0 + y
-        if fill:
+        while stopy >= stopx:
+            topy = y0 - y
+            boty = y0 + y
             lx = min(w-1, max(0, x0 - x))
             rx = max(0, min(w, x0 + x + 1))
             if topy >= 0:
                 draw_line(pic, (lx, topy), (rx, topy), None, color)
             if boty < h:
                 draw_line(pic, (lx, boty), (rx, boty), None, color)
-        else:
-            xx = x0 + x
-            yy = y0 + y
-            if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                pic.paste(brush, xx - hw, yy - hh, True)
-            xx = x0 - x
-            yy = y0 + y
-            if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                pic.paste(brush, xx - hw, yy - hh, True)
-            xx = x0 - x
-            yy = y0 - y
-            if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                pic.paste(brush, xx - hw, yy - hh, True)
-            xx = x0 + x
-            yy = y0 - y
-            if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                pic.paste(brush, xx - hw, yy - hh, True)
+            y += 1
+            error -= a2 * (y - 1)
+            stopx += a2
+            if error < 0:
+                error += b2 * (x - 1)
+                x -= 1
+                stopy -= b2
+    else:
+        with nogil:
+            # Note: nogil makes a huge differece here since this can be quite slow with
+            # a large brush.
+            while stopy <= stopx:
+                topy = y0 - y
+                boty = y0 + y
+                xx = x0 + x
+                yy = y0 + y
+                if xx >= 0 and xx < w and yy >= 0 and yy < h:
+                    pic.paste(brush, xx - hw, yy - hh, True)
+                xx = x0 - x
+                yy = y0 + y
+                if xx >= 0 and xx < w and yy >= 0 and yy < h:
+                    pic.paste(brush, xx - hw, yy - hh, True)
+                xx = x0 - x
+                yy = y0 - y
+                if xx >= 0 and xx < w and yy >= 0 and yy < h:
+                    pic.paste(brush, xx - hw, yy - hh, True)
+                xx = x0 + x
+                yy = y0 - y
+                if xx >= 0 and xx < w and yy >= 0 and yy < h:
+                    pic.paste(brush, xx - hw, yy - hh, True)
 
-        y += 1
-        error -= a2 * (y - 1)
-        stopx += a2
-        if error < 0:
-            error += b2 * (x - 1)
-            x -= 1
-            stopy -= b2
+                x += 1
+                error -= b2 * (x - 1)
+                stopy += b2
+                if error <= 0:
+                    error += a2 * (y - 1)
+                    y -= 1
+                    stopx -= a2
+
+            error = b*b*a
+            x = a
+            y = 0
+            stopy = b2 * a
+            stopx = 0
+
+            while stopy >= stopx:
+                topy = y0 - y
+                boty = y0 + y
+                xx = x0 + x
+                yy = y0 + y
+                if xx >= 0 and xx < w and yy >= 0 and yy < h:
+                    pic.paste(brush, xx - hw, yy - hh, True)
+                xx = x0 - x
+                yy = y0 + y
+                if xx >= 0 and xx < w and yy >= 0 and yy < h:
+                    pic.paste(brush, xx - hw, yy - hh, True)
+                xx = x0 - x
+                yy = y0 - y
+                if xx >= 0 and xx < w and yy >= 0 and yy < h:
+                    pic.paste(brush, xx - hw, yy - hh, True)
+                xx = x0 + x
+                yy = y0 - y
+                if xx >= 0 and xx < w and yy >= 0 and yy < h:
+                    pic.paste(brush, xx - hw, yy - hh, True)
+
+                y += 1
+                error -= a2 * (y - 1)
+                stopx += a2
+                if error < 0:
+                    error += b2 * (x - 1)
+                    x -= 1
+                    stopy -= b2
 
     return pic.rect.intersect(Rectangle((x0-a-hw-1, y0-b-hh-1), (2*a+bw+2, 2*b+bh+2)))
 
@@ -282,7 +316,7 @@ cpdef draw_fill(LongPicture pic, (int, int) point, unsigned int color):
     w, h = pic.size
     cdef unsigned int start_col = pic[startx, starty] & 0xFF
 
-    if start_col == color:
+    if start_col == color & 0xFF:
         return
 
     cdef int x, y, xmin, xmax, ymin, ymax, xstart
