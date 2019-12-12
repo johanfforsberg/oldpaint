@@ -184,8 +184,8 @@ class EllipseTool(Tool):
         x, y = point
         size = (int(abs(x - x0)), int(abs(y - y0)))
         self.rect = overlay.draw_ellipse((x0, y0), size, brush=self.brush.get_pic(self.brush_color),
-                                       color=self.color + 255*2**24,
-                                       fill=modifiers & window.key.MOD_SHIFT)
+                                         color=self.color + 255*2**24,
+                                         fill=modifiers & window.key.MOD_SHIFT)
         self.points.append(point)
 
     def __repr__(self):
@@ -207,7 +207,7 @@ class FillTool(Tool):
             rect = clone.draw_fill(point, color=self.color + 255*2**24)
             if rect:
                 # Here we don't use the overlay, and therefore handle the updating directly
-                self.drawing.change_overlay(clone, rect)
+                self.drawing.change_layer(clone, rect)
 
 
 class SelectionTool(Tool):

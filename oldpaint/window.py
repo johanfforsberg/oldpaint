@@ -13,7 +13,7 @@ from pyglet.window import key
 # from IPython import start_ipython
 
 from fogl.framebuffer import FrameBuffer
-from fogl.glutil import load_png
+from fogl.util import load_png
 from fogl.shader import Program, VertexShader, FragmentShader
 from fogl.texture import Texture, ImageTexture
 from fogl.util import try_except_log

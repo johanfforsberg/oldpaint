@@ -26,9 +26,9 @@ class Palette:
         if colors:
             color0 = colors[0]
             if len(color0) == 3:
-                self.colors = [c + (255,) for c in colors]
+                self.colors = [c + (255,) for c in colors] + [(0, 0, 0, 255)] * (self.size - len(colors))
             else:
-                self.colors = colors
+                self.colors = colors + [(0, 0, 0, 255)] * (self.size - len(colors))
         else:
             self.colors = DEFAULT_COLORS + [(0, 0, 0, 255)] * (self.size - len(DEFAULT_COLORS))
         assert len(self.colors) == self.size, f"Bad number of colors: {len(self.colors)}"
