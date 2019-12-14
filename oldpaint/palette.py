@@ -100,12 +100,16 @@ class Palette:
 
     def spread(self, index1, index2):
         "Make a nice smooth color ramp between the given colors."
-        print("spread", index1, index2)
+
+        if index1 == index2:
+            return []
+
         if index1 > index2:
             index1, index2 = index2, index1
         r1, g1, b1, a1 = self.colors[index1]
         r2, g2, b2, a2 = self.colors[index2]
         n_steps = index2 - index1
+
         dr = (r2 - r1) / n_steps
         dg = (g2 - g1) / n_steps
         db = (b2 - b1) / n_steps
