@@ -10,7 +10,7 @@ The motivation behind it is partly just that I want it for my own purposes, but 
 
 
 #### Current features ####
-- Supports 8 bit palette based images.
+- Supports (only) 8 bit palette based images.
 - Layers
 - Unlimited undo
 - Basic drawing operations (pencil, line, circle...)
@@ -41,7 +41,7 @@ Oldpaint is developed with python 3.7, it might work with 3.6 but nothing older 
 
 Oldpaint has a special dependency, on the "fogl" library (https://github.com/johanfforsberg/fogl). Right now the way to go is to clone it somewhere, installing it according to its readme, and editing oldpaint's `pyproject.toml` file to point to the location of the fogl repo. Then (assuming you have poetry installed), in oldpaint's repo, run:
 
-    $ portry install
+    $ poetry install
     
 That should install the various other dependencies of oldpaint. Then you should be able to start it with
 
