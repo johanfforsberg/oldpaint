@@ -5,10 +5,14 @@ Helper functions for rendering the user interface.
 from functools import lru_cache
 import logging
 from math import floor, ceil
+import os
 
 import imgui
 import pyglet
 from pyglet.window import key
+
+from .util import show_save_dialog
+
 
 logger = logging.getLogger(__name__)
 
@@ -318,3 +322,201 @@ def render_tool_menu(tools, icons):
             imgui.core.close_current_popup()
         imgui.end_popup()
         return done
+
+
+def render_main_menu(window):
+
+    w, h = window.get_size()
+
+    if imgui.begin_main_menu_bar():
+        if imgui.begin_menu("File", True):
+
+            clicked_load, selected_load = imgui.menu_item("Load", "o", False, True)
+            if clicked_load:
+                window.load_drawing()
+
+            if imgui.begin_menu("Load recent...", window.recent_files):
+                for path in reversed(window.recent_files):
+                    clicked, _ = imgui.menu_item(os.path.basename(path), None, False, True)
+                    if clicked:
+                        window.load_drawing(path)
+                imgui.end_menu()
+
+            imgui.separator()
+
+            clicked_save, selected_save = imgui.menu_item("Save", "s", False, window.drawing)
+            if clicked_save:
+                window.save_drawing()
+
+            clicked_save_as, selected_save = imgui.menu_item("Save as", "S", False, window.drawing)
+            if clicked_save_as:
+                window.save_drawing(ask_for_path=True)
+
+            imgui.separator()
+
+            clicked_quit, selected_quit = imgui.menu_item(
+                "Quit", 'Cmd+Q', False, True
+            )
+            if clicked_quit:
+                window._quit()
+
+            imgui.end_menu()
+
+        if imgui.begin_menu("Drawing", True):
+            if imgui.menu_item("New", None, False, True)[0]:
+                window._create_drawing()
+
+            elif imgui.menu_item("Close", None, False, window.drawing)[0]:
+                window._close_drawing()
+
+            imgui.separator()
+
+            if imgui.menu_item("Flip horizontally", "H", False, window.drawing)[0]:
+                window.drawing.flip_horizontal()
+            if imgui.menu_item("Flip vertically", "V", False, window.drawing)[0]:
+                window.drawing.flip_vertical()
+
+            imgui.separator()
+
+            if imgui.menu_item("Undo", "z", False, window.drawing)[0]:
+                window.drawing.undo()
+            elif imgui.menu_item("Redo", "y", False, window.drawing)[0]:
+                window.drawing.redo()
+
+            imgui.separator()
+
+            for drawing in window.drawings.items:
+                if imgui.menu_item(f"{drawing.filename} {drawing.size}",
+                                   None, drawing == window.drawing, True)[0]:
+                    window.drawings.select(drawing)
+            imgui.end_menu()
+
+        if imgui.begin_menu("Layer", bool(window.drawing)) :
+
+            layer = window.drawing.layers.current
+            index = window.drawing.layers.index(layer)
+            n_layers = len(window.drawing.layers)
+
+            if imgui.menu_item("Add", "L", False, True)[0]:
+                window.drawing.add_layer()
+            if imgui.menu_item("Remove", None, False, True)[0]:
+                window.drawing.remove_layer()
+            if imgui.menu_item("Merge down", None, False, index > 0)[0]:
+                window.drawing.merge_layer_down()
+
+            if imgui.menu_item("Toggle visibility", "v", False, True)[0]:
+                layer.visible = not layer.visible
+            if imgui.menu_item("Move up", "w", False, index < n_layers-1)[0]:
+                window.drawing.move_layer_up()
+            if imgui.menu_item("Move down", "s", False, index > 0)[0]:
+                window.drawing.move_layer_down()
+
+            imgui.separator()
+
+            if imgui.menu_item("Flip horizontally", "H", False, True)[0]:
+                window.drawing.flip_layer_horizontal()
+            if imgui.menu_item("Flip vertically", "V", False, True)[0]:
+                window.drawing.flip_layer_vertical()
+            if imgui.menu_item("Clear", "Delete", False, True)[0]:
+                window.drawing.clear()
+
+            imgui.separator()
+
+            hovered_layer = None
+            for i, layer in enumerate(reversed(window.drawing.layers)):
+                selected = window.drawing.layers.current == layer
+                index = n_layers - i - 1
+                if imgui.menu_item(f"{index} {'v' if layer.visible else ''}", str(index), selected, True)[1]:
+                    window.drawing.layers.select(layer)
+                if imgui.is_item_hovered():
+                    hovered_layer = layer
+
+                    imgui.begin_tooltip()
+                    texture = window.get_layer_preview_texture(layer,
+                                                             colors=window.drawing.palette.as_tuple())
+                    lw, lh = texture.size
+                    aspect = w / h
+                    max_size = 256
+                    if aspect > 1:
+                        pw = max_size
+                        ph = int(max_size / aspect)
+                    else:
+                        pw = int(max_size * aspect)
+                        ph = max_size
+                    imgui.image(texture.name, pw, ph, border_color=(.25, .25, .25, 1))
+                    imgui.end_tooltip()
+
+            window.highlighted_layer = hovered_layer
+
+            imgui.end_menu()
+
+        if imgui.begin_menu("Brush", bool(window.drawing)):
+            if imgui.menu_item("Save current", None, False, window.drawing.brushes.current)[0]:
+                fut = window.executor.submit(show_save_dialog,
+                                             title="Select file",
+                                             filetypes=(#("ORA files", "*.ora"),
+                                                 ("PNG files", "*.png"),
+                                                 ("all files", "*.*")))
+
+                def save_brush(fut):
+                    path = fut.result()
+                    if path:
+                        window.add_recent_file(path)
+                        window.drawing.brushes.current.save_png(path, window.drawing.palette.colors)
+
+                fut.add_done_callback(save_brush)
+
+            elif imgui.menu_item("Remove", None, False, window.drawing.brushes.current)[0]:
+                window.drawing.brushes.remove()
+
+            elif imgui.menu_item("Flip horizontally", None, False, window.drawing.brushes.current)[0]:
+                window.brush.flip_horizontal()
+                # window.get_brush_preview_texture.cache_clear()
+
+            elif imgui.menu_item("Flip vertically", None, False, window.drawing.brushes.current)[0]:
+                window.brush.flip_vertical()
+
+            imgui.separator()
+
+            for i, brush in enumerate(reversed(window.drawing.brushes[-10:])):
+
+                is_selected = window.drawing.brushes.current == brush
+
+                bw, bh = brush.size
+                clicked, selected = imgui.menu_item(f"{bw}x{bh}", None, is_selected, True)
+
+                if selected:
+                    window.drawing.brushes.select(brush)
+
+                if imgui.is_item_hovered():
+                    imgui.begin_tooltip()
+                    texture = window.get_brush_preview_texture(brush,
+                                                             colors=window.drawing.palette.as_tuple())
+                    imgui.image(texture.name, *texture.size, border_color=(.25, .25, .25, 1))
+                    imgui.end_tooltip()
+
+            imgui.end_menu()
+
+        # Show some info in the right part of the menu bar
+
+        imgui.set_cursor_screen_pos((w // 2, 0))
+        drawing = window.drawing
+        if drawing:
+            imgui.text(f"{drawing.filename} {drawing.size} {'*' if drawing.unsaved else ''}")
+
+            imgui.set_cursor_screen_pos((w - 200, 0))
+            imgui.text(f"Zoom: x{2**window.zoom}")
+
+            if window.mouse_position:
+                imgui.set_cursor_screen_pos((w - 100, 0))
+                x, y = window._to_image_coords(*window.mouse_position)
+                if window.stroke_tool:
+                    txt = repr(window.stroke_tool)
+                    if txt:
+                        imgui.text(txt)
+                    else:
+                        imgui.text(f"{int(x)}, {int(y)}")
+                else:
+                    imgui.text(f"{int(x)}, {int(y)}")
+
+        imgui.end_main_menu_bar()
