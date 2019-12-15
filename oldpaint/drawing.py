@@ -8,7 +8,7 @@ import zlib
 from .brush import PicBrush
 from .layer import Layer
 from .ora import load_ora, save_ora
-from .picture import LongPicture, load_png
+from .picture import LongPicture, load_png, save_png
 from .palette import Palette
 from .rect import Rectangle
 from .util import Selectable, try_except_log
@@ -80,14 +80,29 @@ class Drawing:
 
     @classmethod
     def from_png(cls, path):
+        """Load a PNG into a single layer drawing."""
         pic, colors = load_png(path)
         layer = Layer(pic)
         palette = Palette(colors, transparency=0, size=len(colors))
         return cls(size=layer.size, layers=[layer], palette=palette, path=path)
 
+    def save_png(self, path):
+        """Save as a single PNG file. Flattens all visible layers into one image."""
+        if self.layers[0].visible:
+            combined = self.layers[0].clone()
+        else:
+            combined = Layer(size=self.size)
+        transparent_colors = set(self.palette.transparent_colors())
+        for layer in self.layers[1:]:
+            if layer.visible:
+                layer.pic.fix_alpha(transparent_colors)
+                combined.blit(layer.pic, layer.rect)
+        with open(path, "wb") as f:
+            save_png(combined.pic, f, palette=self.palette.colors)
+
     @classmethod
     def from_ora(cls, path):
-        """Load a drawing"""
+        """Load a complete drawing from an ORA file."""
         layer_pics, colors = load_ora(path)
         palette = Palette(colors, transparency=0)
         layers = [Layer(p) for p in reversed(layer_pics)]
@@ -224,7 +239,7 @@ class Drawing:
         layer = layer or self.current
         rect = layer.rect.intersect(rect)
         subimage = layer.get_subimage(rect)
-        subimage.fix_alpha({0})  # TODO Use the proper list of transparent colors
+        subimage.fix_alpha(set(self.palette.transparent_colors))
         if clear:
             edit = LayerClearEdit.create(self, layer, rect,
                                          color=self.palette.background)
@@ -487,7 +502,7 @@ class MergeLayersEdit(MultiEdit):
 
     @classmethod
     def create(cls, drawing, source_layer, destination_layer):
-        source_layer.pic.fix_alpha({0})
+        source_layer.pic.fix_alpha(set(drawing.palette.transparent_colors))
         return MultiEdit([
             LayerEdit.create(drawing, destination_layer, source_layer, source_layer.rect),
             RemoveLayerEdit.create(drawing, source_layer)

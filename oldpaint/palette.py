@@ -98,6 +98,10 @@ class Palette:
     def background_color(self, color):
         self.set_color(self.background, *color)
 
+    @property
+    def transparent_colors(self):
+        return [i for i in range(len(self.colors)) if self.colors[i][3] == 0]
+
     def spread(self, index1, index2):
         "Make a nice smooth color ramp between the given colors."
 

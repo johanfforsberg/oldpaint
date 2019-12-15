@@ -502,6 +502,9 @@ class OldpaintWindow(pyglet.window.Window):
             if path.endswith(".ora"):
                 self.drawing.save_ora(path)
                 self.add_recent_file(path)
+            elif path.endswith(".png"):
+                self.drawing.save_png(path)
+                self.add_recent_file(path)
 
     def load_drawing(self, path=None):
         if path:
