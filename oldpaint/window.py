@@ -98,7 +98,6 @@ class OldpaintWindow(pyglet.window.Window):
         self.brush_preview_dirty = None  # A hacky way to keep brush preview dirt away
 
         # UI stuff
-        self.show_ui = None
         self.imgui_renderer = PygletRenderer(self)
         self.icons = {
             name: ImageTexture(*load_png(f"icons/{name}.png"))
@@ -130,6 +129,10 @@ class OldpaintWindow(pyglet.window.Window):
         self._new_drawing = None  # Set when configuring a new drawing
         self._unsaved = None
         self.recent_files = OrderedDict((k, None) for k in recent_files)
+
+        self.window_visibility = {
+            "edits": False
+        }
 
         # TODO This is the basics for using tablet pressure info
         # tablets = pyglet.input.get_tablets()
@@ -423,12 +426,10 @@ class OldpaintWindow(pyglet.window.Window):
                 ui.render_palette(self.drawing)
                 imgui.end_child()
 
-                # if imgui.collapsing_header("Edits", None, flags=imgui.TREE_NODE_DEFAULT_OPEN)[0]:
-                #     imgui.begin_child("Edits list", height=0)
-                #     self.highlighted_layer = ui.render_edits(self.drawing)
-                #     imgui.end_child()
-
                 imgui.end()
+
+                if self.window_visibility["edits"]:
+                    ui.render_edits(self.drawing)
 
                 # nh = 150
                 # imgui.set_next_window_size(w - 135, nh)
@@ -467,11 +468,6 @@ class OldpaintWindow(pyglet.window.Window):
                     imgui.close_current_popup()
                 imgui.end_popup()
 
-            if self.show_ui:
-                if self.show_ui == "tool_popup":
-                    if ui.render_tool_menu(self.tools, self.icons):
-                        self.show_ui = None
-
         imgui.render()
         imgui.end_frame()
 
@@ -482,7 +478,7 @@ class OldpaintWindow(pyglet.window.Window):
         self._new_drawing = dict(size=size)
 
     def save_drawing(self, ask_for_path=False):
-        if not ask_for_path and self.drawing.path:
+        if not ask_for_path and self.drawing.path and self.drawing.path.endswith(".ora"):
             self.drawing.save_ora()
         else:
             last_dir = self.get_latest_dir()
@@ -492,7 +488,7 @@ class OldpaintWindow(pyglet.window.Window):
                                        title="Select file",
                                        initialdir=last_dir,
                                        filetypes=(("ORA files", "*.ora"),
-                                                  #("PNG files", "*.png"),
+                                                  ("PNG files", "*.png"),
                                                   ("all files", "*.*")))
             fut.add_done_callback(
                 lambda fut: self._really_save_drawing(fut.result()))

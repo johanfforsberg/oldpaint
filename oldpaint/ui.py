@@ -273,7 +273,7 @@ def render_brushes(brushes, get_texture, size=None, compact=False):
 
 def render_edits(drawing):
 
-    #imgui.begin("Edits", True)
+    imgui.begin("Edits", True)
 
     imgui.columns(2, 'layerlist')
     imgui.set_column_offset(1, 40)
@@ -283,7 +283,8 @@ def render_edits(drawing):
         imgui.next_column()
         imgui.text(str(type(edit).__name__))
         imgui.next_column()
-    #imgui.end()
+
+    imgui.end()
 
 
 def render_unsaved_exit(unsaved):
@@ -298,6 +299,8 @@ def render_unsaved_exit(unsaved):
                           height=imgui.get_content_region_available()[1] - 26)
         for drawing in unsaved:
             imgui.text(drawing.filename)
+            if imgui.is_item_hovered():
+                pass  # TODO popup thumbnail of the picture?
         imgui.end_child()
 
         if imgui.button("Yes, exit anyway"):
@@ -491,10 +494,15 @@ def render_main_menu(window):
                 if imgui.is_item_hovered():
                     imgui.begin_tooltip()
                     texture = window.get_brush_preview_texture(brush,
-                                                             colors=window.drawing.palette.as_tuple())
+                                                               colors=window.drawing.palette.as_tuple())
                     imgui.image(texture.name, *texture.size, border_color=(.25, .25, .25, 1))
                     imgui.end_tooltip()
 
+            imgui.end_menu()
+
+        if imgui.begin_menu("Info", True):
+            _, state = imgui.menu_item("Show edit history", None, window.window_visibility["edits"], True)
+            window.window_visibility["edits"] = state
             imgui.end_menu()
 
         # Show some info in the right part of the menu bar
