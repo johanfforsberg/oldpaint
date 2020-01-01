@@ -4,7 +4,7 @@ from random import gauss
 from pyglet import window
 
 from .brush import PicBrush
-from .drawing import Drawing
+from .drawing import Drawing, ToolName
 from .rect import from_points, cover
 from .util import try_except_log
 
@@ -57,7 +57,7 @@ class PencilTool(Tool):
 
     "One continuous line along the mouse movement"
 
-    tool = "pencil"
+    tool = ToolName.PENCIL
     ephemeral = False
 
     def draw(self, overlay, point, buttons, modifiers):
@@ -82,7 +82,7 @@ class PointsTool(Tool):
 
     "A series of dots along the mouse movement."
 
-    tool = "points"
+    tool = ToolName.POINTS
     ephemeral = False
     step = 5
 
@@ -106,7 +106,7 @@ class PointsTool(Tool):
 
 class SprayTool(Tool):
 
-    tool = "spray"
+    tool = ToolName.SPRAY
     ephemeral = False
     size = 10
     intensity = 1.0
@@ -131,7 +131,7 @@ class LineTool(Tool):
 
     "A straight line from the starting point to the end point."
 
-    tool = "line"
+    tool = ToolName.LINE
     ephemeral = True
 
     def draw(self, overlay, point, buttons, modifiers):
@@ -155,7 +155,7 @@ class RectangleTool(Tool):
 
     "A rectangle with opposing corners at the start and end points."
 
-    tool = "rectangle"
+    tool = ToolName.RECTANGLE
     ephemeral = True
 
     def draw(self, overlay, point, buttons, modifiers):
@@ -175,7 +175,7 @@ class EllipseTool(Tool):
 
     "An ellipse centered at the start point and with radii described by the end point."
 
-    tool = "ellipse"
+    tool = ToolName.ELLIPSE
     ephemeral = True
 
     @try_except_log
@@ -198,7 +198,7 @@ class FillTool(Tool):
 
     "Fill all adjacent pixels of the same color as the start point."
 
-    tool = "floodfill"
+    tool = ToolName.FLOODFILL
     brush_preview = False
 
     def finish(self, overlay, point, buttons, modifiers):
@@ -207,14 +207,14 @@ class FillTool(Tool):
             rect = clone.draw_fill(point, color=self.color + 255*2**24)
             if rect:
                 # Here we don't use the overlay, and therefore handle the updating directly
-                self.drawing.change_layer(clone, rect)
+                self.drawing.change_layer(clone, rect, self.tool)
 
 
 class SelectionTool(Tool):
 
     "Create a brush from a rectangular region of the current layer."
 
-    tool = "brush"
+    tool = ToolName.BRUSH
     brush_preview = False
 
     def draw(self, overlay, point, buttons, modifiers):
@@ -236,7 +236,7 @@ class PickerTool(Tool):
 
     "Set the current color to the one under the mouse when clicked."
 
-    tool = "picker"
+    tool = ToolName.PICKER
     brush_preview = False
 
     def __init__(self, drawing, brush, color, initial):

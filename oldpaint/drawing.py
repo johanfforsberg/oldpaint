@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from enum import Enum
 import logging
 import os
 import shutil
@@ -11,10 +12,23 @@ from .ora import load_ora, save_ora
 from .picture import LongPicture, load_png, save_png
 from .palette import Palette
 from .rect import Rectangle
+
 from .util import Selectable, try_except_log
 
 
 logger = logging.getLogger(__name__)
+
+
+class ToolName(Enum):
+    PENCIL = 1
+    POINTS = 2
+    SPRAY = 3
+    LINE = 4
+    RECTANGLE = 5
+    ELLIPSE = 6
+    FLOODFILL = 7
+    BRUSH = 8
+    PICKER = 9
 
 
 class Drawing:
@@ -212,10 +226,10 @@ class Drawing:
         self._add_edit(edit)
 
     @try_except_log
-    def change_layer(self, new, rect, layer=None):
+    def change_layer(self, new, rect, tool=None, layer=None):
         "Update a part of the layer, keeping track of the change as an 'undo'"
         layer = layer or self.current
-        edit = LayerEdit.create(self, layer, new, rect)
+        edit = LayerEdit.create(self, layer, new, rect, tool.value if tool else 0)
         edit.perform(self)
         self._add_edit(edit)
 
@@ -301,6 +315,14 @@ class Edit:
         data = z.decompress(stored[5:])
         return cls(index=index, rect=Rectangle(*rect), data=data), z.unused_data
 
+    @property
+    def layer_str(self):
+        return ""
+
+    @property
+    def info_str(self):
+        return ""
+
 
 @dataclass(frozen=True)
 class LayerEdit(Edit):
@@ -312,15 +334,16 @@ class LayerEdit(Edit):
     _structsize = struct.calcsize(_struct)
 
     index: int
+    tool: int
     rect: Rectangle
     data: bytes
 
     @classmethod
-    def create(cls, drawing, orig_layer, edit_layer, rect):
+    def create(cls, drawing, orig_layer, edit_layer, rect, tool=0):
         "Helper to handle compressing the data."
         data = orig_layer.make_diff(edit_layer, rect, alpha=False)
         index = drawing.layers.index(orig_layer)
-        return cls(index=index, data=zlib.compress(data), rect=rect)
+        return cls(index=index, tool=tool, data=zlib.compress(data), rect=rect)
 
     def perform(self, drawing):
         layer = drawing.layers[self.index]
@@ -332,8 +355,16 @@ class LayerEdit(Edit):
         diff_data = zlib.decompress(self.data)
         layer.apply_diff(memoryview(diff_data).cast("h"), self.rect, True)
 
+    @property
+    def index_str(self):
+        return f"{self.index}"
+
+    @property
+    def info_str(self):
+        return ToolName(self.tool).name if self.tool else ''
+
     def __repr__(self):
-        return f"{__class__}(index={self.index}, data={len(self.data)}B, rect={self.rect})"
+        return f"{__class__}(index={self.index}, tool={self.tool})"
 
 
 @dataclass(frozen=True)
@@ -363,6 +394,14 @@ class LayerClearEdit(Edit):
         diff_data = zlib.decompress(self.data)
         layer.blit(LongPicture(self.rect.size, diff_data), self.rect, alpha=False)
 
+    @property
+    def index_str(self):
+        return f"{self.index}"
+
+    @property
+    def info_str(self):
+        return f"Clear"
+
     def __repr__(self):
         return f"{__class__}(index={self.index}, data={len(self.data)}B)"
 
@@ -384,6 +423,14 @@ class LayerFlipEdit(Edit):
 
     revert = perform  # Mirroring is it's own inverse!
 
+    @property
+    def index_str(self):
+        return f"{self.index}"
+
+    @property
+    def info_str(self):
+        return f"Flip " + ("horizontal" if self.horizontal else "vertical")
+
     def __repr__(self):
         return f"{__class__}(index={self.index}, horizontal={self.horizontal})"
 
@@ -403,6 +450,10 @@ class DrawingFlipEdit(Edit):
                 layer.flip_vertical()
 
     revert = perform  # Mirroring is it's own inverse!
+
+    @property
+    def info_str(self):
+        return f"Flip " + ("horizontal" if self.horizontal else "vertical")
 
     def __repr__(self):
         return f"{__class__}(index={self.index}, horizontal={self.horizontal})"
@@ -426,6 +477,10 @@ class PaletteEdit(Edit):
             r0, g0, b0, a0 = drawing.palette.colors[i]
             drawing.palette[i] = r0 - dr, g0 - dg, b0 - db, a0 - da
 
+    @property
+    def info_str(self):
+        return "Color"
+
 
 @dataclass(frozen=True)
 class AddLayerEdit(Edit):
@@ -445,6 +500,14 @@ class AddLayerEdit(Edit):
     def revert(self, drawing):
         layer = drawing.layers[self.index]
         drawing.layers.remove(layer)
+
+    @property
+    def index_str(self):
+        return f"{self.index}"
+
+    @property
+    def info_str(self):
+        return f"Add layer"
 
     def __repr__(self):
         return f"{__class__}(index={self.index}, data={len(self.data)}B, size={self.size})"
@@ -466,6 +529,14 @@ class RemoveLayerEdit(Edit):
     perform = AddLayerEdit.revert
     revert = AddLayerEdit.perform
 
+    @property
+    def index_str(self):
+        return f"{self.index}"
+
+    @property
+    def info_str(self):
+        return f"Remove layer"
+
     def __repr__(self):
         return f"{__class__}(index={self.index}, data={len(self.data)}B, size={self.size})"
 
@@ -478,6 +549,14 @@ class SwapLayersEdit(Edit):
 
     def perform(self, drawing):
         drawing.layers.swap(self.index1, self.index2)
+
+    @property
+    def index_str(self):
+        return f"{self.index1}, {self.index2}"
+
+    @property
+    def info_str(self):
+        return f"Swap layers"
 
     revert = perform
 
@@ -503,7 +582,15 @@ class MergeLayersEdit(MultiEdit):
     @classmethod
     def create(cls, drawing, source_layer, destination_layer):
         source_layer.pic.fix_alpha(set(drawing.palette.transparent_colors))
-        return MultiEdit([
+        return cls([
             LayerEdit.create(drawing, destination_layer, source_layer, source_layer.rect),
             RemoveLayerEdit.create(drawing, source_layer)
         ])
+
+    @property
+    def index_str(self):
+        return f"{self.edits[1].index}, {self.edits[0].index}"
+
+    @property
+    def info_str(self):
+        return "Merge layers"

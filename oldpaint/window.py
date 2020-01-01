@@ -377,7 +377,7 @@ class OldpaintWindow(pyglet.window.Window):
         tool = stroke.result()
         if tool and tool.rect:
             # If no rect is set, the tool is presumed to not have changed anything.
-            self.drawing.change_layer(self.overlay, tool.rect)
+            self.drawing.change_layer(self.overlay, tool.rect, tool.tool)
             self.overlay.clear(tool.rect)
             self.get_layer_preview_texture.cache_clear()
         else:

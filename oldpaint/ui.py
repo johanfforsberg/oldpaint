@@ -38,7 +38,7 @@ def render_tools(tools, icons):
     current_tool = tools.current
     selected = False
     for i, tool in enumerate(tools):
-        texture = icons[tool.tool]
+        texture = icons[tool.tool.name.lower()]
         with imgui.colored(imgui.COLOR_BUTTON, *TOOL_BUTTON_COLORS[tool == current_tool]):
             if imgui.core.image_button(texture.name, 16, 16):
                 tools.select(tool)
@@ -47,7 +47,7 @@ def render_tools(tools, icons):
                 imgui.same_line()
         if imgui.is_item_hovered():
             imgui.begin_tooltip()
-            imgui.text(tool.tool)
+            imgui.text(tool.tool.name.lower())
             imgui.end_tooltip()
     return selected
 
@@ -275,13 +275,16 @@ def render_edits(drawing):
 
     imgui.begin("Edits", True)
 
-    imgui.columns(2, 'layerlist')
+    imgui.columns(3, 'layerlist')
     imgui.set_column_offset(1, 40)
+    imgui.set_column_offset(2, 100)
     n = len(drawing.edits)
     for i, edit in enumerate(reversed(drawing.edits[-50:])):
         imgui.text(str(n - i))
         imgui.next_column()
-        imgui.text(str(type(edit).__name__))
+        imgui.text(edit.index_str)
+        imgui.next_column()
+        imgui.text(edit.info_str)
         imgui.next_column()
 
     imgui.end()
