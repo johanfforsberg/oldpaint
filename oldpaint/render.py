@@ -24,11 +24,14 @@ def render_drawing(drawing, highlighted_layer=None):
 
     offscreen_buffer = _get_offscreen_buffer(drawing)
 
+    colors = _get_colors(drawing.palette.as_tuple())
+
     with vao, offscreen_buffer, draw_program:
         w, h = offscreen_buffer.size
         gl.glViewport(0, 0, w, h)
         gl.glDisable(gl.GL_BLEND)
-        gl.glClearBufferfv(gl.GL_COLOR, 0, IMAGE_BG_COLOR)
+        # gl.glClearBufferfv(gl.GL_COLOR, 0, IMAGE_BG_COLOR)
+        gl.glClearBufferfv(gl.GL_COLOR, 0, _get_background_color(drawing.palette.as_tuple()))
 
         gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
 
@@ -88,11 +91,11 @@ def render_drawing(drawing, highlighted_layer=None):
                     with overlay_texture:
                         # TODO is it possible to send the palette without converting
                         # to float first?
-                        gl.glUniform4fv(1, 256, _get_colors(drawing.palette.as_tuple()))
+                        gl.glUniform4fv(1, 256, colors)
                         gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
                 else:
                     with _get_empty_texture(drawing):
-                        gl.glUniform4fv(1, 256, _get_colors(drawing.palette.as_tuple()))
+                        gl.glUniform4fv(1, 256, colors)
                         gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 
     return offscreen_buffer
@@ -129,3 +132,9 @@ def _get_colors(colors):
     float_colors = chain.from_iterable((r / 255, g / 255, b / 255, a / 255)
                                        for r, g, b, a in colors)
     return (gl.GLfloat*(4*256))(*float_colors)
+
+
+@lru_cache(1)
+def _get_background_color(colors):
+    r, g, b, a = colors[0]
+    return (gl.GLfloat*4)(r / 255, g / 255, b / 255, a / 255)
