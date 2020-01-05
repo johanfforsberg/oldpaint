@@ -21,7 +21,7 @@ from fogl.vao import VertexArrayObject
 from fogl.vertex import SimpleVertices
 
 from .brush import PicBrush, RectangleBrush, EllipseBrush
-from .drawing import Drawing
+from .drawing import Drawing, ToolName
 from .imgui_pyglet import PygletRenderer
 from .layer import Layer
 from .picture import LongPicture
@@ -350,7 +350,7 @@ class OldpaintWindow(pyglet.window.Window):
                 self._draw_mouse_cursor()
 
             # Selection rectangle, if any
-            if self.tools.current.tool == "brush" and self.drawing.selection:
+            if self.tools.current.tool == ToolName.BRUSH and self.drawing.selection:
                 self.set_selection(self.drawing.selection)
                 with self.selection_vao, self.line_program:
                     gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
