@@ -280,6 +280,19 @@ cdef class LongPicture:
                 flipped[x, y] = self.data[offset]
         return flipped
 
+    cpdef LongPicture rotate(self, bint counter):
+        """Rotate the picture by 90 degrees in clockwise or counter-clockwise direction."""
+        cdef LongPicture transposed = LongPicture((self.height, self.width))
+        cdef int x, y, offset
+        for y in range(self.height):
+            for x in range(self.width):
+                offset = self._get_offset(x, y)
+                if counter:
+                    transposed[y, self.width - x - 1] = self.data[offset]
+                else:
+                    transposed[self.height - y - 1, x] = self.data[offset]
+        return transposed
+
     cpdef unsigned int[:] as_rgba(self, palette, bint alpha):
         cdef unsigned int[:] data
         if alpha:

@@ -106,7 +106,7 @@ class Drawing:
             combined = self.layers[0].clone()
         else:
             combined = Layer(size=self.size)
-        transparent_colors = set(self.palette.transparent_colors())
+        transparent_colors = set(self.palette.transparent_colors)
         for layer in self.layers[1:]:
             if layer.visible:
                 layer.pic.fix_alpha(transparent_colors)

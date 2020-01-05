@@ -45,6 +45,18 @@ class PicBrush(Brush):
         self.original = self.original.flip_horizontal()
         self.get_pic.cache_clear()
 
+    def rotate_clockwise(self):
+        self.original = self.original.rotate(False)
+        w, h = self.size
+        self.size = h, w
+        self.get_pic.cache_clear()
+
+    def rotate_counter_clockwise(self):
+        self.original = self.original.rotate(True)
+        w, h = self.size
+        self.size = h, w
+        self.get_pic.cache_clear()
+
     def __hash__(self):
         return id(self.original)
 
