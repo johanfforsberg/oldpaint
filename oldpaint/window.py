@@ -65,6 +65,7 @@ class OldpaintWindow(pyglet.window.Window):
              if isinstance(s, tuple) else Drawing.from_ora(s))
             for s in drawing_specs or []
         ])
+
         self.tools = Selectable([
             PencilTool, PointsTool, SprayTool,
             LineTool, RectangleTool, EllipseTool, FillTool,
@@ -127,7 +128,8 @@ class OldpaintWindow(pyglet.window.Window):
              ((0, 0, 0),)])
 
         self._new_drawing = None  # Set when configuring a new drawing
-        self._unsaved = None
+        self.unsaved_drawings = None
+        self._error = None
         self.recent_files = OrderedDict((k, None) for k in recent_files)
 
         self.window_visibility = {
@@ -442,7 +444,7 @@ class OldpaintWindow(pyglet.window.Window):
                 # imgui.end()
 
                 # Exit with unsaved
-                self._unsaved = ui.render_unsaved_exit(self._unsaved)
+                ui.render_unsaved_exit(self)
 
             # Create new drawing
             if self._new_drawing:
@@ -468,6 +470,15 @@ class OldpaintWindow(pyglet.window.Window):
                     imgui.close_current_popup()
                 imgui.end_popup()
 
+            if self._error:
+                imgui.open_popup("Error")
+                if imgui.begin_popup_modal("Error")[0]:
+                    imgui.text(self._error)
+                    if imgui.button("Doh!"):
+                        self._error = None
+                        imgui.close_current_popup()
+                    imgui.end_popup()
+
         imgui.render()
         imgui.end_frame()
 
@@ -477,9 +488,17 @@ class OldpaintWindow(pyglet.window.Window):
         size = self.drawing.size if self.drawing else (640, 480)
         self._new_drawing = dict(size=size)
 
-    def save_drawing(self, ask_for_path=False):
-        if not ask_for_path and self.drawing.path and self.drawing.path.endswith(".ora"):
-            self.drawing.save_ora()
+    def save_drawing(self, drawing=None, ask_for_path=False):
+        "Save the drawing, asking for a file name if neccessary."
+        drawing = drawing or self.drawing
+        if not ask_for_path and drawing.path:
+            if drawing.path.endswith(".ora"):
+                drawing.save_ora()
+            elif drawing.path.endswith(".png") and len(drawing.layers) == 1:
+                drawing.save_png()
+            else:
+                # TODO Hopefully this can't happen
+                raise RuntimeError("Unknown file ending: {drawing.path}")
         else:
             last_dir = self.get_latest_dir()
             # The point here is to not block the UI redraws while showing the
@@ -490,41 +509,51 @@ class OldpaintWindow(pyglet.window.Window):
                                        filetypes=(("ORA files", "*.ora"),
                                                   ("PNG files", "*.png"),
                                                   ("all files", "*.*")))
-            fut.add_done_callback(
-                lambda fut: self._really_save_drawing(fut.result()))
 
-    def _really_save_drawing(self, path):
-        if path:
-            if path.endswith(".ora"):
-                self.drawing.save_ora(path)
-                self.add_recent_file(path)
-            elif path.endswith(".png"):
-                self.drawing.save_png(path)
-                self.add_recent_file(path)
+            def really_save_drawing(drawing, path):
+                try:
+                    if path:
+                        if path.endswith(".ora"):
+                            drawing.save_ora(path)
+                            self.add_recent_file(path)
+                        elif path.endswith(".png"):
+                            drawing.save_png(path)
+                            self.add_recent_file(path)
+                        else:
+                            _, ext = os.path.splitext(path)
+                            self._error = f"Could not save:\n Unsupported file format '{ext}'"
+                except OSError as e:
+                    self._error = f"Could not save:\n {e}"
+
+            fut.add_done_callback(
+                lambda fut: really_save_drawing(drawing, fut.result()))
 
     def load_drawing(self, path=None):
+
+        def really_load_drawing(path):
+            if path:
+                if path.endswith(".ora"):
+                    drawing = Drawing.from_ora(path)
+                elif path.endswith(".png"):
+                    drawing = Drawing.from_png(path)
+                self.drawings.add(drawing)
+                self.drawings.select(drawing)
+                self.add_recent_file(path)
+
         if path:
-            self._really_load_drawing(path)
+            really_load_drawing(path)
         else:
             last_dir = self.get_latest_dir()
             fut = self.executor.submit(show_load_dialog,
                                        title="Select file",
                                        initialdir=last_dir,
-                                       filetypes=(("ORA files", "*.ora"),
+                                       filetypes=(("All image files", "*.ora"),
+                                                  ("All image files", "*.png"),
+                                                  ("ORA files", "*.ora"),
                                                   ("PNG files", "*.png"),
-                                                  ("all files", "*.*")))
+                                                  ))
             fut.add_done_callback(
-                lambda fut: self._really_load_drawing(fut.result()))
-
-    def _really_load_drawing(self, path):
-        if path:
-            if path.endswith(".ora"):
-                drawing = Drawing.from_ora(path)
-            elif path.endswith(".png"):
-                drawing = Drawing.from_png(path)
-            self.drawings.add(drawing)
-            self.drawings.select(drawing)
-            self.add_recent_file(path)
+                lambda fut: really_load_drawing(fut.result()))
 
     def _close_drawing(self):
         if self.drawing.unsaved:
@@ -533,12 +562,9 @@ class OldpaintWindow(pyglet.window.Window):
         self.drawings.remove(self.drawing)
 
     def _quit(self):
-        unsaved = []
-        for drawing in self.drawings:
-            if drawing.unsaved:
-                unsaved.append(drawing)
+        unsaved = [d for d in self.drawings if d.unsaved]
         if unsaved:
-            self._unsaved = unsaved
+            self.unsaved_drawings = unsaved
         else:
             pyglet.app.exit()
 

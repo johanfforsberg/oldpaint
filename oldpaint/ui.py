@@ -11,7 +11,7 @@ import imgui
 import pyglet
 from pyglet.window import key
 
-from .util import show_save_dialog
+from .util import show_save_dialog, throttle
 
 
 logger = logging.getLogger(__name__)
@@ -290,8 +290,8 @@ def render_edits(drawing):
     imgui.end()
 
 
-def render_unsaved_exit(unsaved):
-    if unsaved:
+def render_unsaved_exit(window):
+    if window.unsaved_drawings:
         imgui.open_popup("Really exit?")
 
     imgui.set_next_window_size(500, 200)
@@ -300,7 +300,7 @@ def render_unsaved_exit(unsaved):
 
         imgui.begin_child("unsaved", border=True,
                           height=imgui.get_content_region_available()[1] - 26)
-        for drawing in unsaved:
+        for drawing in window.unsaved_drawings:
             imgui.text(drawing.filename)
             if imgui.is_item_hovered():
                 pass  # TODO popup thumbnail of the picture?
@@ -310,12 +310,15 @@ def render_unsaved_exit(unsaved):
             imgui.close_current_popup()
             pyglet.app.exit()
         imgui.same_line()
+        if imgui.button("Yes, but save first"):
+            for drawing in window.unsaved_drawings:
+                window.save_drawing(drawing)
+            pyglet.app.exit()
+        imgui.same_line()
         if imgui.button("No, cancel"):
-            unsaved = None
+            window.unsaved_drawings = None
             imgui.close_current_popup()
         imgui.end_popup()
-
-    return unsaved
 
 
 def render_tool_menu(tools, icons):
@@ -460,9 +463,10 @@ def render_main_menu(window):
             if imgui.menu_item("Save current", None, False, window.drawing.brushes.current)[0]:
                 fut = window.executor.submit(show_save_dialog,
                                              title="Select file",
-                                             filetypes=(#("ORA files", "*.ora"),
+                                             filetypes=(
                                                  ("PNG files", "*.png"),
-                                                 ("all files", "*.*")))
+                                                 ("all files", "*.*"))
+                                             )
 
                 def save_brush(fut):
                     path = fut.result()
@@ -481,6 +485,14 @@ def render_main_menu(window):
 
             elif imgui.menu_item("Flip vertically", None, False, window.drawing.brushes.current)[0]:
                 window.brush.flip_vertical()
+
+            elif imgui.menu_item("Rotate clockwise", None, False, window.drawing.brushes.current)[0]:
+                window.brush.rotate_clockwise()
+                # window.get_brush_preview_texture.cache_clear()
+
+            elif imgui.menu_item("Rotate counter clockwise", None, False, window.drawing.brushes.current)[0]:
+                window.brush.rotate_counter_clockwise()
+                # window.get_brush_preview_texture.cache_clear()
 
             imgui.separator()
 
@@ -529,5 +541,10 @@ def render_main_menu(window):
                         imgui.text(f"{int(x)}, {int(y)}")
                 else:
                     imgui.text(f"{int(x)}, {int(y)}")
+                # imgui.set_cursor_screen_pos((w - 30, 0))
+                # color_index = window.drawing.layers.current.pic.get_pixel(x, y)
+                # r, g, b, _ = window.drawing.palette.colors[color_index]
+                # imgui.color_button("current_color", r/255, g/255, b/255, 0, 10, 20, 20)
 
         imgui.end_main_menu_bar()
+
