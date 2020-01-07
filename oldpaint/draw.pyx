@@ -19,11 +19,12 @@ cdef unsigned int _rgb_to_32bit((int, int, int) color) nogil:
     return _rgba_to_32bit((r, g, b, 255))
 
 
-cpdef draw_line(LongPicture pic, (int, int) p0, (int, int) p1, LongPicture brush=None, unsigned int color=0, int step=1, bint set_dirty=True):
+cpdef draw_line(LongPicture pic, (int, int) p0, (int, int) p1,
+                LongPicture brush=None, unsigned int color=0, int step=1, bint set_dirty=True):
 
     "Draw a line from p0 to p1 using a brush."
 
-    cdef int x, y, w, h, x0, y0, x1, y1, dx, sx, dy, sy, err, bw, bh, hw, hh
+    cdef int x, y, w, h, x0, y0, x1, y1, dx, sx, dy, sy, err, bw, bh
     x, y = p0
     x0, y0 = p0
     x1, y1 = p1
@@ -34,23 +35,10 @@ cpdef draw_line(LongPicture pic, (int, int) p0, (int, int) p1, LongPicture brush
     err = dx+dy
     bw = brush.size[0] if brush is not None else 1
     bh = brush.size[1] if brush is not None else 1
-    hw = bw // 2
-    hh = bh // 2
     w, h = pic.size
 
     cdef int i = 0
-
-    # A slightly undocumented way of accessing the raw data in a PIL image
-    # cdef int ptr_val = image.unsafe_ptrs['image32']
-    # cdef int** img = <int**>ptr_val
-
-    cdef (int, int) position
     cdef int e2
-
-    # cdef int r, g, b, a
-    # r,g,b,a = color
-    # cdef int col = r + 2**24*a  # turning the color into a 32 bit integer
-    cdef int xx, yy
 
     color = _rgb_to_32bit((color, 0, 0))
 
@@ -58,14 +46,10 @@ cpdef draw_line(LongPicture pic, (int, int) p0, (int, int) p1, LongPicture brush
         while True:
             if i % step == 0:
                 if brush is not None:
-                    # brush_image = brush.pic
-                    position = (x-hw, y-hh)
-                    pic.paste(brush, x-hw, y-hh, True)  # TODO: Slow!
+                    pic.paste(brush, x, y, True)
                 else:
-                    xx = x - hw
-                    yy = y - hh
-                    if xx >= 0 and xx < w and yy >= 0 and yy < h:
-                        pic.set_pixel(xx, yy, color)
+                    if x >= 0 and x < w and y >= 0 and y < h:
+                        pic.set_pixel(x, y, color)
                         i += 1
             if x == x1 and y == y1:
                 break
@@ -77,15 +61,12 @@ cpdef draw_line(LongPicture pic, (int, int) p0, (int, int) p1, LongPicture brush
                 err += dx
                 y += sy
 
-    return Rectangle((min(x0, x1) - hw, min(y0, y1) - hh),
+    return Rectangle((min(x0, x1), min(y0, y1)),
                      (dx + bw, -dy + bh)).intersect(pic.rect)
-    # if rect is not None and set_dirty:
-    #     layer.dirty = rect.unite(layer.dirty)
-    # return rect
 
 
 cpdef draw_rectangle(LongPicture pic, (int, int) pos, (int, int) size, brush=None, unsigned int color=0,
-                          bint fill=False, int step=1):
+                     bint fill=False, int step=1):
 
     cdef int x0, y0, w0, h0, x, y, w, h, cols, rows, bw, bh, hw, hh
     x0, y0 = pos
