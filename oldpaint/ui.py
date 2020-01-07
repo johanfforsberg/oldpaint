@@ -460,6 +460,24 @@ def render_main_menu(window):
             imgui.end_menu()
 
         if imgui.begin_menu("Brush", bool(window.drawing)):
+
+            if imgui.menu_item("Flip horizontally", None, False, window.drawing.brushes.current)[0]:
+                window.brush.flip_horizontal()
+                # window.get_brush_preview_texture.cache_clear()
+
+            elif imgui.menu_item("Flip vertically", None, False, window.drawing.brushes.current)[0]:
+                window.brush.flip_vertical()
+
+            elif imgui.menu_item("Rotate clockwise", None, False, window.drawing.brushes.current)[0]:
+                window.brush.rotate_clockwise()
+                # window.get_brush_preview_texture.cache_clear()
+
+            elif imgui.menu_item("Rotate counter clockwise", None, False, window.drawing.brushes.current)[0]:
+                window.brush.rotate_counter_clockwise()
+                # window.get_brush_preview_texture.cache_clear()
+
+            imgui.separator()
+
             if imgui.menu_item("Save current", None, False, window.drawing.brushes.current)[0]:
                 fut = window.executor.submit(show_save_dialog,
                                              title="Select file",
@@ -478,21 +496,6 @@ def render_main_menu(window):
 
             elif imgui.menu_item("Remove", None, False, window.drawing.brushes.current)[0]:
                 window.drawing.brushes.remove()
-
-            elif imgui.menu_item("Flip horizontally", None, False, window.drawing.brushes.current)[0]:
-                window.brush.flip_horizontal()
-                # window.get_brush_preview_texture.cache_clear()
-
-            elif imgui.menu_item("Flip vertically", None, False, window.drawing.brushes.current)[0]:
-                window.brush.flip_vertical()
-
-            elif imgui.menu_item("Rotate clockwise", None, False, window.drawing.brushes.current)[0]:
-                window.brush.rotate_clockwise()
-                # window.get_brush_preview_texture.cache_clear()
-
-            elif imgui.menu_item("Rotate counter clockwise", None, False, window.drawing.brushes.current)[0]:
-                window.brush.rotate_counter_clockwise()
-                # window.get_brush_preview_texture.cache_clear()
 
             imgui.separator()
 
