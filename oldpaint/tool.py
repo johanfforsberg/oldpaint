@@ -65,7 +65,7 @@ class PencilTool(Tool):
             return
         p0 = tuple(self.points[-1])
         brush = self.brush.get_pic(self.brush_color)
-        rect = overlay.draw_line(p0, point, brush)
+        rect = overlay.draw_line(p0, point, brush, self.brush.center)
         if rect:
             self.rect = rect.unite(self.rect)
         self.points.append(point)
@@ -73,7 +73,7 @@ class PencilTool(Tool):
     def finish(self, overlay, point, buttons, modifiers):
         # Make sure we draw a point even if the mouse was never moved
         brush = self.brush.get_pic(self.brush_color)
-        rect = overlay.draw_line(self.points[-1], point, brush)
+        rect = overlay.draw_line(self.points[-1], point, brush, self.brush.center)
         if rect:
             self.rect = rect.unite(self.rect)
 

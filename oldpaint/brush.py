@@ -80,13 +80,13 @@ class EllipseBrush(Brush):
 
     def __init__(self, size):
         self.size = w, h = size
-        self.center = (w // 2 - 1, h // 2 - 1)
+        self.center = int((w-1) / 2), int((h-1) / 2)
         self.original = self.get_pic(color=1)
 
     @lru_cache(1)
     def get_pic(self, color):
         pic = LongPicture(size=self.size)
         w, h = self.size
-        draw_ellipse(pic, (w//2-1, h//2-1), (w//2-1, h//2-1),
+        draw_ellipse(pic, self.center, self.center,
                      color=color + 255*2**24, fill=True)
         return pic

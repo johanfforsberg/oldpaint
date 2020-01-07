@@ -40,9 +40,12 @@ class Layer:
         pic, colors = load_png(path)
         return cls(pic), colors
 
-    def draw_line(self, *args, set_dirty=True, **kwargs):
+    def draw_line(self, p0, p1, brush, offset, set_dirty=True, **kwargs):
+        ox, oy = offset
+        x0, y0 = p0
+        x1, y1 = p1
         with self.lock:
-            rect = draw_line(self.pic, *args, **kwargs)
+            rect = draw_line(self.pic, (x0 - ox, y0 - oy), (x1 - ox, y1 - oy), brush, **kwargs)
             if rect and set_dirty:
                 self.dirty = rect.unite(self.dirty)
         return rect
