@@ -58,20 +58,55 @@ def as_float(color):
     return (r/256, g/256, b/256, a/256)
 
 
+def _change_channel(value, delta):
+    return max(0, min(255, value + delta))
+
+
 def render_color_editor(orig, color):
     r, g, b, a = color
 
+    io = imgui.get_io()
+
+    delta = 0
     imgui.push_id("R")
+    # TODO find a less verbose way to do something like this:
+    # imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, r/255, 0, 0)
+    # imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, r/255, 0, 0)
+    # imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, r/255, 0, 0)
+    # imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, 1, 1, 1)
+    # imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, 1, 1, 1)
     _, r = imgui.v_slider_int("", 30, 255, r, min_value=0, max_value=255)
+    # imgui.pop_style_color()
+    # imgui.pop_style_color()
+    # imgui.pop_style_color()
+    # imgui.pop_style_color()
+    # imgui.pop_style_color()
+    if imgui.is_item_hovered():
+        delta = int(io.mouse_wheel)
+        if not io.key_shift:
+            r = _change_channel(r, delta)
     imgui.pop_id()
     imgui.same_line()
     imgui.push_id("G")
     _, g = imgui.v_slider_int("", 30, 255, g, min_value=0, max_value=255)
+    if imgui.is_item_hovered():
+        delta = int(io.mouse_wheel)
+        if not io.key_shift:
+            g = _change_channel(g, delta)
     imgui.pop_id()
     imgui.same_line()
     imgui.push_id("B")
     _, b = imgui.v_slider_int("", 30, 255, b, min_value=0, max_value=255)
+    if imgui.is_item_hovered():
+        delta = int(io.mouse_wheel)
+        if not io.key_shift:
+            b = _change_channel(b, delta)
     imgui.pop_id()
+
+    if delta and io.key_shift:
+        r = _change_channel(r, delta)
+        g = _change_channel(g, delta)
+        b = _change_channel(b, delta)
 
     imgui.color_button("Current color", *as_float(orig))
     imgui.same_line()
@@ -106,7 +141,7 @@ def render_palette(drawing):
         w, h = io.display_size
         imgui.open_popup("Edit foreground color")
         imgui.set_next_window_position(w - 115 - 120, 200)
-    if imgui.begin_popup("Edit foreground color"):
+    if imgui.begin_popup("Edit foreground color", flags=(imgui.WINDOW_NO_SCROLL_WITH_MOUSE)):
         done, cancelled, new_color = render_color_editor(palette.colors[fg], fg_color)
         if done:
             drawing.change_colors(fg, [new_color])
