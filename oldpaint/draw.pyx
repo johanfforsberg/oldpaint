@@ -48,7 +48,7 @@ cpdef draw_line(LongPicture pic, (int, int) p0, (int, int) p1,
                 if brush is not None:
                     pic.paste(brush, x, y, True)
                 else:
-                    if x >= 0 and x < w and y >= 0 and y < h:
+                    if 0 <= x < w and 0 <= y < h:
                         pic.set_pixel(x, y, color)
                         i += 1
             if x == x1 and y == y1:
