@@ -162,7 +162,8 @@ class RectangleTool(Tool):
         p0 = self.points[0]
         r = from_points([p0, point])
         self.rect = overlay.draw_rectangle(r.position, r.size, brush=self.brush.get_pic(self.brush_color),
-                                           fill=modifiers & window.key.MOD_SHIFT, color=self.color)
+                                           offset=self.brush.center, fill=modifiers & window.key.MOD_SHIFT,
+                                           color=self.color)
         self.points.append(point)
 
     def __repr__(self):
@@ -184,7 +185,7 @@ class EllipseTool(Tool):
         x, y = point
         size = (int(abs(x - x0)), int(abs(y - y0)))
         self.rect = overlay.draw_ellipse((x0, y0), size, brush=self.brush.get_pic(self.brush_color),
-                                         color=self.color + 255*2**24,
+                                         offset=self.brush.center, color=self.color + 255*2**24,
                                          fill=modifiers & window.key.MOD_SHIFT)
         self.points.append(point)
 

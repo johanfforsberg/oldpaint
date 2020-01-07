@@ -22,7 +22,7 @@ cdef unsigned int _rgb_to_32bit((int, int, int) color) nogil:
 cpdef draw_line(LongPicture pic, (int, int) p0, (int, int) p1,
                 LongPicture brush=None, unsigned int color=0, int step=1, bint set_dirty=True):
 
-    "Draw a line from p0 to p1 using a brush."
+    "Draw a line from p0 to p1 using a brush or a single pixel of given color."
 
     cdef int x, y, w, h, x0, y0, x1, y1, dx, sx, dy, sy, err, bw, bh
     x, y = p0
@@ -84,7 +84,6 @@ cpdef draw_rectangle(LongPicture pic, (int, int) pos, (int, int) size, brush=Non
 
     if fill:
         for i in range(y, min(y+h, rows)):
-            # TODO fixme
             draw_line(pic, (x0, i), (x0+w, i), None, color, step)
     else:
         draw_line(pic, pos, (x0+w0, y0), brush, color, step)
@@ -94,12 +93,8 @@ cpdef draw_rectangle(LongPicture pic, (int, int) pos, (int, int) size, brush=Non
 
     bw = brush.width if brush else 0
     bh = brush.height if brush else 0
-    hw = bw // 2 if brush else 1
-    hh = bh // 2 if brush else 1
 
-    return pic.rect.intersect(Rectangle((x-hw, y-hh), (w + bw, h + bh)))
-    # layer.dirty = rect.unite(layer.dirty)
-    # return rect
+    return pic.rect.intersect(Rectangle((x, y), (w + bw, h + bh)))
 
 
 # cdef horizontal_line(int** image, int y, int xmin, int xmax, int color):
@@ -141,8 +136,6 @@ cpdef draw_ellipse(LongPicture pic, (int, int) center, (int, int) size, LongPict
     stopx = a2 * b
     bw = brush.width if brush else 0
     bh = brush.height if brush else 0
-    hw = bw//2 if brush else 1
-    hh = bh//2 if brush else 1
 
     w, h = pic.size
 
@@ -150,9 +143,6 @@ cpdef draw_ellipse(LongPicture pic, (int, int) center, (int, int) size, LongPict
         # TODO This should be allowed, but right now would crash
         return None
 
-    # cdef int cr, cg, cb, ca
-    # cr,cg,cb,ca = color
-    # cdef int col = cr + 16777216*ca  # turning the color into a 32 bit integer
     cdef int xx, yy
     cdef int topy, boty, lx, rx
 
@@ -221,20 +211,20 @@ cpdef draw_ellipse(LongPicture pic, (int, int) center, (int, int) size, LongPict
             while stopy <= stopx:
                 topy = y0 - y
                 boty = y0 + y
-                xx = x0 + x - hw
-                yy = y0 + y - hh
+                xx = x0 + x
+                yy = y0 + y
                 if (xx + bw) >= 0 and xx < w and (yy + bh) >= 0 and yy < h:
                     pic.paste(brush, xx, yy, True)
-                xx = x0 - x - hw
-                yy = y0 + y - hh
+                xx = x0 - x
+                yy = y0 + y
                 if xx + bw >= 0 and xx < w and yy + bh >= 0 and yy < h:
                     pic.paste(brush, xx, yy, True)
-                xx = x0 - x - hw
-                yy = y0 - y - hh
+                xx = x0 - x
+                yy = y0 - y
                 if xx + bw >= 0 and xx < w and yy + bh >= 0 and yy < h:
                     pic.paste(brush, xx, yy, True)
-                xx = x0 + x - hw
-                yy = y0 - y - hh
+                xx = x0 + x
+                yy = y0 - y
                 if xx + bw >= 0 and xx < w and yy + bh >= 0 and yy < h:
                     pic.paste(brush, xx, yy, True)
                 x += 1
@@ -254,20 +244,20 @@ cpdef draw_ellipse(LongPicture pic, (int, int) center, (int, int) size, LongPict
             while stopy >= stopx:
                 topy = y0 - y
                 boty = y0 + y
-                xx = x0 + x - hw
-                yy = y0 + y - hh
+                xx = x0 + x
+                yy = y0 + y
                 if xx + bw >= 0 and xx < w and yy + bh >= 0 and yy < h:
                     pic.paste(brush, xx, yy, True)
-                xx = x0 - x - hw
-                yy = y0 + y - hh
+                xx = x0 - x
+                yy = y0 + y
                 if xx + bw >= 0 and xx < w and yy + bh >= 0 and yy < h:
                     pic.paste(brush, xx, yy, True)
-                xx = x0 - x - hw
-                yy = y0 - y - hh
+                xx = x0 - x
+                yy = y0 - y
                 if xx + bw >= 0 and xx < w and yy + bh >= 0 and yy < h:
                     pic.paste(brush, xx, yy, True)
-                xx = x0 + x - hw
-                yy = y0 - y - hh
+                xx = x0 + x
+                yy = y0 - y
                 if xx + bw >= 0 and xx < w and yy + bh >= 0 and yy < h:
                     pic.paste(brush, xx, yy, True)
 
@@ -279,7 +269,7 @@ cpdef draw_ellipse(LongPicture pic, (int, int) center, (int, int) size, LongPict
                     x -= 1
                     stopy -= b2
 
-    return pic.rect.intersect(Rectangle((x0-a-hw-1, y0-b-hh-1), (2*a+bw+2, 2*b+bh+2)))
+    return pic.rect.intersect(Rectangle((x0-a-1, y0-b-1), (2*a+bw+2, 2*b+bh+2)))
 
 
 cpdef draw_fill(LongPicture pic, (int, int) point, unsigned int color):

@@ -44,22 +44,32 @@ class Layer:
         ox, oy = offset
         x0, y0 = p0
         x1, y1 = p1
+        p0 = (x0 - ox, y0 - oy)
+        p1 = (x1 - ox, y1 - oy)
         with self.lock:
-            rect = draw_line(self.pic, (x0 - ox, y0 - oy), (x1 - ox, y1 - oy), brush, **kwargs)
+            rect = draw_line(self.pic, p0, p1, brush, **kwargs)
             if rect and set_dirty:
                 self.dirty = rect.unite(self.dirty)
         return rect
 
-    def draw_ellipse(self, *args, set_dirty=True, **kwargs):
+    def draw_ellipse(self, pos, size, brush, offset, set_dirty=True, fill=False, **kwargs):
+        if not fill:
+            x0, y0 = pos
+            ox, oy = offset
+            pos = (x0 - ox, y0 - oy)
         with self.lock:
-            rect = draw_ellipse(self.pic, *args, **kwargs)
+            rect = draw_ellipse(self.pic, pos, size, brush, fill=fill, **kwargs)
             if rect and set_dirty:
                 self.dirty = rect.unite(self.dirty)
         return rect
 
-    def draw_rectangle(self, *args, set_dirty=True, **kwargs):
+    def draw_rectangle(self, pos, size, brush, offset, set_dirty=True, fill=False, **kwargs):
+        if not fill:
+            x0, y0 = pos
+            ox, oy = offset
+            pos = (x0 - ox, y0 - oy)
         with self.lock:
-            rect = draw_rectangle(self.pic, *args, **kwargs)
+            rect = draw_rectangle(self.pic, pos, size, brush, fill=fill, **kwargs)
             if rect and set_dirty:
                 self.dirty = rect.unite(self.dirty)
         return rect
