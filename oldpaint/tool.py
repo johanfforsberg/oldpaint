@@ -92,14 +92,14 @@ class PointsTool(Tool):
         self.points.append(point)
         if len(self.points) % self.step == 0:
             brush = self.brush.get_pic(self.brush_color)
-            rect = overlay.draw_line(point, point, brush)
+            rect = overlay.draw_line(point, point, brush, offset=self.brush.center)
             if rect:
                 self.rect = rect.unite(self.rect)
 
     def finish(self, overlay, point, buttons, modifiers):
         # Make sure we draw a point even if the mouse was never moved
         brush = self.brush.get_pic(self.brush_color)
-        rect = overlay.draw_line(point, point, brush)
+        rect = overlay.draw_line(point, point, brush, offset=self.brush.center)
         if rect:
             self.rect = rect.unite(self.rect)
 
@@ -122,7 +122,7 @@ class SprayTool(Tool):
         xg = gauss(x, self.size)
         yg = gauss(y, self.size)
         p = (xg, yg)
-        rect = overlay.draw_line(p, p, brush=self.brush.get_pic(self.brush_color))
+        rect = overlay.draw_line(p, p, brush=self.brush.get_pic(self.brush_color), offset=self.brush.center)
         if rect:
             self.rect = rect.unite(self.rect)
 
@@ -137,11 +137,11 @@ class LineTool(Tool):
     def draw(self, overlay, point, buttons, modifiers):
         p0 = tuple(self.points[0][:2])
         p1 = point
-        self.rect = overlay.draw_line(p0, p1, brush=self.brush.get_pic(self.brush_color))
+        self.rect = overlay.draw_line(p0, p1, brush=self.brush.get_pic(self.brush_color), offset=self.brush.center)
         self.points.append(p1)
 
     def finish(self, overlay, point, buttons, modifiers):
-        rect = overlay.draw_line(point, point, brush=self.brush.get_pic(self.brush_color))
+        rect = overlay.draw_line(point, point, brush=self.brush.get_pic(self.brush_color), offset=self.brush.center)
         if rect:
             self.rect = rect.unite(self.rect)
 
@@ -162,7 +162,7 @@ class RectangleTool(Tool):
         p0 = self.points[0]
         r = from_points([p0, point])
         self.rect = overlay.draw_rectangle(r.position, r.size, brush=self.brush.get_pic(self.brush_color),
-                                         fill=modifiers & window.key.MOD_SHIFT, color=self.color)
+                                           fill=modifiers & window.key.MOD_SHIFT, color=self.color)
         self.points.append(point)
 
     def __repr__(self):
