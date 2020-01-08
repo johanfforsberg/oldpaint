@@ -105,6 +105,11 @@ def render_color_editor(orig, color):
         g = _change_channel(g, delta)
         b = _change_channel(b, delta)
 
+    if imgui.checkbox("Transp.", a == 0)[1]:
+        a = 0
+    else:
+        a = 255
+
     imgui.color_button("Current color", *as_float(orig))
     imgui.same_line()
     imgui.text("->")
@@ -144,7 +149,7 @@ def render_palette(drawing):
         color_editor_open = True
     if imgui.begin_popup("Edit foreground color", flags=(imgui.WINDOW_NO_SCROLL_WITH_MOUSE)):
         done, cancelled, new_color = render_color_editor(palette.colors[fg], fg_color)
-        if done:
+        if done and new_color != fg_color:
             drawing.change_colors(fg, [new_color])
             palette.clear_overlay()
         elif cancelled:
