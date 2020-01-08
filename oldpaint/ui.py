@@ -412,11 +412,11 @@ def render_main_menu(window):
 
             imgui.separator()
 
-            clicked_save, selected_save = imgui.menu_item("Save", "s", False, window.drawing)
+            clicked_save, selected_save = imgui.menu_item("Save", "Ctrl+s", False, window.drawing)
             if clicked_save:
                 window.save_drawing()
 
-            clicked_save_as, selected_save = imgui.menu_item("Save as", "S", False, window.drawing)
+            clicked_save_as, selected_save = imgui.menu_item("Save as", None, False, window.drawing)
             if clicked_save_as:
                 window.save_drawing(ask_for_path=True)
 
@@ -439,9 +439,9 @@ def render_main_menu(window):
 
             imgui.separator()
 
-            if imgui.menu_item("Flip horizontally", "H", False, window.drawing)[0]:
+            if imgui.menu_item("Flip horizontally", None, False, window.drawing)[0]:
                 window.drawing.flip_horizontal()
-            if imgui.menu_item("Flip vertically", "V", False, window.drawing)[0]:
+            if imgui.menu_item("Flip vertically", None, False, window.drawing)[0]:
                 window.drawing.flip_vertical()
 
             imgui.separator()
@@ -459,31 +459,31 @@ def render_main_menu(window):
                     window.drawings.select(drawing)
             imgui.end_menu()
 
-        if imgui.begin_menu("Layer", bool(window.drawing)) :
+        if imgui.begin_menu("Layer", bool(window.drawing)):
 
             layer = window.drawing.layers.current
             index = window.drawing.layers.index(layer)
             n_layers = len(window.drawing.layers)
 
-            if imgui.menu_item("Add", "L", False, True)[0]:
+            if imgui.menu_item("Add", "l", False, True)[0]:
                 window.drawing.add_layer()
             if imgui.menu_item("Remove", None, False, True)[0]:
                 window.drawing.remove_layer()
             if imgui.menu_item("Merge down", None, False, index > 0)[0]:
                 window.drawing.merge_layer_down()
 
-            if imgui.menu_item("Toggle visibility", "v", False, True)[0]:
+            if imgui.menu_item("Toggle visibility", "V", False, True)[0]:
                 layer.visible = not layer.visible
-            if imgui.menu_item("Move up", "w", False, index < n_layers-1)[0]:
+            if imgui.menu_item("Move up", "W", False, index < n_layers-1)[0]:
                 window.drawing.move_layer_up()
-            if imgui.menu_item("Move down", "s", False, index > 0)[0]:
+            if imgui.menu_item("Move down", "S", False, index > 0)[0]:
                 window.drawing.move_layer_down()
 
             imgui.separator()
 
-            if imgui.menu_item("Flip horizontally", "H", False, True)[0]:
+            if imgui.menu_item("Flip horizontally", None, False, True)[0]:
                 window.drawing.flip_layer_horizontal()
-            if imgui.menu_item("Flip vertically", "V", False, True)[0]:
+            if imgui.menu_item("Flip vertically", None, False, True)[0]:
                 window.drawing.flip_layer_vertical()
             if imgui.menu_item("Clear", "Delete", False, True)[0]:
                 window.drawing.clear()
@@ -501,7 +501,7 @@ def render_main_menu(window):
 
                     imgui.begin_tooltip()
                     texture = window.get_layer_preview_texture(layer,
-                                                             colors=window.drawing.palette.as_tuple())
+                                                               colors=window.drawing.palette.as_tuple())
                     lw, lh = texture.size
                     aspect = w / h
                     max_size = 256

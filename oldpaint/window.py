@@ -289,6 +289,13 @@ class OldpaintWindow(pyglet.window.Window):
             elif symbol == key.D:
                 self.drawing.palette.foreground -= 1
 
+            elif symbol == key.L:
+                self.drawing.add_layer()
+
+            elif symbol == key.O:
+                if modifiers & key.MOD_CTRL:
+                    self.load_drawing()
+
             elif symbol == key.DELETE:
                 self.drawing.clear_layer(color=self.drawing.palette.background)
 
