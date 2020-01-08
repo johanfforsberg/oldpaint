@@ -446,9 +446,9 @@ def render_main_menu(window):
 
             imgui.separator()
 
-            if imgui.menu_item("Undo", "z", False, window.drawing)[0]:
+            if imgui.menu_item("Undo", "z", False, window.drawing and window.drawing.can_undo)[0]:
                 window.drawing.undo()
-            elif imgui.menu_item("Redo", "y", False, window.drawing)[0]:
+            elif imgui.menu_item("Redo", "y", False, window.drawing and window.drawing.can_redo)[0]:
                 window.drawing.redo()
 
             imgui.separator()

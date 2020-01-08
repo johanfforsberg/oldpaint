@@ -88,6 +88,14 @@ class Drawing:
         return self._edits[:self._edits_index + 1]
 
     @property
+    def can_undo(self):
+        return bool(self.edits)
+
+    @property
+    def can_redo(self):
+        return self._edits_index != -1
+
+    @property
     def unsaved(self):
         "Return whether there have been edits since last time the drawing was saved."
         return self._latest_save_index < len(self._edits)
