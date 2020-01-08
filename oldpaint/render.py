@@ -30,7 +30,6 @@ def render_drawing(drawing, highlighted_layer=None):
         w, h = offscreen_buffer.size
         gl.glViewport(0, 0, w, h)
         gl.glDisable(gl.GL_BLEND)
-        # gl.glClearBufferfv(gl.GL_COLOR, 0, IMAGE_BG_COLOR)
         gl.glClearBufferfv(gl.GL_COLOR, 0, _get_background_color(drawing.palette.as_tuple()))
 
         gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
