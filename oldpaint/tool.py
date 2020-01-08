@@ -246,9 +246,9 @@ class PickerTool(Tool):
 
     def finish(self, overlay, point, buttons, modifiers):
         # Find the pixel that is visible at the given point.
-        for overlay in reversed(self.drawing.overlays):
-            if overlay.visible:
-                index = overlay.pic.get_pixel(*point)
+        for layer in reversed(self.drawing.layers):
+            if layer.visible:
+                index = layer.pic.get_pixel(*point)
                 if index != 0:
                     break
         if buttons == window.mouse.LEFT:
