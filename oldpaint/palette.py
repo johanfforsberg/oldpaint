@@ -125,3 +125,8 @@ class Palette:
             (round(r1 + dr * i), round(g1 + dg * i), round(b1 + db * i), 1)
             for i in range(1, n_steps)
         ]
+
+    @lru_cache(256)
+    def get_color_as_float(self, color):
+        r, g, b, a = color
+        return r / 255, g / 255, b / 255, a / 255

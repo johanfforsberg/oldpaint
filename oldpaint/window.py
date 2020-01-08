@@ -344,10 +344,23 @@ class OldpaintWindow(pyglet.window.Window):
 
             gl.glViewport(0, 0, *window_size)
 
-            with self.vao, self.copy_program, offscreen_buffer["color"]:
-                gl.glEnable(gl.GL_BLEND)
+            # Draw a background rectangle
+            with self.selection_vao, self.line_program:
+                self.set_selection(self.drawing.layers[0].rect)
                 gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
-                gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+                r, g, b, _ = self.drawing.palette.get_color_as_float(self.drawing.palette.colors[0])
+                gl.glUniform3f(1, r, g, b)
+                gl.glDrawArrays(gl.GL_TRIANGLE_FAN, 0, 4)
+                gl.glUniform3f(1, 0., 0., 0.)
+                gl.glLineWidth(1)
+                gl.glDrawArrays(gl.GL_LINE_LOOP, 0, 4)
+
+            with self.vao, self.copy_program:
+                # Draw the actual drawing
+                with offscreen_buffer["color"]:
+                    gl.glEnable(gl.GL_BLEND)
+                    gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
+                    gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 
                 self._draw_mouse_cursor()
 
@@ -480,6 +493,7 @@ class OldpaintWindow(pyglet.window.Window):
                     imgui.end_popup()
 
         imgui.render()
+
         imgui.end_frame()
 
         self.imgui_renderer.render(imgui.get_draw_data())

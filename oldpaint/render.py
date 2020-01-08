@@ -10,7 +10,7 @@ from fogl.texture import Texture, ByteTexture
 from fogl.vao import VertexArrayObject
 
 
-IMAGE_BG_COLOR = (gl.GLfloat * 4)(0.5, 0.5, 0.5, 1)
+EMPTY_COLOR = (gl.GLfloat * 4)(0, 0, 0, 0)
 
 vao = VertexArrayObject()
 
@@ -29,10 +29,10 @@ def render_drawing(drawing, highlighted_layer=None):
     with vao, offscreen_buffer, draw_program:
         w, h = offscreen_buffer.size
         gl.glViewport(0, 0, w, h)
-        gl.glDisable(gl.GL_BLEND)
-        gl.glClearBufferfv(gl.GL_COLOR, 0, _get_background_color(drawing.palette.as_tuple()))
 
-        gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
+        gl.glEnable(gl.GL_BLEND)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+        gl.glClearBufferfv(gl.GL_COLOR, 0, EMPTY_COLOR)
 
         overlay = drawing.overlay
         overlay_texture = _get_overlay_texture(overlay)
@@ -52,12 +52,12 @@ def render_drawing(drawing, highlighted_layer=None):
             # Now update the texture with the changed part of the layer.
             try:
                 gl.glTextureSubImage2D(overlay_texture.name, 0, *rect.points,
-                                       gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, data)
+                                       gl.GL_RGBA_INTEGER, gl.GL_UNSIGNED_BYTE, data)
 
                 overlay.dirty = None
                 overlay.lock.release()  # Allow layer to change again.
             except gl.lib.GLException as e:
-                logging.errror(str(e))
+                logging.error(str(e))
 
         for layer in drawing:
 
@@ -76,7 +76,7 @@ def render_drawing(drawing, highlighted_layer=None):
                 subimage = layer.get_subimage(rect)
                 data = bytes(subimage.data)
                 gl.glTextureSubImage2D(layer_texture.name, 0, *rect.points,
-                                       gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, data)
+                                       gl.GL_RGBA_INTEGER, gl.GL_UNSIGNED_BYTE, data)
 
                 layer.dirty = None
                 layer.lock.release()
@@ -90,33 +90,49 @@ def render_drawing(drawing, highlighted_layer=None):
                     with overlay_texture:
                         # TODO is it possible to send the palette without converting
                         # to float first?
-                        gl.glUniform4fv(1, 256, colors)
+                        gl.glUniform1f(1, 1)
+                        gl.glUniform4fv(2, 256, colors)
                         gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
                 else:
                     with _get_empty_texture(drawing):
-                        gl.glUniform4fv(1, 256, colors)
+                        gl.glUniform1f(1, 1)
+                        gl.glUniform4fv(2, 256, colors)
                         gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 
+        gl.glDisable(gl.GL_BLEND)
     return offscreen_buffer
+
+
+class IntegerTexture(Texture):
+
+    _type = gl.GL_RGBA8UI
+
+    def clear(self):
+        gl.glClearTexImage(self.name, 0, gl.GL_RED_INTEGER, gl.GL_UNSIGNED_BYTE, None)
+
+
+class ByteIntegerTexture(IntegerTexture):
+
+    _type = gl.GL_R8UI
 
 
 @lru_cache(32)
 def _get_layer_texture(layer):
-    texture = ByteTexture(layer.size)
+    texture = ByteIntegerTexture(layer.size)
     texture.clear()
     return texture
 
 
 @lru_cache(1)
 def _get_overlay_texture(overlay):
-    texture = Texture(overlay.size, unit=1)
+    texture = IntegerTexture(overlay.size, unit=1)
     texture.clear()
     return texture
 
 
 @lru_cache(1)
 def _get_empty_texture(drawing):
-    texture = Texture(drawing.size, unit=1)
+    texture = IntegerTexture(drawing.size, unit=1)
     texture.clear()
     return texture
 
