@@ -28,6 +28,7 @@ If you've used DPaint or PPaint or anything similar, most things should be prett
 - Sprite sheets
 - Gradients
 - Extensibility/scripting (it's all written in python anyway)
+- Tablet support
 
 
 #### Possible features ####
