@@ -303,5 +303,17 @@ cdef class LongPicture:
                                [_rgb_to_32bit(palette[p & 0x000000FF][:3]) for p in self.data])
         return data
 
+    cpdef void swap_colors(self, unsigned char index1, unsigned char index2):
+        cdef int x, y, offset
+        cdef unsigned char value
+        for y in range(self.height):
+            for x in range(self.width):
+                offset = self._get_offset(x, y)
+                value = self.data[offset]
+                if value == index1:
+                    self.data[offset] = index2
+                elif value == index2:
+                    self.data[offset] = index1
+
     def __repr__(self):
         return f"LongPicture({self.size})"

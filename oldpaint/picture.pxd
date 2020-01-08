@@ -51,3 +51,4 @@ cdef class LongPicture:
     cpdef unsigned int[:] as_rgba(self, palette, bint alpha)
     cpdef short[:] make_diff(self, LongPicture pic, int x, int y, int w, int h, bint alpha=*)
     cpdef void apply_diff(self, const short[:] difference, int x, int y, int w, int h, bint invert)
+    cpdef void swap_colors(self, unsigned char index1, unsigned char index2)

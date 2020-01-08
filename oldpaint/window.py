@@ -723,7 +723,7 @@ class OldpaintWindow(pyglet.window.Window):
         bw, bh = brush.size
         w, h = size
         w, h = size = max(w, bw), max(h, bh)
-        texture = Texture(size)
+        texture = IntegerTexture(size)
         texture.clear()
         data = brush.original.as_rgba(colors, True)
         gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)

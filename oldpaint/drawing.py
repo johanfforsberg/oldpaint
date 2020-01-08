@@ -245,6 +245,11 @@ class Drawing:
         edit.perform(self)
         self._add_edit(edit)
 
+    def swap_colors(self, index1, index2):
+        edit = ColorSwap.create(self, index1=index1, index2=index2)
+        edit.perform(self)
+        self._add_edit(edit)
+
     def make_brush(self, rect=None, layer=None, clear=False):
         "Create a brush from part of the given layer."
         rect = rect or self.selection
@@ -483,6 +488,44 @@ class PaletteEdit(Edit):
 
 
 @dataclass(frozen=True)
+class PaletteColorSwap(Edit):
+
+    "A swap between two colors in the palette."
+
+    index1: int
+    index2: int
+
+    def perform(self, drawing):
+        palette = drawing.palette
+        palette[self.index1], palette[self.index2] = palette[self.index2], palette[self.index1]
+
+    revert = perform
+
+    @property
+    def info_str(self):
+        return "Palette color swap"
+
+
+@dataclass(frozen=True)
+class DrawingColorSwap(Edit):
+
+    "A swap between two colors in the palette."
+
+    index1: int
+    index2: int
+
+    def perform(self, drawing):
+        for layer in drawing.layers:
+            layer.swap_colors(self.index1, self.index2)
+
+    revert = perform
+
+    @property
+    def info_str(self):
+        return "Drawing color swap"
+
+
+@dataclass(frozen=True)
 class AddLayerEdit(Edit):
 
     index: int
@@ -594,3 +637,21 @@ class MergeLayersEdit(MultiEdit):
     @property
     def info_str(self):
         return "Merge layers"
+
+
+class ColorSwap(MultiEdit):
+
+    @classmethod
+    def create(cls, drawing, index1, index2):
+        return cls([
+            PaletteColorSwap(index1=index1, index2=index2),
+            DrawingColorSwap(index1=index1, index2=index2)
+        ])
+
+    @property
+    def index_str(self):
+        return f"{self.index1}, {self.index2}"
+
+    @property
+    def info_str(self):
+        return "Swap colors"

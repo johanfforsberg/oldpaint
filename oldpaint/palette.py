@@ -79,6 +79,11 @@ class Palette:
         self.as_tuple.cache_clear()
         self.overlayed_color.cache_clear()
 
+    def swap_colors(self, index1, index2):
+        self.colors[index1], self.colors[index2] = self.colors[index2], self.colors[index1]
+        self.as_tuple.cache_clear()
+        self.overlayed_color.cache_clear()
+
     def __setitem__(self, index, value):
         self.set_color(index, *value)
 

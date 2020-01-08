@@ -6,6 +6,7 @@ from functools import lru_cache
 import logging
 from math import floor, ceil
 import os
+import sys
 
 import imgui
 import pyglet
@@ -15,10 +16,6 @@ from .util import show_save_dialog, throttle
 
 
 logger = logging.getLogger(__name__)
-
-
-# A hacky way to keep short-lived UI state. Find a better way!
-temp_vars = {}
 
 
 TOOL_BUTTON_COLORS = [
@@ -180,7 +177,6 @@ def render_palette(drawing):
     imgui.begin_child("Palette", border=False)
     imgui.push_style_var(imgui.STYLE_ITEM_SPACING, (0, 0))  # Make layout tighter
     width = int(imgui.get_window_content_region_width()) // 20
-    spread_start = temp_vars.get("spread_start")
     for i, color in enumerate(palette):
         is_foreground = i == fg
         is_background = (i == bg) * 2
@@ -192,17 +188,29 @@ def render_palette(drawing):
         imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND,
                                *SELECTABLE_FRAME_COLORS[selection])
         if imgui.color_button(f"color {i}", *color[:3], 1, 0, 20, 20):
-            io = imgui.get_io()
-            if io.key_shift:
-                if "spread_start" in temp_vars:
-                    temp_vars["spread_end"] = i
-                else:
-                    temp_vars["spread_start"] = i
-            else:
-                fg = i
+            # io = imgui.get_io()
+            # if io.key_shift:
+            #     if "spread_start" in temp_vars:
+            #         temp_vars["spread_end"] = i
+            #     else:
+            #         temp_vars["spread_start"] = i
+            # else:
+            fg = i
         if imgui.core.is_item_clicked(2):
             # Detect right button clicks on the button
             bg = i
+
+        if imgui.begin_drag_drop_source():
+            imgui.set_drag_drop_payload('start_index', i.to_bytes(1, sys.byteorder))
+            imgui.color_button(f"color {i}", *color[:3], 1, 0, 20, 20)
+            imgui.end_drag_drop_source()
+        if imgui.begin_drag_drop_target():
+            start_index = imgui.accept_drag_drop_payload('start_index')
+            if start_index is not None:
+                start_index = int.from_bytes(start_index, sys.byteorder)
+                drawing.swap_colors(start_index, i)
+                palette.clear_overlay()
+            imgui.end_drag_drop_target()
 
         imgui.pop_style_color(1)
 
@@ -215,13 +223,13 @@ def render_palette(drawing):
     palette.foreground = fg
     palette.background = bg
 
-    if "spread_start" in temp_vars and "spread_end" in temp_vars:
-        spread_start = temp_vars.pop("spread_start")
-        spread_end = temp_vars.pop("spread_end")
-        from_index = min(spread_start, spread_end)
-        to_index = max(spread_start, spread_end)
-        spread_colors = palette.spread(from_index, to_index)
-        drawing.change_colors(from_index + 1, spread_colors)
+    # if "spread_start" in temp_vars and "spread_end" in temp_vars:
+    #     spread_start = temp_vars.pop("spread_start")
+    #     spread_end = temp_vars.pop("spread_end")
+    #     from_index = min(spread_start, spread_end)
+    #     to_index = max(spread_start, spread_end)
+    #     spread_colors = palette.spread(from_index, to_index)
+    #     drawing.change_colors(from_index + 1, spread_colors)
 
 
 def render_layers(drawing):
@@ -288,6 +296,7 @@ def render_brushes(brushes, get_texture, size=None, compact=False):
 
     clicked = False
 
+    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, 1, 1, 1)
     for i, brush in enumerate(brushes):
         is_selected = brush == brushes.current
         size1 = size or brush.size
@@ -310,6 +319,7 @@ def render_brushes(brushes, get_texture, size=None, compact=False):
 
             if i % 3 != 2:
                 imgui.same_line()
+    imgui.pop_style_color()
 
     imgui.new_line()
     return clicked

@@ -89,6 +89,10 @@ class Layer:
         self.pic = self.pic.flip_horizontal()
         self.dirty = self.rect
 
+    def swap_colors(self, index1, index2):
+        self.pic.swap_colors(index1, index2)
+        self.dirty = self.rect
+
     @property
     def size(self):
         return self.pic.size
