@@ -2,33 +2,38 @@
 
 Oldpaint is intended to be a drawing program in the tradition of "Deluxe Paint", but with a more modern interface and feature set.
 
-Current status is "under construction". The most important things work to some degree, but there are bugs and parts missing, and performance may vary. It will likely crash. Definitely not ready for actual use.
+Current status is *under construction*. It's getting close to being useful, but it's not well tested. It's pretty likely to crash or otherwise lose data. Performance may vary. Not ready for serious use.
 
-Oldpaint is written in python and uses OpenGL (via pyglet) to render things to screen. The user interface is built with imgui. Some performance critical parts, basically the image handling, is sped up using Cython.
+Oldpaint is written in python and uses OpenGL (via pyglet) to render things to screen. The user interface is built with (py)imgui. Some performance critical parts, basically the image handling, is sped up using Cython.
 
-The motivation behind it is partly just that I want it for my own purposes, but also my learning more about OpenGL and "immediate mode" GUIs.
+The motivation behind it is partly just that I want it for my own purposes, but also my learning more about OpenGL and "immediate mode" GUIs. But I would like it to become useful for other people too.
+
+
+### Usage ##
+
+If you've used DPaint or PPaint or anything similar, most things should be pretty familiar. Currently there is only support for 256 color palette based images. You draw by holding either the left ("foreground") or right ("background") mouse button. Use mouse wheel to pan and scroll. Select and edit colors in the palette, color 0 is currently always transparent background. The toolbar to the top right contains various basic drawing modes. Most other functionality is available via the menu bar, where you can also find various keyboard shortcuts. Otherwise the UI is pretty minimal - by design.
 
 
 #### Current features ####
 - Supports (only) 8 bit palette based images.
 - Layers
 - Unlimited undo
-- Basic drawing operations (pencil, line, circle...)
+- Basic drawing operations (pencil, line, circle, fill...)
 - Custom brushes
-- Load/save OpenRaster files (essentially zipped PNGs, but supports layers etc)
+- Load/save PNG, OpenRaster files (essentially zipped PNGs, but supports layers etc)
 
 
 #### Planned features ####
 - Animation
 - Sprite sheets
 - Gradients
-- Export to PNG
 - Extensibility/scripting (it's all written in python anyway)
 
 
 #### Possible features ####
 - Other file formats
 - Palette restrictions (e.g. ECS, C64...)
+- Palette cycling
 - Loading reference images
 - Full 32 bit images
 
@@ -50,6 +55,8 @@ That should install the various other dependencies of oldpaint. Then you should 
 It will take a few seconds to start up the first time, since it uses cython to compile some parts to machine code. If this (or installation of the dependencies) fails, you're probably missing some compiler stuff. On ubuntu, something like the following should help.
     
     $ apt install build-essential python3-dev
+    
+If you try it, especially on a non-linux platform, I'd love to hear about it!
 
 
 #### License ####
