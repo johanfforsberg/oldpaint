@@ -483,6 +483,10 @@ class PaletteEdit(Edit):
             drawing.palette[i] = r0 - dr, g0 - dg, b0 - db, a0 - da
 
     @property
+    def index_str(self):
+        return str(self.index)
+
+    @property
     def info_str(self):
         return "Color"
 
@@ -502,6 +506,10 @@ class PaletteColorSwap(Edit):
     revert = perform
 
     @property
+    def index_str(self):
+        return f"{self.index1}, {self.index2}"
+
+    @property
     def info_str(self):
         return "Palette color swap"
 
@@ -519,6 +527,10 @@ class DrawingColorSwap(Edit):
             layer.swap_colors(self.index1, self.index2)
 
     revert = perform
+
+    @property
+    def index_str(self):
+        return f"{self.index1}, {self.index2}"
 
     @property
     def info_str(self):
@@ -650,7 +662,7 @@ class ColorSwap(MultiEdit):
 
     @property
     def index_str(self):
-        return f"{self.index1}, {self.index2}"
+        return f"{self.edits[0].index1}, {self.edits[0].index2}"
 
     @property
     def info_str(self):
