@@ -475,8 +475,7 @@ class OldpaintWindow(pyglet.window.Window):
             if imgui.begin_popup_modal("New drawing")[0]:
                 imgui.text("Creating a new drawing.")
                 imgui.separator()
-                changed, new_size = imgui.drag_int2("Size",
-                                                    *self._new_drawing["size"])
+                changed, new_size = imgui.drag_int2("Size", *self._new_drawing["size"])
                 if changed:
                     self._new_drawing["size"] = new_size
                 if imgui.button("OK"):
