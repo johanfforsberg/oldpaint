@@ -6,8 +6,10 @@ from pyglet import gl
 
 from fogl.framebuffer import FrameBuffer
 from fogl.shader import Program, VertexShader, FragmentShader
-from fogl.texture import Texture, ByteTexture
+from fogl.texture import Texture
 from fogl.vao import VertexArrayObject
+
+from .texture import IntegerTexture, ByteIntegerTexture
 
 
 EMPTY_COLOR = (gl.GLfloat * 4)(0, 0, 0, 0)
@@ -101,19 +103,6 @@ def render_drawing(drawing, highlighted_layer=None):
 
         gl.glDisable(gl.GL_BLEND)
     return offscreen_buffer
-
-
-class IntegerTexture(Texture):
-
-    _type = gl.GL_RGBA8UI
-
-    def clear(self):
-        gl.glClearTexImage(self.name, 0, gl.GL_RED_INTEGER, gl.GL_UNSIGNED_BYTE, None)
-
-
-class ByteIntegerTexture(IntegerTexture):
-
-    _type = gl.GL_R8UI
 
 
 @lru_cache(32)
