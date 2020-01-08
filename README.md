@@ -41,23 +41,24 @@ If you've used DPaint or PPaint or anything similar, most things should be prett
 
 #### Installation ####
 
-Since oldpaint is under heavy development, there's currently no way to install it without building it yourself.
+Since oldpaint is under heavy development, there's currently no way to install it without building it yourself. This process is currently only tested on my machine, under Ubuntu. Oldpaint only has a handful of dependencies, but there is an extra step where pyglet needs to be patched to support the latest OpenGL stuff.
 
-Oldpaint is developed with python 3.7, it might work with 3.6 but nothing older than that. It's only been tested on Ubuntu linux, using a fairly new AMD graphics card, and on a laptop with a fairly new Intel GPU.
+There is a simple Makefile in the project dir that takes care of the build procedure. Using it obviously requires GNU make, but if you don't have that it should be easy to figure out the manual steps by reading it. Dependencies are installed in a virtual environment contained in the project dir, so there's no need for administrator access. To uninstall, simply remove the "env" directory.
 
-Oldpaint has a special dependency, on the "fogl" library (https://github.com/johanfforsberg/fogl). Right now the way to go is to clone it somewhere, installing it according to its readme, and editing oldpaint's `pyproject.toml` file to point to the location of the fogl repo. Then (assuming you have poetry installed), in oldpaint's repo, run:
+In the best case, you have everything needed, including python 3.7 or later, compilers etc. Then it should just be a matter of typing (inside the oldpaint repo):
 
-    $ poetry install
+    $ make build
+    $ make run
     
-That should install the various other dependencies of oldpaint. Then you should be able to start it with
+It will take a few seconds to start up the first time, since it uses cython to compile some parts to machine code. After that a window should appear and you're done.
 
-    $ poetry run python -m oldpaint
-    
-It will take a few seconds to start up the first time, since it uses cython to compile some parts to machine code. If this (or installation of the dependencies) fails, you're probably missing some compiler stuff. On ubuntu, something like the following should help.
+If any step fails, you're probably missing some required stuff. On Ubuntu, something like the following should help.
     
     $ apt install build-essential python3-dev
     
-If you try it, especially on a non-linux platform, I'd love to hear about it!
+If you get OpenGL related errors, it's possible that your hardware or driver does not support GL version 4.5. In that case you're currently out of luck.
+
+In any case, if you try it, especially on a non-linux platform, I'd love to hear about it!
 
 
 #### License ####
