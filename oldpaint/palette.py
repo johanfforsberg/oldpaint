@@ -55,7 +55,10 @@ class Palette:
         return self.overlay.get(i, self.colors[i])
 
     def clear_overlay(self):
-        self.overlay.clear()
+        if self.overlay:
+            self.overlay.clear()
+            self.overlayed_color.cache_clear()
+            self.as_tuple.cache_clear()
 
     @lru_cache(maxsize=1)
     def as_tuple(self):

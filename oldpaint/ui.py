@@ -126,8 +126,11 @@ def render_color_editor(orig, color):
 
 palette_overlay = {}
 
+color_editor_open = False
 
 def render_palette(drawing):
+
+    global color_editor_open  # Need a persistent way to keep track of the popup being closed...
 
     palette = drawing.palette
     fg = palette.foreground
@@ -136,11 +139,12 @@ def render_palette(drawing):
     bg_color = palette.background_color
 
     # Edit foreground color
-    if imgui.color_button("Foreground", *as_float(fg_color), 0, 30, 30):
+    if imgui.color_button(f"Foreground (#{fg})", *as_float(fg_color), 0, 30, 30):
         io = imgui.get_io()
         w, h = io.display_size
         imgui.open_popup("Edit foreground color")
         imgui.set_next_window_position(w - 115 - 120, 200)
+        color_editor_open = True
     if imgui.begin_popup("Edit foreground color", flags=(imgui.WINDOW_NO_SCROLL_WITH_MOUSE)):
         done, cancelled, new_color = render_color_editor(palette.colors[fg], fg_color)
         if done:
@@ -151,11 +155,16 @@ def render_palette(drawing):
         else:
             palette.set_overlay(fg, new_color)
         imgui.end_popup()
+    elif color_editor_open:
+        # The popup was closed by clicking outside, keeping the change (same as OK)
+        drawing.change_colors(fg, [fg_color])
+        palette.clear_overlay()
+        color_editor_open = False
 
     imgui.same_line()
 
     # Edit background color
-    if imgui.color_button("Background", *as_float(bg_color), 0, 30, 30):
+    if imgui.color_button(f"Background (#{bg})", *as_float(bg_color), 0, 30, 30):
         imgui.open_popup("Edit background color")
     # if imgui.begin_popup("Edit background color"):
     #     done, cancelled, new_color = render_color_editor(palette.colors[bg], bg_color)
