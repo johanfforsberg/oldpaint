@@ -1,9 +1,11 @@
 import configparser
 
+from pluginbase import PluginBase
 from xdg import XDG_CONFIG_HOME
 
-
-CONFIG_FILE = XDG_CONFIG_HOME / "oldpaint.ini"
+OLDPAINT_CONFIG_HOME = XDG_CONFIG_HOME / "oldpaint"
+OLDPAINT_CONFIG_HOME.mkdir(parents=True, exist_ok=True)
+CONFIG_FILE = OLDPAINT_CONFIG_HOME / "oldpaint.ini"
 
 
 def load_config():
@@ -39,3 +41,10 @@ def save_config(window_size=None, recent_files=None):
         }
     with open(CONFIG_FILE, "w") as f:
         config_file.write(f)
+
+
+OLDPAINT_PLUGIN_DIR = OLDPAINT_CONFIG_HOME / "plugins"
+OLDPAINT_PLUGIN_DIR.mkdir(parents=True, exist_ok=True)
+plugin_base = PluginBase(package='oldpaint.plugins')
+plugin_source = plugin_base.make_plugin_source(
+    searchpath=[str(OLDPAINT_CONFIG_HOME / "plugins")])

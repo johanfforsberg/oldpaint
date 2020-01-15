@@ -182,7 +182,7 @@ def render_palette(drawing):
     imgui.begin_child("Palette", border=False)
     imgui.push_style_var(imgui.STYLE_ITEM_SPACING, (0, 0))  # Make layout tighter
     width = int(imgui.get_window_content_region_width()) // 20
-    for i, color in enumerate(palette):
+    for i, color in enumerate(palette[:64]):
         is_foreground = i == fg
         is_background = (i == bg) * 2
         selection = is_foreground | is_background

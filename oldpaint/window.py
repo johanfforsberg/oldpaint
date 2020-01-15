@@ -2,6 +2,7 @@ from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from functools import lru_cache, partial
+import inspect
 import os
 from queue import Queue
 
@@ -21,6 +22,7 @@ from fogl.vao import VertexArrayObject
 from fogl.vertex import SimpleVertices
 
 from .brush import PicBrush, RectangleBrush, EllipseBrush
+from .config import plugin_source
 from .drawing import Drawing, ToolName
 from .imgui_pyglet import PygletRenderer
 from .layer import Layer
@@ -159,6 +161,20 @@ class OldpaintWindow(pyglet.window.Window):
         # Thread(target=start_ipython,
         #        kwargs=dict(colors="neutral", user_ns={"drawing": self.drawing, "blah": blah})).start()
 
+        self._plugins = {}
+        self.init_plugins()
+
+    def init_plugins(self):
+        plugins = plugin_source.list_plugins()
+        for plugin_name in plugins:
+            print("init", plugin_name)
+            try:
+                plugin = plugin_source.load_plugin(plugin_name)
+                sig = inspect.signature(plugin.plugin)
+                self._plugins[plugin_name] = sig.parameters
+            except Exception as e:
+                print(e)
+
     @property
     def overlay(self):
         return self.drawings.current.overlay
@@ -248,33 +264,40 @@ class OldpaintWindow(pyglet.window.Window):
         self.offset = ox + (x - x2), oy + (y - y2)
         self._to_image_coords.cache_clear()
 
-    @no_imgui_events
-    def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
-        if (x, y) == self.mouse_position:
-            # The mouse hasn't actually moved; do nothing
-            return
-        self._update_cursor(x, y)
-        if self.mouse_event_queue:
-            x, y = self._to_image_coords(x, y)
-            ipos = int(x), int(y)
-            self.mouse_event_queue.put(("mouse_drag", ipos, button, modifiers))
-        elif button == pyglet.window.mouse.MIDDLE:
-            ox, oy = self.offset
-            self.offset = ox + dx, oy + dy
-            self._to_image_coords.cache_clear()
-
     def on_mouse_motion(self, x, y, dx, dy):
+        "Callback for mouse motion without buttons held"
         if (x, y) == self.mouse_position:
+            return
+        if not self.drawing:
             return
         self._update_cursor(x, y)
         if self.tools.current.brush_preview:
             self._draw_brush_preview(x - dx, y - dy, x, y)
+
+    @no_imgui_events
+    def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
+        "Callback for mouse movement with buttons held"
+        if (x, y) == self.mouse_position:
+            # The mouse hasn't actually moved; do nothing
+            return
+        self._update_cursor(x, y)
+        if self.stroke:
+            # Add to ongoing stroke
+            x, y = self._to_image_coords(x, y)
+            ipos = int(x), int(y)
+            self.mouse_event_queue.put(("mouse_drag", ipos, button, modifiers))
+        elif button == pyglet.window.mouse.MIDDLE:
+            # Pan image
+            ox, oy = self.offset
+            self.offset = ox + dx, oy + dy
+            self._to_image_coords.cache_clear()
 
     def on_mouse_leave(self, x, y):
         self.mouse_position = None
         if self.brush_preview_dirty:
             self.overlay.clear(self.brush_preview_dirty)
 
+    @no_imgui_events
     def on_key_press(self, symbol, modifiers):
 
         if self.stroke:
@@ -288,6 +311,9 @@ class OldpaintWindow(pyglet.window.Window):
                 self.drawing.palette.foreground += 1
             elif symbol == key.D:
                 self.drawing.palette.foreground -= 1
+
+            elif symbol == key.K:
+                self.init_plugins()
 
             elif symbol == key.L:
                 self.drawing.add_layer()
@@ -498,11 +524,30 @@ class OldpaintWindow(pyglet.window.Window):
                         imgui.close_current_popup()
                     imgui.end_popup()
 
+            # self._render_plugins_gui()
+
         imgui.render()
 
         imgui.end_frame()
 
         self.imgui_renderer.render(imgui.get_draw_data())
+
+    def _render_plugins_gui(self):
+        for name, sig in self._plugins.items():
+            imgui.begin(name, True)
+            imgui.columns(2)
+            for param_name, param_sig in sig.items():
+                imgui.text(param_name)
+                imgui.next_column()
+                if param_sig.annotation == int:
+                    imgui.drag_int(f"##{param_name}_val", 78)
+                elif param_sig.annotation == float:
+                    imgui.drag_float(f"##{param_name}_val", 5.5)
+                elif param_sig.annotation == str:
+                    imgui.input_text(f"##{param_name}_val", "hej", 20)
+                imgui.next_column()
+            imgui.end()
+
 
     def _create_drawing(self):
         size = self.drawing.size if self.drawing else (640, 480)
