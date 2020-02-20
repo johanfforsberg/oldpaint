@@ -118,3 +118,4 @@ dmypy.json
 # oldpaint specific
 imgui.ini
 pyglet/
+env/
