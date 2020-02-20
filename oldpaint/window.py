@@ -398,9 +398,20 @@ class OldpaintWindow(pyglet.window.Window):
 
                 self._draw_mouse_cursor()
 
-            # Selection rectangle, if any
-            if self.tools.current.tool == ToolName.BRUSH and self.drawing.selection:
-                self.set_selection(self.drawing.selection)
+            # Selection rectangle
+            selection = self.drawing.selection
+            if selection:
+                self.set_selection(selection)
+                with self.selection_vao, self.line_program:
+                    gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
+                    gl.glUniform3f(1, 1., 0., 1.)
+                    gl.glLineWidth(1)
+                    gl.glDrawArrays(gl.GL_LINE_LOOP, 0, 4)
+
+            # Tool rect
+            tool = self.stroke_tool
+            if tool and tool.show_rect and tool.rect:
+                self.set_selection(tool.rect)
                 with self.selection_vao, self.line_program:
                     gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
                     gl.glUniform3f(1, 1., 1., 0.)

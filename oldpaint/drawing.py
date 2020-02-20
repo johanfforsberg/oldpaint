@@ -54,13 +54,15 @@ class Drawing:
         self.overlay = Layer(LongPicture(size=self.size))
         self.palette = palette if palette else Palette(transparency=0)
         self.brushes = Selectable()
+        self.active_plugins = {}
 
         # History of changes
         self._edits = []
         self._edits_index = -1
         self._latest_save_index = 0
 
-        self.selection = None
+        self.selections = Selectable()
+        self.show_selection = False
 
         # Keep track of what we're looking at
         self.offset = (0, 0)
@@ -69,13 +71,18 @@ class Drawing:
         self.path = path
 
     @property
-    def current(self):
+    def current(self) -> Layer:
         return self.layers.current
 
     @current.setter
     def current(self, layer):
         assert isinstance(layer, Layer)
         self.layers.set_item(layer)
+
+    @property
+    def selection(self):
+        if self.show_selection:
+            return self.selections.current
 
     @property
     def filename(self):

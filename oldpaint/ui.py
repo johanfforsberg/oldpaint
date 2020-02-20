@@ -453,6 +453,11 @@ def render_main_menu(window):
 
             imgui.separator()
 
+            selected = imgui.menu_item("Show selection", "z", window.drawing and window.drawing.selection, window.drawing)[1]
+            if window.drawing:
+                window.drawing.show_selection = selected
+            imgui.separator()
+
             for drawing in window.drawings.items:
                 if imgui.menu_item(f"{drawing.filename} {drawing.size}",
                                    None, drawing == window.drawing, True)[0]:
@@ -577,9 +582,20 @@ def render_main_menu(window):
 
             imgui.end_menu()
 
-        if imgui.begin_menu("Info", True):
+        if imgui.begin_menu("Info", bool(window.drawing)):
             _, state = imgui.menu_item("Show edit history", None, window.window_visibility["edits"], True)
             window.window_visibility["edits"] = state
+            imgui.end_menu()
+
+        if imgui.begin_menu("Plugins", bool(window.drawing)):
+            active_plugins = window.drawing.active_plugins.values()
+            for name, plugin in window.plugins.items():
+                is_active = plugin in active_plugins
+                clicked, selected = imgui.menu_item(name, None, is_active, True)
+                if selected:
+                    window.drawing.active_plugins[name] = plugin
+                elif is_active:
+                    del window.drawing.active_plugins[name]
             imgui.end_menu()
 
         # Show some info in the right part of the menu bar

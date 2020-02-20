@@ -19,6 +19,7 @@ class Tool(metaclass=abc.ABCMeta):
     tool = None  # Name of the tool (should correspond to an icon)
     ephemeral = False  # Ephemeral means we'll clear the layer before each draw call
     brush_preview = True  # Whether to show the current brush on top of the image while not drawing
+    show_rect = False
     period = None
 
     def __init__(self, drawing: Drawing, brush, color, brush_color):
@@ -217,14 +218,14 @@ class SelectionTool(Tool):
 
     tool = ToolName.BRUSH
     brush_preview = False
+    show_rect = True
 
     def draw(self, overlay, point, buttons, modifiers):
-        rect = from_points([self.points[0], point])
-        self.drawing.selection = rect
+        self.rect = from_points([self.points[0], point])
 
     def finish(self, overlay, point, buttons, modifiers):
-        self.drawing.make_brush(clear=buttons & window.mouse.RIGHT)
-        self.drawing.selection = None
+        self.drawing.selections.add(self.rect)
+        self.drawing.make_brush(self.rect, clear=buttons & window.mouse.RIGHT)
 
     def __repr__(self):
         rect = self.drawing.selection
