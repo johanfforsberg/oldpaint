@@ -1,4 +1,5 @@
 import configparser
+from pathlib import Path
 
 from pluginbase import PluginBase
 from xdg import XDG_CONFIG_HOME
@@ -43,7 +44,9 @@ def save_config(window_size=None, recent_files=None):
         config_file.write(f)
 
 
-OLDPAINT_PLUGIN_DIR = OLDPAINT_CONFIG_HOME / "plugins"
-OLDPAINT_PLUGIN_DIR.mkdir(parents=True, exist_ok=True)
+OLDPAINT_PLUGIN_DIR = Path(__file__).parent.parent / "plugins"
+OLDPAINT_USER_PLUGIN_DIR = OLDPAINT_CONFIG_HOME / "plugins"
+OLDPAINT_USER_PLUGIN_DIR.mkdir(parents=True, exist_ok=True)
 plugin_base = PluginBase(package='oldpaint.plugins')
-plugin_source = plugin_base.make_plugin_source(searchpath=[str(OLDPAINT_PLUGIN_DIR)])
+plugin_source = plugin_base.make_plugin_source(searchpath=[str(OLDPAINT_PLUGIN_DIR),
+                                                           str(OLDPAINT_USER_PLUGIN_DIR)])
