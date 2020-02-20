@@ -307,6 +307,16 @@ class Drawing:
             edit.perform(self)
         logger.info("No more edits to redo!")
 
+    # Drawing helpers, for scripting/plugin use
+
+    def draw_rectangle(self, rect, brush, color=None):
+        color = color or self.palette.foreground
+        rect = self.overlay.draw_rectangle(rect.position, rect.size, brush.get_pic(color), brush.center)
+        self.change_layer(self.overlay, rect, ToolName.RECTANGLE)
+        self.overlay.clear()
+
+    # ...TODO...
+
     def __repr__(self):
         return f"Drawing(size={self.size}, layers={self.layers}, current={self.get_index()})"
 

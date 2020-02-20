@@ -225,12 +225,11 @@ class SelectionTool(Tool):
 
     def finish(self, overlay, point, buttons, modifiers):
         self.drawing.selections.add(self.rect)
-        self.drawing.make_brush(self.rect, clear=buttons & window.mouse.RIGHT)
+        # self.drawing.make_brush(self.rect, clear=buttons & window.mouse.RIGHT)
 
     def __repr__(self):
-        rect = self.drawing.selection
-        if rect:
-            return f"{rect.width}, {rect.height}"
+        if self.rect:
+            return f"{self.rect.width}, {self.rect.height}"
         return ""
 
 
