@@ -3,7 +3,6 @@ from threading import RLock
 from .rect import Rectangle
 from .picture import LongPicture, save_png, load_png
 from .draw import draw_line, draw_rectangle, draw_ellipse, draw_fill
-from .util import Selectable
 
 
 class Layer:

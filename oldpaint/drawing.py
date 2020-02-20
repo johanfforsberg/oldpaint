@@ -310,9 +310,10 @@ class Drawing:
 
     # Drawing helpers, for scripting/plugin use
 
-    def draw_rectangle(self, rect, brush, color=None):
+    def draw_rectangle(self, rect, brush, color=None, fill=False):
         color = color or self.palette.foreground
-        rect = self.overlay.draw_rectangle(rect.position, rect.size, brush.get_pic(color), brush.center)
+        rect = self.overlay.draw_rectangle(rect.position, rect.size, brush.get_pic(color), brush.center,
+                                           color=color, fill=fill)
         self.change_layer(self.overlay, rect, ToolName.RECTANGLE)
         self.overlay.clear()
 

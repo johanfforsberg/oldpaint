@@ -41,6 +41,8 @@ def render_plugins_ui(window):
                 changed, args[param_name] = imgui.drag_float(label, value)
             elif param_sig.annotation == str:
                 changed, args[param_name] = imgui.input_text(label, value, 20)
+            elif param_sig.annotation == bool:
+                changed, args[param_name] = imgui.checkbox(label, value)
             imgui.next_column()
         imgui.columns(1)
 
