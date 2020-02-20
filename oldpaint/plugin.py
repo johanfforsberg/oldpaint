@@ -4,6 +4,7 @@ from itertools import islice
 import imgui
 
 from .config import plugin_source
+import oldpaint
 
 
 def init_plugins(window):
@@ -25,7 +26,7 @@ def render_plugins_ui(window):
         plugin, sig, args = window.plugins[name]
         imgui.begin(name, True)
         imgui.columns(2)
-        for param_name, param_sig in islice(sig.items(), 2, None):
+        for param_name, param_sig in islice(sig.items(), 3, None):
             imgui.text(param_name)
             imgui.next_column()
             default_value = args.get(param_name)
@@ -44,7 +45,7 @@ def render_plugins_ui(window):
         imgui.columns(1)
 
         if imgui.button("Execute"):
-            plugin(window.drawing, window.brush, **args)
+            plugin(oldpaint, window.drawing, window.brush, **args)
 
         imgui.same_line()
         imgui.button("Help")

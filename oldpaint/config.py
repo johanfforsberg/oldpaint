@@ -46,5 +46,4 @@ def save_config(window_size=None, recent_files=None):
 OLDPAINT_PLUGIN_DIR = OLDPAINT_CONFIG_HOME / "plugins"
 OLDPAINT_PLUGIN_DIR.mkdir(parents=True, exist_ok=True)
 plugin_base = PluginBase(package='oldpaint.plugins')
-plugin_source = plugin_base.make_plugin_source(
-    searchpath=[str(OLDPAINT_CONFIG_HOME / "plugins")])
+plugin_source = plugin_base.make_plugin_source(searchpath=[str(OLDPAINT_PLUGIN_DIR)])

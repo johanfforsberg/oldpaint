@@ -103,10 +103,8 @@ class OldpaintWindow(pyglet.window.Window):
         self.imgui_renderer = PygletRenderer(self)
         self.icons = {
             name: ImageTexture(*load_png(f"icons/{name}.png"))
-            for name in [
-                    "brush", "ellipse", "floodfill", "line", "spray",
-                    "pencil", "picker", "points", "rectangle"
-            ]
+            for name in ["brush", "ellipse", "floodfill", "line", "spray",
+                         "pencil", "picker", "points", "rectangle"]
         }
 
         io = imgui.get_io()

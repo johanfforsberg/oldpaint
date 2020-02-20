@@ -19,6 +19,7 @@ from .util import Selectable, try_except_log
 logger = logging.getLogger(__name__)
 
 
+# TODO Not sure where this belongs...
 class ToolName(Enum):
     PENCIL = 1
     POINTS = 2
