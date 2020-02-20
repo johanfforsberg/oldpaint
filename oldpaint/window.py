@@ -161,17 +161,18 @@ class OldpaintWindow(pyglet.window.Window):
         # Thread(target=start_ipython,
         #        kwargs=dict(colors="neutral", user_ns={"drawing": self.drawing, "blah": blah})).start()
 
-        self._plugins = {}
+        self.plugins = {}
         self.init_plugins()
 
     def init_plugins(self):
         plugins = plugin_source.list_plugins()
         for plugin_name in plugins:
-            print("init", plugin_name)
+            # print("init", plugin_name)
             try:
                 plugin = plugin_source.load_plugin(plugin_name)
                 sig = inspect.signature(plugin.plugin)
-                self._plugins[plugin_name] = sig.parameters
+                print(sig.parameters)
+                self.plugins[plugin_name] = plugin.plugin, sig.parameters
             except Exception as e:
                 print(e)
 
@@ -524,7 +525,7 @@ class OldpaintWindow(pyglet.window.Window):
                         imgui.close_current_popup()
                     imgui.end_popup()
 
-            # self._render_plugins_gui()
+            self._render_plugins_gui()
 
         imgui.render()
 
@@ -533,21 +534,29 @@ class OldpaintWindow(pyglet.window.Window):
         self.imgui_renderer.render(imgui.get_draw_data())
 
     def _render_plugins_gui(self):
-        for name, sig in self._plugins.items():
+        if not self.drawing:
+            return
+        for name in self.drawing.active_plugins:
+            plugin, sig = self.plugins[name]
             imgui.begin(name, True)
             imgui.columns(2)
+            param_vals = {}
             for param_name, param_sig in sig.items():
+                if param_name == "drawing":
+                    continue
                 imgui.text(param_name)
                 imgui.next_column()
                 if param_sig.annotation == int:
-                    imgui.drag_int(f"##{param_name}_val", 78)
+                    _, param_vals[param_name] = imgui.drag_int(f"##{param_name}_val", 78)
                 elif param_sig.annotation == float:
-                    imgui.drag_float(f"##{param_name}_val", 5.5)
+                    _, param_vals[param_name] = imgui.drag_float(f"##{param_name}_val", 5.5)
                 elif param_sig.annotation == str:
-                    imgui.input_text(f"##{param_name}_val", "hej", 20)
+                    _, param_vals[param_name] = imgui.input_text(f"##{param_name}_val", "hej", 20)
                 imgui.next_column()
-            imgui.end()
+            if imgui.button("Run"):
+                plugin(self.drawing, self.brush, **param_vals)
 
+            imgui.end()
 
     def _create_drawing(self):
         size = self.drawing.size if self.drawing else (640, 480)
