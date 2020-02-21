@@ -3,9 +3,9 @@ from random import gauss
 
 from pyglet import window
 
-from .brush import PicBrush
-from .drawing import Drawing, ToolName
-from .rect import from_points, cover
+from .constants import ToolName
+from .drawing import Drawing
+from .rect import from_points
 from .util import try_except_log
 
 

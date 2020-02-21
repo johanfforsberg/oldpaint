@@ -1,4 +1,4 @@
-from time import sleep, time
+from time import sleep
 
 from .util import try_except_log
 
