@@ -15,19 +15,23 @@ it here. "drawing" and "brush" are the current active ones.
 For now only int, float, str and bool parameters are allowed. You must give default
 values for them.
 
+Optionally, you can return a dict containing new values for any of the parameters.
+
 Put your own custom plugins go in XDG_CONFIG_HOME/oldpaint/plugins, as .py files,
 and oldpaint will find them.
 """
 
 def plugin(oldpaint, drawing, brush,  # These args are mandatory even if you don't need them
-           extra_width: int=0, fill: bool=False):  # Any number of parameter arguments.
+           y_offset: int=0, extra_width: int=0, fill: bool=False):  # Any number of parameter arguments.
     """
     This simple script plugin draws a rectangle around the current selection.
     Uses the current brush and color. Also has some options.
     """
     rect = drawing.selections.current
     if rect:
+        x, y = rect.position
         w, h = rect.size
-        rect = oldpaint.rect.Rectangle(position=rect.position, size=(w+extra_width, h))
+        rect = oldpaint.rect.Rectangle(position=(x, y + y_offset), size=(w+extra_width, h))
         color = drawing.palette.foreground
         drawing.draw_rectangle(rect, brush, color, fill=fill)
+        return dict(y_offset=y_offset + 10)

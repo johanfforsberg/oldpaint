@@ -47,7 +47,9 @@ def render_plugins_ui(window):
         imgui.columns(1)
 
         if imgui.button("Execute"):
-            plugin(oldpaint, window.drawing, window.brush, **args)
+            result = plugin(oldpaint, window.drawing, window.brush, **args)
+            if result:
+                args.update(result)
 
         imgui.same_line()
         imgui.button("Help")
