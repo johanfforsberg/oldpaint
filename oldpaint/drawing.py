@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import logging
 import os
 import shutil
@@ -7,7 +8,7 @@ from .constants import ToolName
 from .edit import (LayerEdit, LayerClearEdit, LayerFlipEdit,
                    DrawingFlipEdit, PaletteEdit, AddLayerEdit,
                    RemoveLayerEdit, SwapLayersEdit, MergeLayersEdit,
-                   ColorSwap)
+                   ColorSwap, MultiEdit)
 from .layer import Layer
 from .ora import load_ora, save_ora
 from .picture import LongPicture, load_png, save_png
@@ -27,6 +28,9 @@ class Drawing:
 
     This is also where most functionality that affects the image is collected,
     e.g. drawing, undo/redo, load/save...
+
+    Since several drawings can be loaded at once, we also need to keep track
+    of view position and such for each drawing.
 
     IMPORTANT! It's a bad idea to directly modify the layers! Always
     use the corresponding methods in this class instead. Otherwise you will
@@ -297,12 +301,12 @@ class Drawing:
 
     # Drawing helpers, for scripting/plugin use
 
-    def draw_rectangle(self, rect, brush, color=None, fill=False):
-        color = color or self.palette.foreground
-        rect = self.overlay.draw_rectangle(rect.position, rect.size, brush.get_pic(color), brush.center,
-                                           color=color, fill=fill)
-        self.change_layer(self.overlay, rect, ToolName.RECTANGLE)
-        self.overlay.clear()
+    @contextmanager
+    def edit(self):
+        maker = EditMaker(self)
+        yield maker
+        maker.finish()
+        self._add_edit(MultiEdit(maker.edits))
 
     # ...TODO...
 
@@ -313,3 +317,36 @@ class Drawing:
         return iter(self.layers)
 
 
+class EditMaker():
+
+    def __init__(self, drawing: Drawing):
+        self.drawing = drawing
+        self._rect = None
+        self.edits = []
+
+    def _push_layer_edit(self, rect):
+        if self._rect:
+            self._rect = self._rect.unite(rect)
+        else:
+            self._rect = rect
+
+    def finish(self):
+        if self._rect:
+            layer = self.drawing.current
+            overlay = self.drawing.overlay
+            edit = LayerEdit.create(self.drawing, layer, overlay, self._rect, 0)
+            edit.perform(self.drawing)
+            self.edits.append(edit)
+            overlay.clear()
+            self._rect = None
+
+    def draw_rectangle(self, position, size, brush, color=None, fill=False):
+        rect = self.drawing.overlay.draw_rectangle(position, size, brush.get_pic(color), brush.center,
+                                                   color=color, fill=fill)
+        self._push_layer_edit(rect)
+
+    def flip_layer_horizontal(self):
+        self.finish()
+        edit = LayerFlipEdit(self.drawing.layers.index(), horizontal=True)
+        edit.perform(self.drawing)
+        self.edits.append(edit)

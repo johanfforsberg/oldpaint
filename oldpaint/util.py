@@ -41,8 +41,8 @@ class Selectable:
     def __getitem__(self, index):
         return self.items[index]
 
-    def index(self, item):
-        return self.items.index(item)
+    def index(self, item=None):
+        return self.items.index(item or self.current)
 
     def select(self, item):
         assert item in self.items, f"No such item {item}!"

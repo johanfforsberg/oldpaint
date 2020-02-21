@@ -57,6 +57,12 @@ cdef class Rectangle:
         cdef int h = max(self.bottom, other.bottom) - y
         return Rectangle((x, y), (w, h))
 
+    cpdef Rectangle offset(self, (int, int) point):
+        cdef int x0, y0, x1, y1
+        x0, y0 = point
+        x1, y1 = self.position
+        return Rectangle((x0 + x1, y0 + y1), self.size)
+
     def __contains__(self, (int, int) point):
         cdef int x, y
         x, y = point

@@ -1,13 +1,14 @@
 # Edit classes; immutable objects that represent an individual change of the drawing.
 
 from dataclasses import dataclass
+from itertools import chain, groupby
 import struct
 import zlib
 
 from .constants import ToolName
 from .layer import Layer
 from .picture import LongPicture
-from .rect import Rectangle
+from .rect import Rectangle, cover
 
 
 class Edit:
@@ -68,6 +69,17 @@ class LayerEdit(Edit):
         layer = drawing.layers[self.index]
         diff_data = zlib.decompress(self.data)
         layer.apply_diff(memoryview(diff_data).cast("h"), self.rect, True)
+
+    # @classmethod
+    # def merge(self, edits):
+    #     "Combine a bunch of layer edits into one single edit."
+    #     total_rect = cover([e.rect for e in edits])
+    #     layer = Layer(size=total_rect.size)
+    #     dx, dy = total_rect.position
+    #     offset = (-dx, -dy)
+    #     for edit in edits:
+    #         rect = Rectangle.offset(offset)
+    #         layer.blit(edit.data, rect)
 
     @property
     def index_str(self):
@@ -332,6 +344,14 @@ class MultiEdit:
 
     edits: list
 
+    # def create(cls, drawing, edits):
+    #     return chain.from_iterable(
+    #         [LayerEdit.merge(list(edits))]
+    #         if edit_type is LayerEdit
+    #         else edits
+    #         for edit_type, edits in groupby(edits, type)
+    #     )
+
     def perform(self, drawing):
         for edit in self.edits:
             edit.perform(drawing)
@@ -339,6 +359,14 @@ class MultiEdit:
     def revert(self, drawing):
         for edit in reversed(self.edits):
             edit.revert(drawing)
+
+    @property
+    def index_str(self):
+        return f"{len(self.edits)}"
+
+    @property
+    def info_str(self):
+        return "Merged edits"
 
 
 class MergeLayersEdit(MultiEdit):

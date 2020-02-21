@@ -22,16 +22,28 @@ and oldpaint will find them.
 """
 
 def plugin(oldpaint, drawing, brush,  # These args are mandatory even if you don't need them
-           y_offset: int=0, extra_width: int=0, fill: bool=False):  # Any number of parameter arguments.
+           offset: int=5, extra_width: int=0, fill: bool=False):  # Any number of parameter arguments.
     """
-    This simple script plugin draws a rectangle around the current selection.
+    This simple script plugin draws two symmetric rectangles based on the current selection.
     Uses the current brush and color. Also has some options.
     """
     rect = drawing.selections.current
     if rect:
         x, y = rect.position
         w, h = rect.size
-        rect = oldpaint.rect.Rectangle(position=(x, y + y_offset), size=(w+extra_width, h))
+        size = (w+extra_width, h)
         color = drawing.palette.foreground
-        drawing.draw_rectangle(rect, brush, color, fill=fill)
-        return dict(y_offset=y_offset + 10)
+
+        # Using the edit contextmanager like this means that all our changes will be stored
+        # as one single undo, which is usually convenient.
+        with drawing.edit() as edit:
+            for o in range(offset):
+                position = (x + o, y + o)
+                edit.draw_rectangle(position, size, brush, color, fill=fill)
+            edit.flip_layer_horizontal()
+            for o in range(offset):
+                position = (x + o, y + o)
+                edit.draw_rectangle(position, size, brush, color, fill=fill)
+            edit.flip_layer_horizontal()
+
+        return dict(extra_width=extra_width + 10)

@@ -8,6 +8,7 @@ cdef class Rectangle:
     cpdef Rectangle copy(self)
     cpdef Rectangle intersect(self, Rectangle other)
     cpdef Rectangle unite(self, Rectangle other)
+    cpdef Rectangle offset(self, (int, int) point)
     cdef (int, int, int, int) get_points(self)
     # cpdef (int, int, int, int) points(self)
     # cpdef (int, int, int, int) box(self)

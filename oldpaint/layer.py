@@ -12,7 +12,9 @@ class Layer:
     The image data is kept in a Picture instance.
     """
 
-    def __init__(self, pic=None):
+    def __init__(self, pic=None, size=None):
+        if size:
+            pic = LongPicture(size)
         assert isinstance(pic, LongPicture), "Layer expects a LongPicture instance."
         # Here lies the image data for the layer.
         self.pic = pic
@@ -62,7 +64,7 @@ class Layer:
                 self.dirty = rect.unite(self.dirty)
         return rect
 
-    def draw_rectangle(self, pos, size, brush, offset, set_dirty=True, fill=False, **kwargs):
+    def draw_rectangle(self, pos, size, brush, offset=(0, 0), set_dirty=True, fill=False, **kwargs):
         if not fill:
             x0, y0 = pos
             ox, oy = offset
