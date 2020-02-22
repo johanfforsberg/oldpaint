@@ -1,0 +1,4 @@
+import oldpaint
+
+
+oldpaint.run()
