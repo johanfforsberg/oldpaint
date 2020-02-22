@@ -8,8 +8,9 @@ from .constants import ToolName
 from .edit import (LayerEdit, LayerClearEdit, LayerFlipEdit,
                    DrawingFlipEdit, PaletteEdit, AddLayerEdit,
                    RemoveLayerEdit, SwapLayersEdit, MergeLayersEdit,
-                   SwapColorsImageEdit, SwapColorsEdit, MultiEdit)
-from .layer import Layer
+                   SwapColorsImageEdit, SwapColorsPaletteEdit,
+                   MultiEdit)
+from .layer import Layer, TemporaryLayer
 from .ora import load_ora, save_ora
 from .picture import LongPicture, load_png, save_png
 from .palette import Palette
@@ -43,7 +44,7 @@ class Drawing:
             self.layers = Selectable(layers)
         else:
             self.layers = Selectable([Layer(LongPicture(size=self.size))])
-        self.overlay = Layer(LongPicture(size=self.size))
+        self.overlay = TemporaryLayer(LongPicture(size=self.size))
         self.palette = palette if palette else Palette(transparency=0)
         self.brushes = Selectable()
         self.active_plugins = {}
@@ -53,8 +54,7 @@ class Drawing:
         self._edits_index = -1
         self._latest_save_index = 0
 
-        self.selections = Selectable()
-        self.show_selection = False
+        self.selection = None
 
         # Keep track of what we're looking at
         self.offset = (0, 0)
@@ -71,10 +71,10 @@ class Drawing:
         assert isinstance(layer, Layer)
         self.layers.set_item(layer)
 
-    @property
-    def selection(self):
-        if self.show_selection:
-            return self.selections.current
+    # @property
+    # def selection(self):
+    #     if self.show_selection:
+    #         return self.selections.current
 
     @property
     def filename(self):
@@ -256,7 +256,7 @@ class Drawing:
         if image_only:
             edit = SwapColorsImageEdit(index1, index2)
         else:
-            edit = SwapColorsEdit.create(index1=index1, index2=index2)
+            edit = SwapColorsPaletteEdit.create(index1=index1, index2=index2)
         edit.perform(self)
         self._add_edit(edit)
 

@@ -32,7 +32,7 @@ from .stroke import make_stroke
 from .tool import (PencilTool, PointsTool, SprayTool,
                    LineTool, RectangleTool, EllipseTool,
                    SelectionTool, PickerTool, FillTool)
-from .util import Selectable, make_view_matrix, show_load_dialog, show_save_dialog
+from .util import Selectable, make_view_matrix, show_load_dialog, show_save_dialog, cache_clear
 from . import ui
 
 
@@ -119,6 +119,14 @@ class OldpaintWindow(pyglet.window.Window):
         io.config_resize_windows_from_edges = True  # TODO does not seem to work?
 
         self.selection = None  # Rectangle e.g. for selecting brush region
+
+        self.border_vao = VertexArrayObject(vertices_class=SimpleVertices)
+        self.border_vertices = self.border_vao.create_vertices(
+            [((0, 0, 0),),
+             ((0, 0, 0),),
+             ((0, 0, 0),),
+             ((0, 0, 0),)])
+
         self.selection_vao = VertexArrayObject(vertices_class=SimpleVertices)
         self.selection_vertices = self.selection_vao.create_vertices(
             [((0, 0, 0),),
@@ -310,11 +318,14 @@ class OldpaintWindow(pyglet.window.Window):
 
             elif symbol == key.DELETE:
                 self.drawing.clear_layer(color=self.drawing.palette.background)
+                self.get_layer_preview_texture.cache_clear()
 
             elif symbol == key.Z:
                 self.drawing.undo()
+                self.get_layer_preview_texture.cache_clear()
             elif symbol == key.Y:
                 self.drawing.redo()
+                self.get_layer_preview_texture.cache_clear()
 
             elif symbol == key.W:
                 if modifiers & key.MOD_SHIFT:
@@ -343,7 +354,6 @@ class OldpaintWindow(pyglet.window.Window):
                 self.drawings.cycle_forward(cyclic=True)
 
             elif symbol == key.F4:
-                print("F4")
                 self.init_plugins()
 
             elif symbol == key.ESCAPE:
@@ -368,8 +378,8 @@ class OldpaintWindow(pyglet.window.Window):
             gl.glViewport(0, 0, *window_size)
 
             # Draw a background rectangle
-            with self.selection_vao, self.line_program:
-                self.set_selection(self.drawing.layers[0].rect)
+            self.update_border(self.drawing.current.rect)
+            with self.border_vao, self.line_program:
                 gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
                 r, g, b, _ = self.drawing.palette.get_color_as_float(self.drawing.palette.colors[0])
                 gl.glUniform3f(1, r, g, b)
@@ -388,19 +398,12 @@ class OldpaintWindow(pyglet.window.Window):
                 self._draw_mouse_cursor()
 
             # Selection rectangle
-            selection = self.drawing.selection
+            tool = self.stroke_tool
+            selection = (self.selection
+                         or self.drawing.selection
+                         or (tool and tool.show_rect and tool.rect))
             if selection:
                 self.set_selection(selection)
-                with self.selection_vao, self.line_program:
-                    gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
-                    gl.glUniform3f(1, 1., 0., 1.)
-                    gl.glLineWidth(1)
-                    gl.glDrawArrays(gl.GL_LINE_LOOP, 0, 4)
-
-            # Tool rect
-            tool = self.stroke_tool
-            if tool and tool.show_rect and tool.rect:
-                self.set_selection(tool.rect)
                 with self.selection_vao, self.line_program:
                     gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
                     gl.glUniform3f(1, 1., 1., 0.)
@@ -419,6 +422,20 @@ class OldpaintWindow(pyglet.window.Window):
 
     # === Other callbacks ===
 
+    @lru_cache(32)
+    def get_layer_preview_texture(self, layer, colors, size=(32, 32)):
+        w, h = layer.size
+        size = w, h
+        texture = Texture(size, params={gl.GL_TEXTURE_MIN_FILTER: gl.GL_LINEAR})
+        texture.clear()
+        data = layer.pic.as_rgba(colors, True)
+        gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
+        gl.glTextureSubImage2D(texture.name, 0,
+                               0, 0, w, h,  # min(w, bw), min(w, bh),
+                               gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, bytes(data))
+        return texture
+
+    @cache_clear(get_layer_preview_texture)
     def _finish_stroke(self, stroke):
         "Callback that gets run every time a stroke is finished."
         # Since this is a callback, stroke is a Future and is guaranteed to be finished.
@@ -428,7 +445,7 @@ class OldpaintWindow(pyglet.window.Window):
             # If no rect is set, the tool is presumed to not have changed anything.
             self.drawing.change_layer(self.overlay, tool.rect, tool.tool)
             self.overlay.clear(tool.rect)
-            self.get_layer_preview_texture.cache_clear()
+
         else:
             self.overlay.clear()
         self.mouse_event_queue = None
@@ -655,6 +672,7 @@ class OldpaintWindow(pyglet.window.Window):
             w, h = self.drawing.size
             return 0 <= ix < w and 0 <= iy < h
 
+    @lru_cache(1)
     def set_selection(self, rect):
         x0, y0 = rect.topleft
         x1, y1 = rect.bottomright
@@ -666,6 +684,24 @@ class OldpaintWindow(pyglet.window.Window):
         xw1 = (x1 - w2) / w
         yw1 = (h2 - y1) / h
         self.selection_vertices.vertex_buffer.write([
+            ((xw0, yw0, 0),),
+            ((xw1, yw0, 0),),
+            ((xw1, yw1, 0),),
+            ((xw0, yw1, 0),)
+        ])
+
+    @lru_cache(1)
+    def update_border(self, rect):
+        x0, y0 = rect.topleft
+        x1, y1 = rect.bottomright
+        w, h = rect.size
+        w2 = w / 2
+        h2 = h / 2
+        xw0 = (x0 - w2) / w
+        yw0 = (h2 - y0) / h
+        xw1 = (x1 - w2) / w
+        yw1 = (h2 - y1) / h
+        self.border_vertices.vertex_buffer.write([
             ((xw0, yw0, 0),),
             ((xw1, yw0, 0),),
             ((xw1, yw1, 0),),
@@ -767,15 +803,3 @@ class OldpaintWindow(pyglet.window.Window):
                                gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, bytes(data))
         return texture
 
-    @lru_cache(32)
-    def get_layer_preview_texture(self, layer, colors, size=(32, 32)):
-        w, h = layer.size
-        size = w, h
-        texture = Texture(size, params={gl.GL_TEXTURE_MIN_FILTER: gl.GL_LINEAR})
-        texture.clear()
-        data = layer.pic.as_rgba(colors, True)
-        gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
-        gl.glTextureSubImage2D(texture.name, 0,
-                               0, 0, w, h,  # min(w, bw), min(w, bh),
-                               gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, bytes(data))
-        return texture

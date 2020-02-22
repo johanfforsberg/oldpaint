@@ -148,7 +148,8 @@ def render_palette(drawing: Drawing):
         imgui.open_popup("Edit foreground color")
         imgui.set_next_window_position(w - 115 - 120, 200)
         color_editor_open = True
-    if imgui.begin_popup("Edit foreground color", flags=(imgui.WINDOW_NO_SCROLL_WITH_MOUSE)):
+    if imgui.begin_popup("Edit foreground color", flags=(imgui.WINDOW_NO_MOVE |
+                                                         imgui.WINDOW_NO_SCROLL_WITH_MOUSE)):
         done, cancelled, new_color = render_color_editor(palette.colors[fg], fg_color)
         if done and new_color != fg_color:
             drawing.change_colors(fg, [new_color])
@@ -341,14 +342,18 @@ def render_edits(drawing):
     imgui.set_column_offset(1, 40)
     imgui.set_column_offset(2, 100)
     n = len(drawing.edits)
+    selection = None
     for i, edit in enumerate(reversed(drawing.edits[-50:])):
         imgui.text(str(n - i))
         imgui.next_column()
         imgui.text(edit.index_str)
         imgui.next_column()
-        imgui.text(edit.info_str)
+        imgui.button(edit.info_str)
+        if hasattr(edit, "rect"):
+            if imgui.is_item_hovered():
+                selection = edit.rect
         imgui.next_column()
-
+    drawing.selection = selection
     imgui.end()
 
 

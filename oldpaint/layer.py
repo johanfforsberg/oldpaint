@@ -142,4 +142,11 @@ class Layer:
         return self.rect.intersect(rect)
 
     def __hash__(self):
+        "For caching purposes, a Layer is considered changed when it's underlying Picture has changed."
+        return hash((id(self), self.size, self.pic.version))
+
+
+class TemporaryLayer(Layer):
+
+    def __hash__(self):
         return hash((id(self), self.size))

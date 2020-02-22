@@ -73,6 +73,7 @@ cdef class LongPicture:
         else:
             self.data = array.clone(long_array_template, self.length, zero=True)
         self.rect = Rectangle((0, 0), (self.width, self.height))
+        self.version = 0
 
     cdef int _get_offset(self, int x, int y) nogil:
         return self.width * y + x
@@ -128,6 +129,7 @@ cdef class LongPicture:
                     self.set_pixel(x, y, c % 255)
                 else:
                     self.set_pixel(x, y, _rgb_to_32bit((c, 0, 0)))
+        self.version += 1
 
     cpdef void paste(self, LongPicture pic, int x, int y, bint mask,
                      bint colorize=False, unsigned char color=0) nogil:
@@ -158,6 +160,7 @@ cdef class LongPicture:
                         self.set_pixel(x2, y2, pic.data[offset1+x1])
             offset1 += w
             offset2 += self.width
+        self.version += 1
 
     cpdef void paste_part(self, LongPicture pic, int xo, int yo, int w, int h, int xd, int yd, bint mask) nogil:
         "Modify the current picture by overlaying the given region of the picture at the xd, yd position"
@@ -183,6 +186,7 @@ cdef class LongPicture:
                     self.set_pixel(x2, y2, data[offset1+x1])
             offset1 += pic.width
             offset2 += self.width
+        self.version += 1
 
     cpdef short[:] make_diff(self, LongPicture pic, int x, int y, int w, int h, bint alpha=True):
         cdef short[:] difference = array.clone(short_array_template, w * h, zero=True)
@@ -220,6 +224,7 @@ cdef class LongPicture:
                     self.set_pixel(x + x1, y + y1, value + diff)
                 offset += self.width
                 start += w
+        self.version += 1
 
     # cpdef void paste_byte(self, Picture pic, int x, int y, bint mask):
     #     cdef int w, h, y1, x1, x2, y2, offset1, offset2
@@ -259,6 +264,7 @@ cdef class LongPicture:
         for x in range(x0, x1):
             for y in range(y0, y1):
                 self.data[y * w + x] = value
+        self.version = self.version + 1
 
     cpdef LongPicture flip_vertical(self):
         # TODO this is probably not the fastest way, but this shouldn't be a time critical op
@@ -314,6 +320,7 @@ cdef class LongPicture:
                     self.data[offset] = index2
                 elif value == index2:
                     self.data[offset] = index1
+        self.version += 1
 
     def __repr__(self):
         return f"LongPicture({self.size})"

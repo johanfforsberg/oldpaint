@@ -105,10 +105,13 @@ def render_drawing(drawing, highlighted_layer=None):
     return offscreen_buffer
 
 
-@lru_cache(32)
+layer_texture_cache = {}
+
 def _get_layer_texture(layer):
-    texture = ByteIntegerTexture(layer.size)
-    texture.clear()
+    texture = layer_texture_cache.get(id(layer))
+    if not texture:
+        layer_texture_cache[id(layer)] = texture = ByteIntegerTexture(layer.size)
+        texture.clear()
     return texture
 
 

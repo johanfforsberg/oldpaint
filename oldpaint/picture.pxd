@@ -35,6 +35,7 @@ cdef class LongPicture:
     cdef readonly int width, height, stride, length
     cdef public unsigned int[:] data
     cdef public rect
+    cdef public int version
 
     cdef int _get_offset(self, int x, int y) nogil
     cdef void set_pixel(self, int x, int y, unsigned int value) nogil
