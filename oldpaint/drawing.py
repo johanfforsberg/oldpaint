@@ -308,8 +308,6 @@ class Drawing:
         maker.finish()
         self._add_edit(MultiEdit(maker.edits))
 
-    # ...TODO...
-
     def __repr__(self):
         return f"Drawing(size={self.size}, layers={self.layers}, current={self.get_index()})"
 
@@ -330,7 +328,7 @@ class EditMaker():
         else:
             self._rect = rect
 
-    def finish(self):
+    def _cleanup(self):
         if self._rect:
             layer = self.drawing.current
             overlay = self.drawing.overlay
@@ -340,13 +338,18 @@ class EditMaker():
             overlay.clear()
             self._rect = None
 
+    def finish(self):
+        self._cleanup()
+
     def draw_rectangle(self, position, size, brush, color=None, fill=False):
         rect = self.drawing.overlay.draw_rectangle(position, size, brush.get_pic(color), brush.center,
                                                    color=color, fill=fill)
         self._push_layer_edit(rect)
 
     def flip_layer_horizontal(self):
-        self.finish()
+        self._cleanup()
         edit = LayerFlipEdit(self.drawing.layers.index(), horizontal=True)
         edit.perform(self.drawing)
         self.edits.append(edit)
+
+    # ...TODO...
