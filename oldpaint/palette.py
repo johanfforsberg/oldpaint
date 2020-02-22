@@ -1,8 +1,6 @@
 from functools import lru_cache
 from itertools import chain, islice
 
-from pyglet.window import mouse
-
 
 DEFAULT_COLORS = [
     (170,170,170,0),(255,255,255,255),(101,101,101,255),(223,223,223,255),(207,48,69,255),
@@ -37,13 +35,6 @@ class Palette:
         self.background = 0
 
         self.overlay = {}
-
-    def get_index(self, button):
-        # TODO Would be nice to keep pyglet out of here...
-        if button & mouse.LEFT:
-            return self.foreground
-        elif button & mouse.RIGHT:
-            return self.background
 
     def set_overlay(self, i, color):
         self.overlay[i] = color
