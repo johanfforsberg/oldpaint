@@ -1,4 +1,4 @@
-from functools import lru_cache
+from functools import lru_cache, wraps
 import logging
 from time import time
 from tkinter import Tk, filedialog
@@ -123,6 +123,18 @@ def throttle(interval=0.1):
         return inner
 
     return wrap
+
+
+def cache_clear(cached_func):
+    """Decorator that calls cache_clear on the given lru_cached function after
+    the decorated function gets called."""
+    def inner(f):
+        @wraps(f)
+        def wrapped(*args, **kwargs):
+            f(*args, **kwargs)
+            cached_func.cache_clear()
+        return wrapped
+    return inner
 
 
 @lru_cache(1)
