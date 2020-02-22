@@ -215,10 +215,8 @@ def render_palette(drawing: Drawing):
             if start_index is not None:
                 start_index = int.from_bytes(start_index, sys.byteorder)
                 io = imgui.get_io()
-                if io.key_shift:
-                    palette.swap_colors(start_index, i)
-                else:
-                    drawing.swap_colors(start_index, i)
+                image_only = io.key_shift
+                drawing.swap_colors(start_index, i, image_only=image_only)
                 palette.clear_overlay()
             imgui.end_drag_drop_target()
 

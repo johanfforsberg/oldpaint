@@ -1,4 +1,13 @@
-# Edit classes; immutable objects that represent an individual change of the drawing.
+"""
+Edit classes.
+
+An edit is an immutable object that represent an individual change of the drawing.
+It can be applied and reverted.
+
+Ordering is very important. In general, an edit can only be correctly applied when
+the drawing is in the state when it was created, and only reverted from the state
+right after it was applied.
+"""
 
 from dataclasses import dataclass
 from itertools import chain, groupby
@@ -40,9 +49,35 @@ class Edit:
 
 
 @dataclass(frozen=True)
+class MultiEdit:
+
+    "An edit that consists of several other edits in sequence."
+
+    edits: list
+
+    def perform(self, drawing):
+        for edit in self.edits:
+            edit.perform(drawing)
+
+    def revert(self, drawing):
+        for edit in reversed(self.edits):
+            edit.revert(drawing)
+
+    @property
+    def index_str(self):
+        return f"{len(self.edits)}"
+
+    @property
+    def info_str(self):
+        return "Merged edits"
+
+
+@dataclass(frozen=True)
 class LayerEdit(Edit):
 
     "A change in the image data of a particular layer."
+
+    # TODO the stuff below is WIP for a way to store the data in a struct
 
     _type = 0
     _struct = "cchhhh"
@@ -213,52 +248,6 @@ class PaletteEdit(Edit):
 
 
 @dataclass(frozen=True)
-class PaletteColorSwap(Edit):
-
-    "A swap between two colors in the palette."
-
-    index1: int
-    index2: int
-
-    def perform(self, drawing):
-        palette = drawing.palette
-        palette[self.index1], palette[self.index2] = palette[self.index2], palette[self.index1]
-
-    revert = perform
-
-    @property
-    def index_str(self):
-        return f"{self.index1}, {self.index2}"
-
-    @property
-    def info_str(self):
-        return "Palette color swap"
-
-
-@dataclass(frozen=True)
-class DrawingColorSwap(Edit):
-
-    "A swap between two colors in the palette."
-
-    index1: int
-    index2: int
-
-    def perform(self, drawing):
-        for layer in drawing.layers:
-            layer.swap_colors(self.index1, self.index2)
-
-    revert = perform
-
-    @property
-    def index_str(self):
-        return f"{self.index1}, {self.index2}"
-
-    @property
-    def info_str(self):
-        return "Drawing color swap"
-
-
-@dataclass(frozen=True)
 class AddLayerEdit(Edit):
 
     index: int
@@ -337,38 +326,6 @@ class SwapLayersEdit(Edit):
     revert = perform
 
 
-@dataclass(frozen=True)
-class MultiEdit:
-
-    "An edit that consists of several other edits in sequence."
-
-    edits: list
-
-    # def create(cls, drawing, edits):
-    #     return chain.from_iterable(
-    #         [LayerEdit.merge(list(edits))]
-    #         if edit_type is LayerEdit
-    #         else edits
-    #         for edit_type, edits in groupby(edits, type)
-    #     )
-
-    def perform(self, drawing):
-        for edit in self.edits:
-            edit.perform(drawing)
-
-    def revert(self, drawing):
-        for edit in reversed(self.edits):
-            edit.revert(drawing)
-
-    @property
-    def index_str(self):
-        return f"{len(self.edits)}"
-
-    @property
-    def info_str(self):
-        return "Merged edits"
-
-
 class MergeLayersEdit(MultiEdit):
 
     @classmethod
@@ -388,13 +345,64 @@ class MergeLayersEdit(MultiEdit):
         return "Merge layers"
 
 
-class ColorSwap(MultiEdit):
+@dataclass(frozen=True)
+class SwapColorsEdit(Edit):
+
+    "A swap between two colors in the palette, also affecting the image."
+
+    index1: int
+    index2: int
+
+    def perform(self, drawing):
+        palette = drawing.palette
+        palette[self.index1], palette[self.index2] = palette[self.index2], palette[self.index1]
+
+    revert = perform
+
+    @property
+    def index_str(self):
+        return f"{self.index1}, {self.index2}"
+
+    @property
+    def info_str(self):
+        return "Swap colors"
+
+
+@dataclass(frozen=True)
+class SwapColorsImageEdit(Edit):
+
+    "A swap between two colors in the image."
+
+    index1: int
+    index2: int
+
+    def perform(self, drawing):
+        for layer in drawing.layers:
+            layer.swap_colors(self.index1, self.index2)
+
+    revert = perform
+
+    @property
+    def index_str(self):
+        return f"{self.index1}, {self.index2}"
+
+    @property
+    def info_str(self):
+        return "Swap image colors"
+
+
+class SwapColorsPaletteEdit(MultiEdit):
+
+    """
+    Change places between two colors in the palette, without affecting
+    the image.
+    """
 
     @classmethod
-    def create(cls, drawing, index1, index2):
+    def create(cls, index1, index2):
         return cls([
-            PaletteColorSwap(index1=index1, index2=index2),
-            DrawingColorSwap(index1=index1, index2=index2)
+            SwapColorsEdit(index1=index1, index2=index2),
+            SwapColorsImageEdit(index1=index1, index2=index2)
         ])
 
     @property
@@ -403,4 +411,4 @@ class ColorSwap(MultiEdit):
 
     @property
     def info_str(self):
-        return "Swap colors"
+        return "Swap palette colors"

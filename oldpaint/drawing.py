@@ -8,7 +8,7 @@ from .constants import ToolName
 from .edit import (LayerEdit, LayerClearEdit, LayerFlipEdit,
                    DrawingFlipEdit, PaletteEdit, AddLayerEdit,
                    RemoveLayerEdit, SwapLayersEdit, MergeLayersEdit,
-                   ColorSwap, MultiEdit)
+                   SwapColorsImageEdit, SwapColorsEdit, MultiEdit)
 from .layer import Layer
 from .ora import load_ora, save_ora
 from .picture import LongPicture, load_png, save_png
@@ -252,8 +252,11 @@ class Drawing:
         edit.perform(self)
         self._add_edit(edit)
 
-    def swap_colors(self, index1, index2):
-        edit = ColorSwap.create(self, index1=index1, index2=index2)
+    def swap_colors(self, index1, index2, image_only=False):
+        if image_only:
+            edit = SwapColorsImageEdit(index1, index2)
+        else:
+            edit = SwapColorsEdit.create(index1=index1, index2=index2)
         edit.perform(self)
         self._add_edit(edit)
 
