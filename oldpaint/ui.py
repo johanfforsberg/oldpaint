@@ -12,6 +12,7 @@ import imgui
 import pyglet
 from pyglet.window import key
 
+from .drawing import Drawing
 from .util import show_save_dialog, throttle
 
 
@@ -130,7 +131,7 @@ palette_overlay = {}
 
 color_editor_open = False
 
-def render_palette(drawing):
+def render_palette(drawing: Drawing):
 
     global color_editor_open  # Need a persistent way to keep track of the popup being closed...
 
@@ -213,7 +214,11 @@ def render_palette(drawing):
             start_index = imgui.accept_drag_drop_payload('start_index')
             if start_index is not None:
                 start_index = int.from_bytes(start_index, sys.byteorder)
-                drawing.swap_colors(start_index, i)
+                io = imgui.get_io()
+                if io.key_shift:
+                    palette.swap_colors(start_index, i)
+                else:
+                    drawing.swap_colors(start_index, i)
                 palette.clear_overlay()
             imgui.end_drag_drop_target()
 
@@ -237,7 +242,7 @@ def render_palette(drawing):
     #     drawing.change_colors(from_index + 1, spread_colors)
 
 
-def render_layers(drawing):
+def render_layers(drawing: Drawing):
 
     imgui.columns(2, "Layers")
     imgui.set_column_offset(1, 100)
