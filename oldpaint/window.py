@@ -140,7 +140,9 @@ class OldpaintWindow(pyglet.window.Window):
         self.recent_files = OrderedDict((k, None) for k in recent_files)
 
         self.window_visibility = {
-            "edits": False
+            "edits": False,
+            "colors": False,
+            "color_editor": False
         }
 
         # TODO This is the basics for using tablet pressure info
@@ -301,15 +303,12 @@ class OldpaintWindow(pyglet.window.Window):
 
         if self.drawing:
 
-            if symbol == key.E:
-                self.drawing.palette.foreground += 1
-            elif symbol == key.D:
-                self.drawing.palette.foreground -= 1
+            # if symbol == key.E:
+            #     self.drawing.palette.foreground += 1
+            # elif symbol == key.D:
+            #     self.drawing.palette.foreground -= 1
 
-            elif symbol == key.K:
-                self.init_plugins()
-
-            elif symbol == key.L:
+            if symbol == key.L:
                 self.drawing.add_layer()
 
             elif symbol == key.O:
@@ -352,6 +351,12 @@ class OldpaintWindow(pyglet.window.Window):
                 # TODO make this toggle to most-recently-used instead
                 self.overlay.clear()
                 self.drawings.cycle_forward(cyclic=True)
+
+            elif symbol == key.C:
+                self.window_visibility["colors"] = not self.window_visibility["colors"]
+            elif symbol == key.E:
+                imgui.open_popup("Edit foreground color")
+                # imgui.set_next_window_position(w - 115 - 120, 200)
 
             elif symbol == key.F4:
                 self.init_plugins()
@@ -496,6 +501,10 @@ class OldpaintWindow(pyglet.window.Window):
 
                 if self.window_visibility["edits"]:
                     ui.render_edits(self.drawing)
+
+                if self.window_visibility["colors"]:
+                    self.window_visibility["colors"], open_color_editor = ui.render_palette_popup(self.drawing)
+                    self.window_visibility["color_editor"] |= open_color_editor
 
                 # nh = 150
                 # imgui.set_next_window_size(w - 135, nh)

@@ -78,6 +78,12 @@ class Palette:
     def __setitem__(self, index, value):
         self.set_color(index, *value)
 
+    def get_color(self, i):
+        overlay_color = self.overlay.get(i)
+        if overlay_color is not None:
+            return overlay_color
+        return self.colors[i]
+
     @property
     def foreground_color(self):
         overlay_color = self.overlay.get(self.foreground)
