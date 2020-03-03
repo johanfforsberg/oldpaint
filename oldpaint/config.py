@@ -2,11 +2,12 @@ import configparser
 from pathlib import Path
 
 from pluginbase import PluginBase
-from xdg import XDG_CONFIG_HOME
+from xdg import XDG_CONFIG_HOME, XDG_CACHE_HOME
 
 OLDPAINT_CONFIG_HOME = XDG_CONFIG_HOME / "oldpaint"
 OLDPAINT_CONFIG_HOME.mkdir(parents=True, exist_ok=True)
 CONFIG_FILE = OLDPAINT_CONFIG_HOME / "oldpaint.ini"
+CACHE_DIR = XDG_CACHE_HOME / "oldpaint"
 
 
 def load_config():
@@ -42,6 +43,29 @@ def save_config(window_size=None, recent_files=None):
         }
     with open(CONFIG_FILE, "w") as f:
         config_file.write(f)
+
+
+def get_drawing_cache_dir(drawing_path):
+    dir_name = drawing_path.replace("/", "%")
+    path = CACHE_DIR / dir_name
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def get_autosave_filename(drawing_path, keep=3):
+    cache_dir = get_drawing_cache_dir(drawing_path)
+    files = list(cache_dir.glob("*.ora"))
+    file_nos = sorted(int(fn.name.split(".")[0]) for fn in files[-keep:])
+
+    to_remove = file_nos[0:-(keep-1)]
+    for fn in to_remove:
+        (cache_dir / f"{fn}.ora").unlink()
+
+    if file_nos:
+        latest = file_nos[-1]
+    else:
+        latest = -1
+    return cache_dir / f"{latest + 1}.ora"
 
 
 OLDPAINT_PLUGIN_DIR = Path(__file__).parent.parent / "plugins"

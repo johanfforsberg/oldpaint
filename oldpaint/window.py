@@ -21,6 +21,7 @@ from fogl.vao import VertexArrayObject
 from fogl.vertex import SimpleVertices
 
 from .brush import PicBrush, RectangleBrush, EllipseBrush
+from .config import get_autosave_filename
 from .drawing import Drawing
 from .imgui_pyglet import PygletRenderer
 from .layer import Layer
@@ -32,7 +33,7 @@ from .stroke import make_stroke
 from .tool import (PencilTool, PointsTool, SprayTool,
                    LineTool, RectangleTool, EllipseTool,
                    SelectionTool, PickerTool, FillTool)
-from .util import Selectable, make_view_matrix, show_load_dialog, show_save_dialog, cache_clear
+from .util import Selectable, make_view_matrix, show_load_dialog, show_save_dialog, cache_clear, debounce, throttle
 from . import ui
 
 
@@ -239,7 +240,7 @@ class OldpaintWindow(pyglet.window.Window):
                 # Erasing always uses background color
                 color = brush_color = self.drawing.palette.background
             tool = self.tools.current(self.drawing, self.brush, color, brush_color)
-
+            self.autosave_drawing.cancel()
             self.stroke = self.executor.submit(make_stroke, self.overlay, self.mouse_event_queue, tool)
             self.stroke.add_done_callback(lambda s: self.executor.submit(self._finish_stroke, s))
             self.stroke_tool = tool
@@ -455,6 +456,7 @@ class OldpaintWindow(pyglet.window.Window):
             self.overlay.clear()
         self.mouse_event_queue = None
         self.stroke = None
+        self.autosave_drawing()
 
     # === Helper functions ===
 
@@ -563,7 +565,8 @@ class OldpaintWindow(pyglet.window.Window):
         size = self.drawing.size if self.drawing else (640, 480)
         self._new_drawing = dict(size=size)
 
-    def save_drawing(self, drawing=None, ask_for_path=False):
+    @try_except_log
+    def save_drawing(self, drawing=None, ask_for_path=False, auto=False):
         "Save the drawing, asking for a file name if neccessary."
         drawing = drawing or self.drawing
         if not ask_for_path and drawing.path:
@@ -602,6 +605,19 @@ class OldpaintWindow(pyglet.window.Window):
 
             fut.add_done_callback(
                 lambda fut: really_save_drawing(drawing, fut.result()))
+
+    @debounce(cooldown=60, wait=3)
+    def autosave_drawing(self):
+
+        @try_except_log
+        def really_autosave():
+            path = self.drawing.path or self.drawing.uuid
+            auto_filename = get_autosave_filename(path)
+            print(f"Autosaving to {auto_filename}...")
+            self.drawing.save_ora(str(auto_filename), auto=True)
+
+        fut = self.executor.submit(really_autosave)
+        fut.add_done_callback(lambda fut: print("Autosave done!"))
 
     def load_drawing(self, path=None):
 

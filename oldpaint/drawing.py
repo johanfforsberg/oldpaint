@@ -2,6 +2,7 @@ from contextlib import contextmanager
 import logging
 import os
 import shutil
+from uuid import uuid4
 
 from .brush import PicBrush
 from .constants import ToolName
@@ -61,6 +62,7 @@ class Drawing:
         self.zoom = 0
 
         self.path = path
+        self.uuid = str(uuid4())
 
     @property
     def current(self) -> Layer:
@@ -129,13 +131,14 @@ class Drawing:
         layers = [Layer(p) for p in reversed(layer_pics)]
         return cls(size=layers[0].size, layers=layers, palette=palette, path=path)
 
-    def save_ora(self, path=None):
+    def save_ora(self, path=None, auto=False):
         """Save in ORA format, which keeps all layers intact."""
         if path is None and self.path:
             self._save_ora(self.path)
         elif path:
             self._save_ora(path)
-            self.path = path
+            if not auto:
+                self.path = path
         else:
             raise RuntimeError("Can't save without path")
         self._latest_save_index = len(self._edits)

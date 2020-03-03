@@ -125,6 +125,43 @@ def throttle(interval=0.1):
     return wrap
 
 
+def debounce(cooldown=60, wait=3):
+    """
+    A decorator that gives the function a "cooldown" period given in seconds,
+    from the first call, during which calling the function has no effect.
+    After the cooldown, the function will be called as soon as it has not been
+    called within the last <wait> seconds. After that the cooldown is reset.
+    """
+    sleep_until = None
+
+    def wrap(f):
+
+        def do(dt, *args, **kwargs):
+            nonlocal sleep_until
+            sleep_until = None
+            f(*args, **kwargs)
+
+        def inner(*args, **kwargs):
+            nonlocal sleep_until
+            now = time()
+            if not sleep_until:
+                sleep_until = now + cooldown
+                pyglet.clock.schedule_once(do, cooldown, *args, **kwargs)
+                return
+            if now < sleep_until - wait:
+                return
+            pyglet.clock.unschedule(do)
+            pyglet.clock.schedule_once(do, wait, *args, **kwargs)
+
+        def cancel():
+            pyglet.clock.unschedule(do)
+
+        inner.cancel = cancel
+        return inner
+
+    return wrap
+
+
 def cache_clear(cached_func):
     """Decorator that calls cache_clear on the given lru_cached function after
     the decorated function gets called."""
