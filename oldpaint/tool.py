@@ -58,7 +58,7 @@ class PencilTool(Tool):
 
     "One continuous line along the mouse movement"
 
-    tool = ToolName.PENCIL
+    tool = ToolName.pencil
     ephemeral = False
 
     def draw(self, overlay, point, buttons, modifiers):
@@ -83,7 +83,7 @@ class PointsTool(Tool):
 
     "A series of dots along the mouse movement."
 
-    tool = ToolName.POINTS
+    tool = ToolName.points
     ephemeral = False
     step = 5
 
@@ -107,7 +107,7 @@ class PointsTool(Tool):
 
 class SprayTool(Tool):
 
-    tool = ToolName.SPRAY
+    tool = ToolName.spray
     ephemeral = False
     size = 10
     intensity = 1.0
@@ -132,7 +132,7 @@ class LineTool(Tool):
 
     "A straight line from the starting point to the end point."
 
-    tool = ToolName.LINE
+    tool = ToolName.line
     ephemeral = True
 
     def draw(self, overlay, point, buttons, modifiers):
@@ -156,7 +156,7 @@ class RectangleTool(Tool):
 
     "A rectangle with opposing corners at the start and end points."
 
-    tool = ToolName.RECTANGLE
+    tool = ToolName.rectangle
     ephemeral = True
 
     def draw(self, overlay, point, buttons, modifiers):
@@ -177,7 +177,7 @@ class EllipseTool(Tool):
 
     "An ellipse centered at the start point and with radii described by the end point."
 
-    tool = ToolName.ELLIPSE
+    tool = ToolName.ellipse
     ephemeral = True
 
     @try_except_log
@@ -200,7 +200,7 @@ class FillTool(Tool):
 
     "Fill all adjacent pixels of the same color as the start point."
 
-    tool = ToolName.FLOODFILL
+    tool = ToolName.floodfill
     brush_preview = False
 
     def finish(self, overlay, point, buttons, modifiers):
@@ -216,7 +216,7 @@ class SelectionTool(Tool):
 
     "Create a brush from a rectangular region of the current layer."
 
-    tool = ToolName.BRUSH
+    tool = ToolName.brush
     brush_preview = False
     show_rect = True
 
@@ -237,7 +237,7 @@ class PickerTool(Tool):
 
     "Set the current color to the one under the mouse when clicked."
 
-    tool = ToolName.PICKER
+    tool = ToolName.picker
     brush_preview = False
 
     def __init__(self, drawing, brush, color, initial):

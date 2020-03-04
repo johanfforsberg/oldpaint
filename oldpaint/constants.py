@@ -2,12 +2,12 @@ from enum import Enum
 
 
 class ToolName(Enum):
-    PENCIL = 1
-    POINTS = 2
-    SPRAY = 3
-    LINE = 4
-    RECTANGLE = 5
-    ELLIPSE = 6
-    FLOODFILL = 7
-    BRUSH = 8
-    PICKER = 9
+    pencil = 1
+    points = 2
+    spray = 3
+    line = 4
+    rectangle = 5
+    ellipse = 6
+    floodfill = 7
+    brush = 8
+    picker = 9

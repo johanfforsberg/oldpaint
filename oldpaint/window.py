@@ -33,7 +33,7 @@ from .stroke import make_stroke
 from .tool import (PencilTool, PointsTool, SprayTool,
                    LineTool, RectangleTool, EllipseTool,
                    SelectionTool, PickerTool, FillTool)
-from .util import Selectable, make_view_matrix, show_load_dialog, show_save_dialog, cache_clear, debounce, throttle
+from .util import Selectable, make_view_matrix, show_load_dialog, show_save_dialog, cache_clear, debounce
 from . import ui
 
 
@@ -486,8 +486,7 @@ class OldpaintWindow(pyglet.window.Window):
                 imgui.core.separator()
 
                 brush = ui.render_brushes(self.brushes,
-                                          partial(self.get_brush_preview_texture,
-                                                  colors=self.drawing.palette.as_tuple()),
+                                          self.get_brush_preview_texture,
                                           compact=True, size=(16, 16))
                 if brush:
                     self.brushes.select(brush)
@@ -815,7 +814,8 @@ class OldpaintWindow(pyglet.window.Window):
         return frust * view
 
     @lru_cache(32)
-    def get_brush_preview_texture(self, brush, colors, size=(8, 8)):
+    def get_brush_preview_texture(self, brush, colors=None, size=(8, 8)):
+        colors = colors or self.drawing.palette.as_tuple()
         bw, bh = brush.size
         w, h = size
         w, h = size = max(w, bw), max(h, bh)

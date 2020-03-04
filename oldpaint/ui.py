@@ -36,7 +36,7 @@ def render_tools(tools, icons):
     current_tool = tools.current
     selected = False
     for i, tool in enumerate(tools):
-        texture = icons[tool.tool.name.lower()]
+        texture = icons[tool.tool.name]
         with imgui.colored(imgui.COLOR_BUTTON, *TOOL_BUTTON_COLORS[tool == current_tool]):
             if imgui.core.image_button(texture.name, 16, 16):
                 tools.select(tool)
@@ -191,6 +191,9 @@ def render_palette(drawing: Drawing):
     imgui.begin_child("Palette", border=False)
     imgui.push_style_var(imgui.STYLE_ITEM_SPACING, (0, 0))  # Make layout tighter
     width = int(imgui.get_window_content_region_width()) // 20
+
+    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, 0, 0, 0)
+    
     for i, color in enumerate(palette[start_color:start_color + 64], start_color):
         is_foreground = i == fg
         is_background = (i == bg) * 2
@@ -199,8 +202,10 @@ def render_palette(drawing: Drawing):
             color = as_float(palette.overlay[i])
         else:
             color = as_float(color)
-        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND,
-                               *SELECTABLE_FRAME_COLORS[selection])
+
+        if selection:
+            x, y = imgui.get_cursor_screen_pos()
+        
         if imgui.color_button(f"color {i}", *color[:3], 1, 0, 25, 25):
             # io = imgui.get_io()
             # if io.key_shift:
@@ -210,7 +215,16 @@ def render_palette(drawing: Drawing):
             #         temp_vars["spread_start"] = i
             # else:
             fg = i
-        imgui.pop_style_color(1)
+
+        if i % width != width - 1:
+            imgui.same_line()
+        
+        if is_foreground:
+            draw_list = imgui.get_window_draw_list()
+            draw_list.add_rect_filled(x+2, y+2, x+10, y+10, imgui.get_color_u32_rgba(0, 0, 0, 1))
+        elif is_background:
+            draw_list = imgui.get_window_draw_list()
+            draw_list.add_rect_filled(x+15, y+2, x+23, y+10, imgui.get_color_u32_rgba(0, 0, 0, 1))
 
         if imgui.core.is_item_clicked(2):
             # Detect right button clicks on the button
@@ -230,16 +244,14 @@ def render_palette(drawing: Drawing):
                 palette.clear_overlay()
             imgui.end_drag_drop_target()
 
-        if imgui.is_item_hovered():
-            io = imgui.get_io()
-            delta = int(io.mouse_wheel)
-            current_color_page = min(max(current_color_page + delta, 0), max_pages)
-
-        if i % width != width - 1:
-            imgui.same_line()
+    imgui.pop_style_color(1)            
     imgui.pop_style_var(1)
     imgui.end_child()
-    # imgui.end()
+
+    if imgui.is_item_hovered():
+        io = imgui.get_io()
+        delta = int(io.mouse_wheel)
+        current_color_page = min(max(current_color_page + delta, 0), max_pages)
 
     palette.foreground = fg
     palette.background = bg
@@ -424,26 +436,32 @@ def render_layers(drawing: Drawing):
     return hovered
 
 
+@lru_cache(16)
+def _get_brush_preview_size(size):
+    w, h = size
+    if w > 50 or h > 50:
+        aspect = w / h
+        if w > h:
+            w = 50
+            h = w / aspect
+        else:
+            h = 50
+            w = h * aspect
+    return w, h
+
+
 def render_brushes(brushes, get_texture, size=None, compact=False):
 
     clicked = False
 
     imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, 1, 1, 1)
+    
     for i, brush in enumerate(brushes):
         is_selected = brush == brushes.current
         size1 = size or brush.size
         texture = get_texture(brush=brush, size=size1)
         if texture:
-            w, h = brush.size
-            if w > 50 or h > 50:
-                aspect = w / h
-                if w > h:
-                    w = 50
-                    h = w / aspect
-                else:
-                    h = 50
-                    w = h * aspect
-
+            # w, h = _get_brush_preview_size(brush.size)
             imgui.image(texture.name, *size1,
                         border_color=(1, 1, 1, 1) if is_selected else (.5, .5, .5, 1))
             if imgui.core.is_item_clicked(0):
@@ -451,6 +469,7 @@ def render_brushes(brushes, get_texture, size=None, compact=False):
 
             if i % 3 != 2:
                 imgui.same_line()
+                
     imgui.pop_style_color()
 
     imgui.new_line()
