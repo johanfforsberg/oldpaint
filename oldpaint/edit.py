@@ -10,14 +10,13 @@ right after it was applied.
 """
 
 from dataclasses import dataclass
-from itertools import chain, groupby
 import struct
 import zlib
 
 from .constants import ToolName
 from .layer import Layer
 from .picture import LongPicture
-from .rect import Rectangle, cover
+from .rect import Rectangle
 
 
 class Edit:
