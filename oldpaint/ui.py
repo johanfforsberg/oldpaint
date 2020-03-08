@@ -38,7 +38,7 @@ def render_tools(tools, icons):
     for i, tool in enumerate(tools):
         texture = icons[tool.tool.name]
         with imgui.colored(imgui.COLOR_BUTTON, *TOOL_BUTTON_COLORS[tool == current_tool]):
-            if imgui.core.image_button(texture.name, 16, 16):
+            if imgui.image_button(texture.name, 16, 16):
                 tools.select(tool)
                 selected = True
             if i % 3 != 2:

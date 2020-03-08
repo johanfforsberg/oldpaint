@@ -360,7 +360,7 @@ class OldpaintWindow(pyglet.window.Window):
                 # imgui.set_next_window_position(w - 115 - 120, 200)
 
             elif symbol == key.F4:
-                self.init_plugins()
+                init_plugins(self)
 
             elif symbol == key.ESCAPE:
                 self.drawing.brushes.current = None

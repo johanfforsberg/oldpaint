@@ -1,10 +1,14 @@
 import inspect
+import imp
 from itertools import islice
+from time import time
+from traceback import print_exc
 
 import imgui
+import oldpaint
 
 from .config import plugin_source
-import oldpaint
+from .util import try_except_log
 
 
 def init_plugins(window):
@@ -13,12 +17,18 @@ def init_plugins(window):
         print("init", plugin_name)
         try:
             plugin = plugin_source.load_plugin(plugin_name)
-            sig = inspect.signature(plugin.plugin)
-            window.plugins[plugin_name] = plugin.plugin, sig.parameters, {}
+            imp.reload(plugin)
+            if hasattr(plugin, "plugin"):
+                sig = inspect.signature(plugin.plugin)
+                window.plugins[plugin_name] = plugin.plugin, sig.parameters, {}
+            elif hasattr(plugin, "Plugin"):
+                sig = inspect.signature(plugin.Plugin.__call__)
+                window.plugins[plugin_name] = plugin.Plugin(), sig.parameters, {}
         except Exception as e:
-            print(e)
+            print_exc()
+            
 
-
+@try_except_log
 def render_plugins_ui(window):
     if not window.drawing:
         return
@@ -46,15 +56,29 @@ def render_plugins_ui(window):
             imgui.next_column()
         imgui.columns(1)
 
-        if imgui.button("Execute"):
-            result = plugin(oldpaint, window.drawing, window.brush, **args)
+        texture_and_size = getattr(plugin, "texture", None)
+        if texture_and_size:
+            texture, size = texture_and_size
+            w, h = size
+            ww, wh = imgui.get_window_size()
+            scale = max(1, (ww - 10) // w)
+            imgui.image(texture.name, w*scale, h*scale, border_color=(1, 1, 1, 1))
+
+        last_run = getattr(plugin, "last_run", 0)
+        period = getattr(plugin, "period", None)
+        t = time()
+        if period and t > last_run + period or imgui.button("Execute"):
+            plugin.last_run = last_run
+            result = plugin(window.drawing, window.brush, **args)
             if result:
                 args.update(result)
 
-        imgui.same_line()
         imgui.button("Help")
         if imgui.begin_popup_context_item("Help", mouse_button=0):
-            imgui.text(inspect.cleandoc(plugin.__doc__))
+            if plugin.__doc__:
+                imgui.text(inspect.cleandoc(plugin.__doc__))
+            else:
+                imgui.text("No documentation available.")
             imgui.end_popup()
 
         imgui.end()

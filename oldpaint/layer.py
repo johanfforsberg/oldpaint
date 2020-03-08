@@ -117,7 +117,8 @@ class Layer:
         return Layer(self.pic.crop(*self.rect.points))
 
     def get_subimage(self, rect: Rectangle):
-        return self.pic.crop(*rect.points)
+        with self.lock:
+            return self.pic.crop(*rect.points)
 
     def blit(self, pic, rect, set_dirty=True, alpha=True):
         with self.lock:
