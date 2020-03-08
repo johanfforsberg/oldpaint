@@ -1,6 +1,7 @@
 import inspect
 import imp
 from itertools import islice
+from logging import getLogger
 from time import time
 from traceback import print_exc
 
@@ -11,13 +12,18 @@ from .config import plugin_source
 from .util import try_except_log
 
 
+logger = getLogger("oldpaint").getChild("plugins")
+
+
 def init_plugins(window):
+    "(Re)initialize all found plugins"
     plugins = plugin_source.list_plugins()
     for plugin_name in plugins:
-        print("init", plugin_name)
+        logger.info("Initializing plugin: %s", plugin_name)
         try:
             plugin = plugin_source.load_plugin(plugin_name)
-            imp.reload(plugin)
+            if plugin_name in window.plugins:
+                imp.reload(plugin)
             if hasattr(plugin, "plugin"):
                 sig = inspect.signature(plugin.plugin)
                 window.plugins[plugin_name] = plugin.plugin, sig.parameters, {}
@@ -30,6 +36,7 @@ def init_plugins(window):
 
 @try_except_log
 def render_plugins_ui(window):
+    "Draw UI windows for all plugins active for the current drawing."
     if not window.drawing:
         return
     for name in window.drawing.active_plugins:
