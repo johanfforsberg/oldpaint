@@ -2,21 +2,17 @@ from itertools import chain, product
 from functools import lru_cache
 import math
 from time import time
-from traceback import print_exc
 
 from pyglet import gl
 from euclid3 import Matrix4
 
 from fogl.framebuffer import FrameBuffer
 from fogl.glutil import gl_matrix
-from fogl.mesh import ObjMesh, Mesh
+from fogl.mesh import Mesh
 from fogl.shader import Program, VertexShader, FragmentShader
-from fogl.texture import ImageTexture, Texture, NormalTexture
-from fogl.util import try_except_log, load_png
-from fogl.vao import VertexArrayObject
+from fogl.texture import Texture, NormalTexture
 from fogl.vertex import Vertices
 from fogl.util import enabled, disabled
-import oldpaint
 
 
 VERTEX_SHADER = b"""
@@ -88,9 +84,7 @@ class Plugin:
             FragmentShader(source=FRAGMENT_SHADER)
         )
         self.mesh = None
-        # self.vao = VertexArrayObject()
         self.framebuffer = None
-
         self.texture = None
 
     @lru_cache(1)
@@ -98,8 +92,6 @@ class Plugin:
         if self.framebuffer:
             self.framebuffer.delete()
         render_textures = dict(
-            # These will represent the different channels of the framebuffer,
-            # that the shader can render to.
             color=Texture(size, unit=0, params={gl.GL_TEXTURE_MIN_FILTER: gl.GL_LINEAR}),
             normal=NormalTexture(size, unit=1, params={gl.GL_TEXTURE_MIN_FILTER: gl.GL_LINEAR}),
             position=NormalTexture(size, unit=2, params={gl.GL_TEXTURE_MIN_FILTER: gl.GL_LINEAR}),
@@ -117,12 +109,13 @@ class Plugin:
 
     @lru_cache(100)
     def _get_layer_vertices(self, layer, rect, colors, z):
+
         if not layer.visible:
             return []
         subimage = layer.get_subimage(rect)
         w, h = rect.size
         # TODO "w - x" is there to unmirror everything, figure out why it's needed.
-        vertices = [((w - x, y, z, 1),
+        vertices = [((w - x, y, -z, 1),
                      self._get_float_color(*colors[subimage[x, y]]),
                      (0, 0, 1, 0))
                     for x, y in product(range(w), range(h))
@@ -136,15 +129,12 @@ class Plugin:
                                         if layer.visible))
         
     def __call__(self, drawing, brush,
-                 altitude: float=2 * math.pi/3, azimuth: float=0, spin: bool=False):
+                 altitude: float=-math.pi/3, azimuth: float=0, spin: bool=False):
         selection = drawing.selection
         if selection:
             size = selection.size
             depth = len(drawing.layers)
             colors = drawing.palette.as_tuple()
-            # vertices = list(chain.from_iterable(self._get_layer_vertices(layer, selection, colors, i)
-            #                                     for i, layer in enumerate(drawing.layers)
-            #                                     if layer.visible))
             vertices = self._get_vertices(tuple(drawing.layers), selection, colors)
             if not vertices:
                 # TODO hacky
@@ -156,34 +146,20 @@ class Plugin:
             with offscreen_buffer, self.program, \
                     enabled(gl.GL_DEPTH_TEST), disabled(gl.GL_CULL_FACE):
 
-                # near = -10
-                # far = 15
-                # width = 0.05
-                # height = 0.05 * 1
-                # frustum = (Matrix4.new(
-                #     near / width, 0, 0, 0,
-                #     0, near / height, 0, 0,
-                #     0, 0, -(far + near)/(far - near), -1,
-                #     0, 0, -2 * far * near/(far - near), 0
-                # ))
                 w, h = size
-                model_matrix = Matrix4.new_translate(-w/2, -h/2, -depth/2).scale(1, 1, 1/math.sin(math.pi/3))
+                model_matrix = Matrix4.new_translate(-w/2, -h/2, depth/2).scale(1, 1, 1/math.sin(math.pi/3))
                 azimuth = time() if spin else azimuth
-                view_matrix = (Matrix4
-                               .new_scale(2/w, 2/h, 1/max(w, h))
-                               .translate(0, 0, -10)
-                               .rotatex(altitude)
-                               .rotatez(azimuth)  # Rotate over time
-                               )
+                view_matrix = (
+                    Matrix4
+                    .new_scale(2/w, 2/h, 1/max(w, h))
+                    .translate(0, 0, -10)
+                    .rotatex(altitude)
+                    .rotatez(azimuth)  # Rotate over time
+                )
                 gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE,
                                       gl_matrix(view_matrix * model_matrix))
 
-                # gl.glClearColor(1, 0, 0, 1)
-                # gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-                
-                gl.glUniform4f(1, 0.3, 1, 0.3, 1)
                 gl.glViewport(0, 0, *size)
-                #gl.glDepthRange(-100, 100)
                 gl.glPointSize(1.0)
 
                 mesh.draw(mode=gl.GL_POINTS)
