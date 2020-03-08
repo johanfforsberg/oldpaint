@@ -6,13 +6,14 @@ e.g. Krita.
 
 from typing import List, Tuple
 import io
+import json
 import zipfile
 from xml.etree import ElementTree as ET
 
 from .picture import LongPicture, load_png, save_png
 
 
-def save_ora(size: Tuple[int, int], layers: List[LongPicture], palette, path):
+def save_ora(size: Tuple[int, int], layers: List[LongPicture], palette, path, **kwargs):
     w, h = size
     image_el = ET.Element("image", version="0.0.3", w=str(w), h=str(h))
     stack_el = ET.SubElement(image_el, "stack")
@@ -29,6 +30,9 @@ def save_ora(size: Tuple[int, int], layers: List[LongPicture], palette, path):
                 f.seek(0)
                 orafile.writestr(f"data/layer{i}.png", f.read())
 
+        # Other data
+        orafile.writestr("oldpaint.json", json.dumps(kwargs))
+                
 
 def load_ora(path):
     # TODO we should not allow loading arbitrary ORA, only those
@@ -43,4 +47,8 @@ def load_ora(path):
             with orafile.open(path) as imgf:
                 pic, palette = load_png(imgf)
                 layers.append(pic)
-    return layers, palette
+        try:
+            other_data = json.loads(orafile.read("oldpaint.json"))
+        except KeyError:
+            other_data = {}
+    return layers, palette, other_data

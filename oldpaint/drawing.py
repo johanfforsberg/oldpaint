@@ -15,6 +15,7 @@ from .layer import Layer, TemporaryLayer
 from .ora import load_ora, save_ora
 from .picture import LongPicture, load_png, save_png
 from .palette import Palette
+from .rect import Rectangle
 
 from .util import Selectable, try_except_log
 
@@ -39,7 +40,7 @@ class Drawing:
     mess up the undo history beyond repair.
     """
 
-    def __init__(self, size, layers=None, palette=None, path=None):
+    def __init__(self, size, layers=None, palette=None, path=None, selection=None):
         self.size = size
         if layers:
             self.layers = Selectable(layers)
@@ -55,7 +56,7 @@ class Drawing:
         self._edits_index = -1
         self._latest_save_index = 0
 
-        self.selection = None
+        self.selection = Rectangle.from_dict(selection) if selection else None
         self.only_show_current_layer = False
 
         # Keep track of what we're looking at
@@ -133,10 +134,10 @@ class Drawing:
     @classmethod
     def from_ora(cls, path):
         """Load a complete drawing from an ORA file."""
-        layer_pics, colors = load_ora(path)
+        layer_pics, colors, kwargs = load_ora(path)
         palette = Palette(colors, transparency=0)
         layers = [Layer(p) for p in reversed(layer_pics)]
-        return cls(size=layers[0].size, layers=layers, palette=palette, path=path)
+        return cls(size=layers[0].size, layers=layers, palette=palette, path=path, **kwargs)
 
     def save_ora(self, path=None, auto=False):
         """Save in ORA format, which keeps all layers intact."""
@@ -157,7 +158,7 @@ class Drawing:
         something bad happens while writing.
         """
         tmp_path = path + ".tmp"
-        save_ora(self.size, self.layers, self.palette, tmp_path)
+        save_ora(self.size, self.layers, self.palette, tmp_path, selection=self.selection.as_dict())
         shutil.move(tmp_path, path)
 
     def add_layer(self, index=None, layer=None):

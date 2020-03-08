@@ -95,7 +95,14 @@ cdef class Rectangle:
     cpdef int area(self):
         return self.width * self.height
 
+    def as_dict(self):
+        return dict(position=self.position, size=self.size)
 
+    @classmethod
+    def from_dict(cls, d):
+        return cls(position=tuple(d["position"]), size=tuple(d["size"]))
+
+    
 cpdef Rectangle from_points(list pts):
     """ Create the smallest rectangle that contains the given points (any number of (x, y) tuples). """
     cdef tuple xs, ys
