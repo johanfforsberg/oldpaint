@@ -58,7 +58,7 @@ layout (location = 1) out vec4 normal_out;
 
 void main(void) {
   float z = gl_FragCoord.z;
-  float light = 0.5 + z / 2;
+  float light = 1 - z / 2;
   color_out = fs_in.color * vec4(light, light, light, 1);
   normal_out = fs_in.normal;
 }
@@ -121,7 +121,10 @@ class Plugin:
             return []
         subimage = layer.get_subimage(rect)
         w, h = rect.size
-        vertices = [((x, y, z, 1), self._get_float_color(*colors[subimage[x, y]]), (0, 0, 1, 0))
+        # TODO "w - x" is there to unmirror everything, figure out why it's needed.
+        vertices = [((w - x, y, z, 1),
+                     self._get_float_color(*colors[subimage[x, y]]),
+                     (0, 0, 1, 0))
                     for x, y in product(range(w), range(h))
                     if subimage[x, y] > 0]
         return vertices
@@ -133,7 +136,7 @@ class Plugin:
                                         if layer.visible))
         
     def __call__(self, drawing, brush,
-                 altitude: float=math.pi/3, azimuth: float=0, spin: bool=False):
+                 altitude: float=2 * math.pi/3, azimuth: float=0, spin: bool=False):
         selection = drawing.selection
         if selection:
             size = selection.size
@@ -151,7 +154,7 @@ class Plugin:
             mesh = Mesh(data=vertices, vertices_class=VoxelVertices)
 
             with offscreen_buffer, self.program, \
-                    disabled(gl.GL_DEPTH_TEST), disabled(gl.GL_CULL_FACE):
+                    enabled(gl.GL_DEPTH_TEST), disabled(gl.GL_CULL_FACE):
 
                 # near = -10
                 # far = 15
