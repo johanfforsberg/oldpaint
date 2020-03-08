@@ -56,6 +56,7 @@ class Drawing:
         self._latest_save_index = 0
 
         self.selection = None
+        self.only_show_current_layer = False
 
         # Keep track of what we're looking at
         self.offset = (0, 0)
@@ -78,6 +79,12 @@ class Drawing:
     #     if self.show_selection:
     #         return self.selections.current
 
+    @property
+    def visible_layers(self):
+        if self.only_show_current_layer:
+            return [self.current]
+        return [layer for layer in self.layers if layer.visible]
+    
     @property
     def filename(self):
         return os.path.basename(self.path) if self.path else "[Unnamed]"

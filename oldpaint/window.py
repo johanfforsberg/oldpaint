@@ -172,6 +172,9 @@ class OldpaintWindow(pyglet.window.Window):
         self.plugins = {}
         init_plugins(self)
 
+        self.keys = key.KeyStateHandler()
+        self.push_handlers(self.keys)
+        
     @property
     def overlay(self):
         return self.drawings.current.overlay
@@ -253,13 +256,19 @@ class OldpaintWindow(pyglet.window.Window):
 
     @no_imgui_events
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
-        ox, oy = self.offset
-        ix, iy = self._to_image_coords(x, y)
-        self.zoom = max(min(self.zoom + scroll_y, MAX_ZOOM), MIN_ZOOM)
-        self._to_image_coords.cache_clear()
-        x2, y2 = self._to_window_coords(ix, iy)
-        self.offset = ox + (x - x2), oy + (y - y2)
-        self._to_image_coords.cache_clear()
+        if self.keys[key.LSHIFT]:
+            if scroll_y > 0:
+                self.drawing.next_layer()
+            else:
+                self.drawing.prev_layer()
+        else:
+            ox, oy = self.offset
+            ix, iy = self._to_image_coords(x, y)
+            self.zoom = max(min(self.zoom + scroll_y, MAX_ZOOM), MIN_ZOOM)
+            self._to_image_coords.cache_clear()
+            x2, y2 = self._to_window_coords(ix, iy)
+            self.offset = ox + (x - x2), oy + (y - y2)
+            self._to_image_coords.cache_clear()
 
     def on_mouse_motion(self, x, y, dx, dy):
         "Callback for mouse motion without buttons held"
@@ -494,10 +503,12 @@ class OldpaintWindow(pyglet.window.Window):
 
                 imgui.core.separator()
 
-                imgui.begin_child("Palette", height=0)
+                imgui.begin_child("Palette", height=460)
                 ui.render_palette(self.drawing)
                 imgui.end_child()
 
+                ui.render_layers(drawing)
+                
                 imgui.end()
 
                 if self.window_visibility["edits"]:

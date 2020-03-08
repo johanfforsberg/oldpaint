@@ -222,7 +222,7 @@ def render_palette(drawing: Drawing):
         if is_foreground:
             draw_list = imgui.get_window_draw_list()
             draw_list.add_rect_filled(x+2, y+2, x+10, y+10, imgui.get_color_u32_rgba(0, 0, 0, 1))
-        elif is_background:
+        if is_background:
             draw_list = imgui.get_window_draw_list()
             draw_list.add_rect_filled(x+15, y+2, x+23, y+10, imgui.get_color_u32_rgba(0, 0, 0, 1))
 
@@ -377,19 +377,19 @@ def render_color_editor_popup(drawing, i, still_open):
 
 
 def render_layers(drawing: Drawing):
+    
+    # imgui.columns(2, "Layers")
+    # imgui.set_column_offset(1, 100)
+    # if imgui.button("Add"):
+    #     drawing.add_layer()
+    # if imgui.button("Remove"):
+    #     drawing.remove_layer()
+    # if imgui.button("Down"):
+    #     drawing.move_layer_down()
+    # if imgui.button("Up"):
+    #     drawing.move_layer_up()
 
-    imgui.columns(2, "Layers")
-    imgui.set_column_offset(1, 100)
-    if imgui.button("Add"):
-        drawing.add_layer()
-    if imgui.button("Remove"):
-        drawing.remove_layer()
-    if imgui.button("Down"):
-        drawing.move_layer_down()
-    if imgui.button("Up"):
-        drawing.move_layer_up()
-
-    imgui.next_column()
+    # imgui.next_column()         
 
     imgui.begin_child("Layers", border=False, height=0)
     selected = None
@@ -606,8 +606,14 @@ def render_main_menu(window):
             selected = imgui.menu_item("Show selection", "z", window.drawing and window.drawing.selection, window.drawing)[1]
             if window.drawing:
                 window.drawing.show_selection = selected
-            imgui.separator()
 
+            only_show_current_layer = imgui.menu_item("Only show current layer", "",
+                                                      window.drawing and window.drawing.only_show_current_layer,
+                                                      window.drawing)[1]
+            if window.drawing:
+                window.drawing.only_show_current_layer = only_show_current_layer
+            imgui.separator()
+            
             for drawing in window.drawings.items:
                 if imgui.menu_item(f"{drawing.filename} {drawing.size}",
                                    None, drawing == window.drawing, True)[0]:
