@@ -364,10 +364,7 @@ class OldpaintWindow(pyglet.window.Window):
 
             elif symbol == key.C:
                 self.window_visibility["colors"] = not self.window_visibility["colors"]
-            elif symbol == key.E:
-                imgui.open_popup("Edit foreground color")
-                # imgui.set_next_window_position(w - 115 - 120, 200)
-
+                
             elif symbol == key.F4:
                 init_plugins(self)
 
