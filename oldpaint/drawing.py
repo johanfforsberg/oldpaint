@@ -158,7 +158,8 @@ class Drawing:
         something bad happens while writing.
         """
         tmp_path = path + ".tmp"
-        save_ora(self.size, self.layers, self.palette, tmp_path, selection=self.selection.as_dict())
+        selection = self.selection.as_dict() if self.selection else None
+        save_ora(self.size, self.layers, self.palette, tmp_path, selection=selection)
         shutil.move(tmp_path, path)
 
     def add_layer(self, index=None, layer=None):
