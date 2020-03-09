@@ -149,7 +149,8 @@ class Drawing:
                 self.path = path
         else:
             raise RuntimeError("Can't save without path")
-        self._latest_save_index = len(self._edits)
+        if not auto:
+            self._latest_save_index = len(self._edits)
 
     def _save_ora(self, path):
         """
