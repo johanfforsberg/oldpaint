@@ -50,9 +50,13 @@ def render_plugins_ui(window):
     "Draw UI windows for all plugins active for the current drawing."
     if not window.drawing:
         return
+    
+    deactivated = set()
     for name in window.drawing.active_plugins:
         plugin, sig, args = window.plugins[name]
-        imgui.begin(name, True)
+        _, opened = imgui.begin(name, True)
+        if not opened:
+            deactivated.add(name)
         imgui.columns(2)
         for param_name, param_sig in islice(sig.items(), 3, None):
             imgui.text(param_name)
@@ -100,3 +104,5 @@ def render_plugins_ui(window):
             imgui.end_popup()
 
         imgui.end()
+    for name in deactivated:
+        window.drawing.active_plugins.pop(name, None)
