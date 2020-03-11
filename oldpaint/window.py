@@ -504,7 +504,8 @@ class OldpaintWindow(pyglet.window.Window):
                 ui.render_palette(self.drawing)
                 imgui.end_child()
 
-                ui.render_layers(drawing)
+                if drawing:
+                    ui.render_layers(drawing)
                 
                 imgui.end()
 
