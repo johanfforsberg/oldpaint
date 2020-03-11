@@ -128,7 +128,7 @@ class Plugin:
                                         for i, layer in enumerate(layers)
                                         if layer.visible))
         
-    def __call__(self, drawing, brush,
+    def __call__(self, oldpaint, drawing, brush,
                  altitude: float=-math.pi/3, azimuth: float=0, spin: bool=False):
         selection = drawing.selection
         if selection:

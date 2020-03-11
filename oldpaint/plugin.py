@@ -1,3 +1,8 @@
+"""
+Plugin architecture. Currently very minimal, hacky and fragile.
+The plugin API is also not stable.
+"""
+
 import inspect
 import imp
 from itertools import islice
@@ -24,13 +29,19 @@ def init_plugins(window):
             plugin = plugin_source.load_plugin(plugin_name)
             if plugin_name in window.plugins:
                 imp.reload(plugin)
+            # TODO more sophisticated way of handling the different kinds of plugin
             if hasattr(plugin, "plugin"):
+                # Simple function plugin
                 sig = inspect.signature(plugin.plugin)
                 window.plugins[plugin_name] = plugin.plugin, sig.parameters, {}
             elif hasattr(plugin, "Plugin"):
+                # Class plugin
                 sig = inspect.signature(plugin.Plugin.__call__)
-                window.plugins[plugin_name] = plugin.Plugin(), sig.parameters, {}
-        except Exception as e:
+                params = dict(islice(sig.parameters.items(), 1, None))
+                # TODO Broken if plugin is active for more than one drawing!
+                # Need one instance per drawing.
+                window.plugins[plugin_name] = plugin.Plugin(), params, {}
+        except Exception:
             print_exc()
             
 
@@ -76,7 +87,7 @@ def render_plugins_ui(window):
         t = time()
         if period and t > last_run + period or imgui.button("Execute"):
             plugin.last_run = last_run
-            result = plugin(window.drawing, window.brush, **args)
+            result = plugin(oldpaint, window.drawing, window.brush, **args)
             if result:
                 args.update(result)
 

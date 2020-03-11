@@ -27,7 +27,7 @@ def plugin(oldpaint, drawing, brush,  # These args are mandatory even if you don
     This simple script plugin draws two symmetric rectangles based on the current selection.
     Uses the current brush and color. Also has some options.
     """
-    rect = drawing.selections.current
+    rect = drawing.selection
     if rect:
         x, y = rect.position
         w, h = rect.size
