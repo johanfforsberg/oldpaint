@@ -607,7 +607,7 @@ def render_main_menu(window):
 
             imgui.separator()
 
-            selected = imgui.menu_item("Show selection", "z", window.show_selection, window.drawing)[1]
+            selected = imgui.menu_item("Show selection", "", window.show_selection, window.drawing)[1]
             window.show_selection = selected
 
             only_show_current_layer = imgui.menu_item("Only show current layer", "",
@@ -617,8 +617,8 @@ def render_main_menu(window):
                 window.drawing.only_show_current_layer = only_show_current_layer
             imgui.separator()
             
-            for drawing in window.drawings.items:
-                if imgui.menu_item(f"{drawing.filename} {drawing.size}",
+            for i, drawing in enumerate(window.drawings.items):
+                if imgui.menu_item(f"{i+1}: {drawing.filename} {drawing.size}",
                                    None, drawing == window.drawing, True)[0]:
                     window.drawings.select(drawing)
             imgui.end_menu()

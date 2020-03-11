@@ -362,7 +362,14 @@ class OldpaintWindow(pyglet.window.Window):
                 # TODO make this toggle to most-recently-used instead
                 self.overlay.clear()
                 self.drawings.cycle_forward(cyclic=True)
-
+            elif symbol in range(48, 58):
+                if symbol == 48:
+                    index = 9
+                else:
+                    index = symbol - 49
+                if len(self.drawings) > index:
+                    self.drawings.current = self.drawings[index]
+                
             elif symbol == key.C:
                 self.window_visibility["colors"] = not self.window_visibility["colors"]
                 
@@ -543,7 +550,7 @@ class OldpaintWindow(pyglet.window.Window):
                     self._new_drawing["size"] = new_size
                 if imgui.button("OK"):
                     drawing = Drawing(size=self._new_drawing["size"])
-                    self.drawings.add(drawing)
+                    self.drawings.append(drawing)
                     self._new_drawing = None
                     imgui.close_current_popup()
                 imgui.same_line()
@@ -635,7 +642,7 @@ class OldpaintWindow(pyglet.window.Window):
                     drawing = Drawing.from_ora(path)
                 elif path.endswith(".png"):
                     drawing = Drawing.from_png(path)
-                self.drawings.add(drawing)
+                self.drawings.append(drawing)
                 self.drawings.select(drawing)
                 self.add_recent_file(path)
 
