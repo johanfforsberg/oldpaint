@@ -41,6 +41,9 @@ class Selectable:
     def __getitem__(self, index):
         return self.items[index]
 
+    def __setitem__(self, index, item):
+        self.set_item(item, index)
+
     def index(self, item=None):
         return self.items.index(item or self.current)
 

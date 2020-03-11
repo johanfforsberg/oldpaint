@@ -163,9 +163,69 @@ class LayerClearEdit(Edit):
         return f"Clear"
 
     def __repr__(self):
-        return f"{__class__}(index={self.index}, data={len(self.data)}B)"
+        return f"{__class__}(index={self.index}, data={len(self.data)})"
 
 
+@dataclass(frozen=True)
+class LayerCropEdit(Edit):
+
+    index: int
+    rect: Rectangle
+    orig_size: tuple
+    data: bytes
+
+    @classmethod
+    def create(cls, drawing, orig_layer, rect):
+        data = orig_layer.pic.data
+        index = drawing.layers.index(orig_layer)
+        return cls(index=index, data=zlib.compress(data), rect=rect, orig_size=orig_layer.size)
+
+    def perform(self, drawing):
+        layer = drawing.layers[self.index]
+        drawing.layers[self.index] = layer.crop(self.rect)
+
+    def revert(self, drawing):
+        data = zlib.decompress(self.data)
+        drawing.layers[self.index] = Layer(pic=LongPicture(self.orig_size, data))
+
+    @property
+    def index_str(self):
+        return f"{self.index}"
+
+    @property
+    def info_str(self):
+        return f"Crop layer"
+
+    def __repr__(self):
+        return f"{__class__}(index={self.index}, data={len(self.data)}, rect={self.rect})"
+        
+
+class DrawingCropEdit(MultiEdit):
+
+    @classmethod
+    def create(cls, drawing, rect):
+        return cls([
+            LayerCropEdit.create(drawing, layer, rect)
+            for layer in drawing.layers
+        ])
+
+    def perform(self, drawing):
+        super().perform(drawing)
+        drawing.size = self.edits[0].rect.size
+
+    def revert(self, drawing):
+        super().revert(drawing)
+        drawing.size = self.edits[0].orig_size
+        
+    @property
+    def index_str(self):
+        return f"Crop(rect={self.rect})"
+
+    @property
+    def info_str(self):
+        return "Crop drawing"
+
+     
 @dataclass(frozen=True)
 class LayerFlipEdit(Edit):
 
@@ -411,3 +471,6 @@ class SwapColorsPaletteEdit(MultiEdit):
     @property
     def info_str(self):
         return "Swap palette colors"
+
+
+ 

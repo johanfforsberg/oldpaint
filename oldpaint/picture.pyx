@@ -323,4 +323,4 @@ cdef class LongPicture:
         self.version += 1
 
     def __repr__(self):
-        return f"LongPicture({self.size})"
+        return f"LongPicture({self.size}, {self.version})"

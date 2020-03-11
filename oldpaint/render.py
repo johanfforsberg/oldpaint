@@ -24,7 +24,7 @@ def render_drawing(drawing, highlighted_layer=None):
 
     "This function has the job of rendering a drawing to a framebuffer."
 
-    offscreen_buffer = _get_offscreen_buffer(drawing)
+    offscreen_buffer = _get_offscreen_buffer(drawing.size)
 
     colors = _get_colors(drawing.palette.as_tuple())
 
@@ -61,7 +61,7 @@ def render_drawing(drawing, highlighted_layer=None):
             except gl.lib.GLException as e:
                 logging.error(str(e))
 
-        for layer in drawing.visible_layers:
+        for layer in drawing.layers:
 
             if highlighted_layer and highlighted_layer != layer:
                 continue
@@ -96,7 +96,7 @@ def render_drawing(drawing, highlighted_layer=None):
                         gl.glUniform4fv(2, 256, colors)
                         gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
                 else:
-                    with _get_empty_texture(drawing):
+                    with _get_empty_texture(drawing.size):
                         gl.glUniform1f(1, 1)
                         gl.glUniform4fv(2, 256, colors)
                         gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
@@ -105,12 +105,14 @@ def render_drawing(drawing, highlighted_layer=None):
     return offscreen_buffer
 
 
+# TODO this needs to be limited
 layer_texture_cache = {}
 
 def _get_layer_texture(layer):
-    texture = layer_texture_cache.get(id(layer))
+    layer_hash = hash((id(layer), layer.size))
+    texture = layer_texture_cache.get(layer_hash)
     if not texture:
-        layer_texture_cache[id(layer)] = texture = ByteIntegerTexture(layer.size)
+        layer_texture_cache[layer_hash] = texture = ByteIntegerTexture(layer.size)
         texture.clear()
     return texture
 
@@ -123,15 +125,15 @@ def _get_overlay_texture(overlay):
 
 
 @lru_cache(1)
-def _get_empty_texture(drawing):
-    texture = IntegerTexture(drawing.size, unit=1)
+def _get_empty_texture(size):
+    texture = IntegerTexture(size, unit=1)
     texture.clear()
     return texture
 
 
 @lru_cache(1)
-def _get_offscreen_buffer(drawing):
-    return FrameBuffer(drawing.size, textures=dict(color=Texture(drawing.size, unit=0)))
+def _get_offscreen_buffer(size):
+    return FrameBuffer(size, textures=dict(color=Texture(size, unit=0)))
 
 
 @lru_cache(1)

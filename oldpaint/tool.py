@@ -221,7 +221,7 @@ class SelectionTool(Tool):
     show_rect = True
 
     def draw(self, overlay, point, buttons, modifiers):
-        self.rect = from_points([self.points[0], point])
+        self.rect = overlay.rect.intersect(from_points([self.points[0], point]))
 
     def finish(self, overlay, point, buttons, modifiers):
         # self.drawing.selection = self.rect

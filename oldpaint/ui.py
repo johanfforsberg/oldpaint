@@ -594,6 +594,9 @@ def render_main_menu(window):
             if imgui.menu_item("Flip vertically", None, False, window.drawing)[0]:
                 window.drawing.flip_vertical()
 
+            if imgui.menu_item("Crop", None, False, window.drawing and window.drawing.selection)[0]:
+                window.drawing.crop(window.drawing.selection)
+                
             imgui.separator()
 
             if imgui.menu_item("Undo", "z", False, window.drawing and window.drawing.can_undo)[0]:

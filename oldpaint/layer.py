@@ -114,12 +114,16 @@ class Layer:
         return rect
 
     def clone(self):
-        return Layer(self.pic.crop(*self.rect.points))
+        with self.lock:
+            return Layer(self.pic.crop(*self.rect.points))
 
     def get_subimage(self, rect: Rectangle):
         with self.lock:
             return self.pic.crop(*rect.points)
 
+    def crop(self, rect: Rectangle):
+        return Layer(pic=self.get_subimage(rect))
+        
     def blit(self, pic, rect, set_dirty=True, alpha=True):
         with self.lock:
             self.pic.paste(pic, rect.x, rect.y, alpha)
@@ -142,6 +146,9 @@ class Layer:
             self.dirty = self.rect.intersect(rect.unite(self.dirty))
         return self.rect.intersect(rect)
 
+    def __repr__(self):
+        return f"Layer(id={id(self)}, size={self.size}, pic={self.pic})"
+    
     def __hash__(self):
         "For caching purposes, a Layer is considered changed when it's underlying Picture has changed."
         return hash((id(self), self.size, self.pic.version))

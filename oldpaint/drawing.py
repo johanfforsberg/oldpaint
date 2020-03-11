@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from functools import lru_cache
 import logging
 import os
 import shutil
@@ -6,7 +7,7 @@ from uuid import uuid4
 
 from .brush import PicBrush
 from .constants import ToolName
-from .edit import (LayerEdit, LayerClearEdit, LayerFlipEdit,
+from .edit import (LayerEdit, LayerClearEdit, DrawingCropEdit, LayerFlipEdit,
                    DrawingFlipEdit, PaletteEdit, AddLayerEdit,
                    RemoveLayerEdit, SwapLayersEdit, MergeLayersEdit,
                    SwapColorsImageEdit, SwapColorsPaletteEdit,
@@ -46,7 +47,6 @@ class Drawing:
             self.layers = Selectable(layers)
         else:
             self.layers = Selectable([Layer(LongPicture(size=self.size))])
-        self.overlay = TemporaryLayer(LongPicture(size=self.size))
         self.palette = palette if palette else Palette(transparency=0)
         self.brushes = Selectable()
         self.active_plugins = {}
@@ -75,11 +75,14 @@ class Drawing:
         assert isinstance(layer, Layer)
         self.layers.set_item(layer)
 
-    # @property
-    # def selection(self):
-    #     if self.show_selection:
-    #         return self.selections.current
+    @property
+    def overlay(self):
+        return self._get_overlay(self.size)
 
+    @lru_cache(1)
+    def _get_overlay(self, size):
+        return TemporaryLayer(LongPicture(size=size))
+    
     @property
     def visible_layers(self):
         if self.only_show_current_layer:
@@ -162,6 +165,12 @@ class Drawing:
         selection = self.selection.as_dict() if self.selection else None
         save_ora(self.size, self.layers, self.palette, tmp_path, selection=selection)
         shutil.move(tmp_path, path)
+
+    def crop(self, rect):
+        edit = DrawingCropEdit.create(self, rect)
+        edit.perform(self)
+        self._add_edit(edit)
+        self.selection = None
 
     def add_layer(self, index=None, layer=None):
         layer = layer or Layer(LongPicture(self.size))
