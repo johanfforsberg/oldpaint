@@ -91,9 +91,12 @@ def render_plugins_ui(window):
         t = time()
         if period and t > last_run + period or imgui.button("Execute"):
             plugin.last_run = last_run
-            result = plugin(oldpaint, window.drawing, window.brush, **args)
-            if result:
-                args.update(result)
+            try:
+                result = plugin(oldpaint, window.drawing, window.brush, **args)
+                if result:
+                    args.update(result)
+            except Exception:
+                print_exc()
 
         imgui.button("Help")
         if imgui.begin_popup_context_item("Help", mouse_button=0):
