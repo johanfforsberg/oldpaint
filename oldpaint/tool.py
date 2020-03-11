@@ -220,12 +220,16 @@ class SelectionTool(Tool):
     brush_preview = False
     show_rect = True
 
+    def start(self, overlay, point, buttons, modifiers):
+        super().start(overlay, point, buttons, modifiers)
+        self.drawing.selection = None
+    
     def draw(self, overlay, point, buttons, modifiers):
         self.rect = overlay.rect.intersect(from_points([self.points[0], point]))
 
     def finish(self, overlay, point, buttons, modifiers):
         # self.drawing.selection = self.rect
-        self.drawing.make_brush(self.rect, clear=buttons & window.mouse.RIGHT)
+        # self.drawing.make_brush(self.rect, clear=buttons & window.mouse.RIGHT)
         self.drawing.selection = self.rect
 
     def __repr__(self):

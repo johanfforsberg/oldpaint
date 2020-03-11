@@ -81,6 +81,7 @@ class OldpaintWindow(pyglet.window.Window):
             EllipseBrush((10, 20)),
         ])
         self.highlighted_layer = None
+        self.show_selection = True
 
         # Some gl setup
         self.copy_program = Program(VertexShader("glsl/copy_vert.glsl"),
@@ -411,8 +412,7 @@ class OldpaintWindow(pyglet.window.Window):
 
             # Selection rectangle
             tool = self.stroke_tool
-            selection = (self.selection
-                         or self.drawing.selection
+            selection = ((self.show_selection and self.drawing.selection)
                          or (tool and tool.show_rect and tool.rect))
             if selection:
                 self.set_selection(selection)

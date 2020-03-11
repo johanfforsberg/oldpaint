@@ -545,6 +545,7 @@ def render_tool_menu(tools, icons):
 def render_main_menu(window):
 
     w, h = window.get_size()
+    drawing = window.drawing
 
     if imgui.begin_main_menu_bar():
         if imgui.begin_menu("File", True):
@@ -606,9 +607,8 @@ def render_main_menu(window):
 
             imgui.separator()
 
-            selected = imgui.menu_item("Show selection", "z", window.drawing and window.drawing.selection, window.drawing)[1]
-            if window.drawing:
-                window.drawing.show_selection = selected
+            selected = imgui.menu_item("Show selection", "z", window.show_selection, window.drawing)[1]
+            window.show_selection = selected
 
             only_show_current_layer = imgui.menu_item("Only show current layer", "",
                                                       window.drawing and window.drawing.only_show_current_layer,
@@ -684,6 +684,11 @@ def render_main_menu(window):
 
         if imgui.begin_menu("Brush", bool(window.drawing)):
 
+            if imgui.menu_item("Create from selection", None, False, drawing.selection)[0]:
+                drawing.make_brush()
+
+            imgui.separator()
+                
             if imgui.menu_item("Flip horizontally", None, False, window.drawing.brushes.current)[0]:
                 window.brush.flip_horizontal()
                 # window.get_brush_preview_texture.cache_clear()
