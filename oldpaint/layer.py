@@ -72,21 +72,21 @@ class Layer:
         self.version += 1
         return rect
 
-    def draw_rectangle(self, pos, size, brush, offset=(0, 0), set_dirty=True, fill=False, **kwargs):
+    def draw_rectangle(self, pos, size, brush, offset=(0, 0), set_dirty=True, color=0, fill=False, **kwargs):
         if not fill:
             x0, y0 = pos
             ox, oy = offset
             pos = (x0 - ox, y0 - oy)
         with self.lock:
-            rect = draw_rectangle(self.pic, pos, size, brush, fill=fill, **kwargs)
+            rect = draw_rectangle(self.pic, brush, pos, size, color, fill=fill)
             if rect and set_dirty:
                 self.dirty = rect.unite(self.dirty)
         self.version += 1
         return rect
 
-    def draw_fill(self, *args, set_dirty=True, **kwargs):
+    def draw_fill(self, point, color, set_dirty=True):
         with self.lock:
-            rect = draw_fill(self.pic, *args, **kwargs)
+            rect = draw_fill(self.pic, point, color)
             if rect and set_dirty:
                 self.dirty = rect.unite(self.dirty)
         self.version += 1
@@ -133,9 +133,9 @@ class Layer:
         self.version += 1
         return rect
 
-    def clone(self):
+    def clone(self, dtype=dtype):
         with self.lock:
-            return Layer(self.pic.crop(*self.rect.points))
+            return Layer(self.pic.astype(dtype=dtype))
 
     def get_subimage(self, rect: Rectangle):
         with self.lock:
