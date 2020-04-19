@@ -15,7 +15,7 @@ from .edit import (LayerEdit, LayerClearEdit, DrawingCropEdit, LayerFlipEdit,
                    SwapColorsImageEdit, SwapColorsPaletteEdit,
                    MultiEdit)
 from .layer import Layer, TemporaryLayer
-from .ora import load_ora, save_ora
+from .ora import load_ora, save_ora, load_png
 # from .picture import LongPicture, load_png, save_png
 from .palette import Palette
 from .rect import Rectangle
@@ -117,8 +117,9 @@ class Drawing:
     @classmethod
     def from_png(cls, path):
         """Load a PNG into a single layer drawing."""
-        pic, colors = load_png(path)
+        pic, info = load_png(path)
         layer = Layer(pic)
+        colors = info["palette"]
         palette = Palette(colors, transparency=0, size=len(colors))
         return cls(size=layer.size, layers=[layer], palette=palette, path=path)
 

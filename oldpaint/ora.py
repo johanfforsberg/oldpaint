@@ -22,6 +22,12 @@ def save_png(data, dest, palette=None):
     writer.write(dest, rows)
 
 
+def load_png(f):
+    reader = png.Reader(f)
+    w, h, image_data, info = reader.read(f)
+    return np.vstack(list(map(np.uint8, image_data))).T, info
+
+    
 def save_ora(size: Tuple[int, int], layers: List["Layer"], palette, path, **kwargs):
     """
     An ORA file is basically a zip archive containing an XML manifest and a bunch of PNGs.
@@ -58,10 +64,8 @@ def load_ora(path):
         for layer_el in stack_el:
             path = layer_el.attrib["src"]
             with orafile.open(path) as imgf:
-                reader = png.Reader(imgf)
-                w, h, image_data, info = reader.read(imgf)
-                image_2d = np.vstack(list(map(np.uint8, image_data))).T
-                layers.append(image_2d)
+                data, info = load_png(imgf)
+                layers.append(data)
         try:
             # TODO Should verify that this data actually makes sense, maybe using a schema?
             other_data = json.loads(orafile.read("oldpaint.json"))
