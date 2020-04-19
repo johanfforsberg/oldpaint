@@ -650,7 +650,7 @@ def render_main_menu(window):
             if imgui.menu_item("Flip vertically", None, False, True)[0]:
                 window.drawing.flip_layer_vertical()
             if imgui.menu_item("Clear", "Delete", False, True)[0]:
-                window.drawing.clear()
+                window.drawing.clear_layer()
 
             imgui.separator()
 

@@ -154,7 +154,7 @@ class LayerClearEdit(Edit):
     def revert(self, drawing):
         layer = drawing.layers[self.index]
         data = np.frombuffer(zlib.decompress(self.data), dtype=np.uint8).reshape(self.rect.size)
-        layer.blit(data, self.rect, alpha=False)
+        layer.apply_diff(data, self.rect)
 
     @property
     def index_str(self):
