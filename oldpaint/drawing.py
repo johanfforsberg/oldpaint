@@ -139,9 +139,9 @@ class Drawing:
     @classmethod
     def from_ora(cls, path):
         """Load a complete drawing from an ORA file."""
-        layer_pics, colors, kwargs = load_ora(path)
-        palette = Palette(colors, transparency=0)
-        layers = [Layer(p) for p in reversed(layer_pics)]
+        layer_pics, info, kwargs = load_ora(path)
+        palette = Palette(info["palette"], transparency=0)
+        layers = [Layer(pic=p) for p in reversed(layer_pics)]
         return cls(size=layers[0].size, layers=layers, palette=palette, path=path, **kwargs)
 
     def save_ora(self, path=None, auto=False):
@@ -292,13 +292,13 @@ class Drawing:
         layer = layer or self.current
         rect = layer.rect.intersect(rect)
         subimage = layer.get_subimage(rect)
-        subimage.fix_alpha(set(self.palette.transparent_colors))
+        #subimage.fix_alpha(set(self.palette.transparent_colors))
         if clear:
             edit = LayerClearEdit.create(self, layer, rect,
                                          color=self.palette.background)
             edit.perform(self)
             self._add_edit(edit)
-        brush = PicBrush(subimage)
+        brush = PicBrush(data=subimage)
         self.brushes.append(brush)
 
     def _add_edit(self, edit):

@@ -756,7 +756,7 @@ class OldpaintWindow(pyglet.window.Window):
         io = imgui.get_io()
         if io.want_capture_mouse:
             return
-        if self.stroke or not self._over_image(x, y):
+        if self.stroke:
             return
         ix0, iy0 = self._to_image_coords(x0, y0)
         ix, iy = self._to_image_coords(x, y)
@@ -771,7 +771,7 @@ class OldpaintWindow(pyglet.window.Window):
         rect = Rectangle((ix - cx, iy - cy), brush.size)
         color = None if isinstance(self.brush, PicBrush) else self.drawing.palette.foreground
         data = brush.get_draw_data(color)
-        overlay.blit(data, rect)
+        rect = overlay.blit(data, rect)
         
         self.brush_preview_dirty = rect
 

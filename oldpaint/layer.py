@@ -5,7 +5,7 @@ import numpy as np
 
 from .rect import Rectangle
 # from .picture import LongPicture, save_png, load_png
-from .draw import draw_line, draw_rectangle, draw_fill
+from .draw import draw_line, draw_rectangle, draw_fill, blit
 
 
 class Layer:
@@ -124,8 +124,10 @@ class Layer:
 
     def clear(self, rect: Rectangle=None, value=0, set_dirty=True):
         rect = rect or self.rect
-        self.pic[rect.as_slice()] = value
         rect = self.rect.intersect(rect)
+        if not rect:
+            return
+        self.pic[rect.as_slice()] = value
         if set_dirty and rect:
             self.dirty = rect.unite(self.dirty)
         self.version += 1
@@ -143,8 +145,10 @@ class Layer:
         return Layer(pic=self.get_subimage(rect))
         
     def blit(self, pic, rect, set_dirty=True, alpha=True):
+        if not rect:
+            return
         with self.lock:
-            self.pic[rect.as_slice()] = pic
+            blit(self.pic, pic, *rect.position)
             self.dirty = self.rect.intersect(rect.unite(self.dirty))
         self.version += 1
         return self.rect.intersect(rect)
