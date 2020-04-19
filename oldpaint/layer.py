@@ -5,7 +5,7 @@ import numpy as np
 
 from .rect import Rectangle
 # from .picture import LongPicture, save_png, load_png
-from .draw import draw_line, draw_rectangle, draw_fill, blit
+from .draw import draw_line, draw_rectangle, draw_fill, blit, paste
 
 
 class Layer:
@@ -93,12 +93,12 @@ class Layer:
         return rect
 
     def flip_vertical(self):
-        self.pic = self.pic.flip_vertical()
+        self.pic = np.flip(self.pic, axis=1)
         self.dirty = self.rect
         self.version += 1
 
     def flip_horizontal(self):
-        self.pic = self.pic.flip_horizontal()
+        self.pic = np.flip(self.pic, axis=0)
         self.dirty = self.rect
         self.version += 1
 
@@ -148,8 +148,12 @@ class Layer:
         if not rect:
             return
         with self.lock:
-            blit(self.pic, pic, *rect.position)
+            if alpha:
+                blit(self.pic, pic, *rect.position)
+            else:
+                paste(self.pic, pic, *rect.position)
             self.dirty = self.rect.intersect(rect.unite(self.dirty))
+            
         self.version += 1
         return self.rect.intersect(rect)
 

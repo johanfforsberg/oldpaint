@@ -153,8 +153,8 @@ class LayerClearEdit(Edit):
 
     def revert(self, drawing):
         layer = drawing.layers[self.index]
-        diff_data = zlib.decompress(self.data)
-        layer.blit(LongPicture(self.rect.size, diff_data), self.rect, alpha=False)
+        data = np.frombuffer(zlib.decompress(self.data), dtype=np.uint8).reshape(self.rect.size)
+        layer.blit(data, self.rect, alpha=False)
 
     @property
     def index_str(self):
@@ -320,7 +320,8 @@ class AddLayerEdit(Edit):
         return cls(index=index, data=zlib.compress(layer.pic.data), size=layer.size)
 
     def perform(self, drawing):
-        layer = Layer(LongPicture(size=self.size, data=zlib.decompress(self.data)))
+        data = np.frombuffer(zlib.decompress(self.data), dtype=np.uint8).reshape(self.size).copy()
+        layer = Layer(pic=data)
         drawing.layers.add(layer, index=self.index)
 
     def revert(self, drawing):
