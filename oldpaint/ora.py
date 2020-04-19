@@ -38,7 +38,9 @@ def save_ora(size: Tuple[int, int], layers: List["Layer"], palette, path, **kwar
     image_el = ET.Element("image", version="0.0.3", w=str(w), h=str(h))
     stack_el = ET.SubElement(image_el, "stack")
     for i, layer in enumerate(reversed(layers), 1):
-        ET.SubElement(stack_el, "layer", name=f"layer{i}", src=f"data/layer{d - i}.png")
+        visibility = "visible" if layer.visible else "hidden"
+        ET.SubElement(stack_el, "layer", name=f"layer{i}", src=f"data/layer{d - i}.png",
+                      visibility=visibility)
     stack_xml = b"<?xml version='1.0' encoding='UTF-8'?>" + ET.tostring(image_el)
     with zipfile.ZipFile(path, mode="w", compression=zipfile.ZIP_DEFLATED) as orafile:
         orafile.writestr("mimetype", "image/openraster", compress_type=zipfile.ZIP_STORED)
@@ -48,7 +50,7 @@ def save_ora(size: Tuple[int, int], layers: List["Layer"], palette, path, **kwar
                 save_png(layer.pic, f, palette=palette.colors)
                 f.seek(0)
                 orafile.writestr(f"data/layer{d - i}.png", f.read())
-
+                
         # Other data
         orafile.writestr("oldpaint.json", json.dumps(kwargs))
                 
@@ -63,9 +65,10 @@ def load_ora(path):
         layers = []
         for layer_el in stack_el:
             path = layer_el.attrib["src"]
+            visibility = layer_el.attrib.get("visibility", "visible")
             with orafile.open(path) as imgf:
                 data, info = load_png(imgf)
-                layers.append(data)
+                layers.append((data, visibility == "visible"))
         try:
             # TODO Should verify that this data actually makes sense, maybe using a schema?
             other_data = json.loads(orafile.read("oldpaint.json"))

@@ -17,7 +17,7 @@ class Layer:
 
     dtype = np.uint8
 
-    def __init__(self, pic=None, size=None):
+    def __init__(self, pic=None, size=None, visible=True):
         if size:
             pic = np.zeros(size, dtype=self.dtype)
         assert isinstance(pic, np.ndarray), "Layer expects a ndarray instance."
@@ -37,7 +37,7 @@ class Layer:
         # or remove the dirty rect, but growing it is fine.
         self.dirty = self.rect
 
-        self.visible = True
+        self.visible = visible
 
     def save_png(self, path, palette=None):
         save_png(self.pic, path, palette)

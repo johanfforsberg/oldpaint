@@ -142,8 +142,8 @@ class Drawing:
         """Load a complete drawing from an ORA file."""
         layer_pics, info, kwargs = load_ora(path)
         palette = Palette(info["palette"], transparency=0)
-        layers = [Layer(pic=p) for p in reversed(layer_pics)]
-        return cls(size=layers[0].size, layers=layers, palette=palette, path=path, **kwargs)
+        layers = [Layer(pic=p, visible=v) for p, v in layer_pics]
+        return cls(size=layers[0].size, layers=layers, palette=palette, path=path)
 
     def save_ora(self, path=None, auto=False):
         """Save in ORA format, which keeps all layers intact."""
