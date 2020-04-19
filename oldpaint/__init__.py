@@ -7,7 +7,7 @@ import re
 import pyglet
 import pyximport
 
-pyximport.install()  # Setup cython to autocompile pyx modules
+pyximport.install(language_level=3)  # Setup cython to autocompile pyx modules
 
 from .config import load_config, save_config
 from .window import OldpaintWindow

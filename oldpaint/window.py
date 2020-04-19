@@ -20,7 +20,7 @@ from fogl.util import try_except_log
 from fogl.vao import VertexArrayObject
 from fogl.vertex import SimpleVertices
 
-from .brush import PicBrush, RectangleBrush, EllipseBrush
+from .brush import PicBrush, RectangleBrush  #, EllipseBrush
 from .config import get_autosave_filename
 from .drawing import Drawing
 from .imgui_pyglet import PygletRenderer
@@ -77,8 +77,8 @@ class OldpaintWindow(pyglet.window.Window):
             RectangleBrush((1, 1)),
             RectangleBrush((2, 2)),
             RectangleBrush((3, 3)),
-            EllipseBrush((8, 8)),
-            EllipseBrush((10, 20)),
+            # EllipseBrush((8, 8)),
+            # EllipseBrush((10, 20)),
         ])
         self.highlighted_layer = None
         self.show_selection = True
@@ -770,7 +770,9 @@ class OldpaintWindow(pyglet.window.Window):
         overlay.clear(old_rect)
         rect = Rectangle((ix - cx, iy - cy), brush.size)
         color = None if isinstance(self.brush, PicBrush) else self.drawing.palette.foreground
-        overlay.blit(brush.get_pic(color), rect)
+        data = brush.get_draw_data(color)
+        overlay.blit(data, rect)
+        
         self.brush_preview_dirty = rect
 
     def _update_cursor(self, x, y):
@@ -837,7 +839,7 @@ class OldpaintWindow(pyglet.window.Window):
         w, h = size = max(w, bw), max(h, bh)
         texture = Texture(size)
         texture.clear()
-        data = brush.original.as_rgba(colors, True)
+        data = brush.as_rgba(colors)
         gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
         gl.glTextureSubImage2D(texture.name, 0,
                                max(0, w//2-bw//2), max(0, h//2-bh//2), bw, bh, # min(w, bw), min(w, bh),

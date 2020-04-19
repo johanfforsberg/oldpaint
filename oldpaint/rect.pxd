@@ -9,10 +9,11 @@ cdef class Rectangle:
     cpdef Rectangle intersect(self, Rectangle other)
     cpdef Rectangle unite(self, Rectangle other)
     cpdef Rectangle offset(self, (int, int) point)
-    cdef (int, int, int, int) get_points(self)
+    # cdef (int, int, int, int) get_points(self)
     # cpdef (int, int, int, int) points(self)
     # cpdef (int, int, int, int) box(self)
     cpdef Rectangle expanded(self, (int, int) point)
     cpdef int area(self)
-
+    cpdef as_slice(self)
+    
 cpdef Rectangle from_points(list pts)

@@ -68,7 +68,7 @@ cdef class Rectangle:
         x, y = point
         return (self.left <= x < self.right) & (self.top <= y < self.bottom)
 
-    cdef (int, int, int, int) get_points(self):
+    def get_points(self):
         return self.x, self.y, self.width, self.height
 
     def __iter__(self):
@@ -102,6 +102,16 @@ cdef class Rectangle:
     def from_dict(cls, d):
         return cls(position=tuple(d["position"]), size=tuple(d["size"]))
 
+    cpdef as_slice(self):
+        cdef int x0, y0
+        x0, y0 = self.position
+        cdef int w, h
+        w, h = self.size
+        cdef int x1, y1
+        x1 = x0 + w
+        y1 = y0 + h
+        return slice(x0, x1), slice(y0, y1)
+    
     
 cpdef Rectangle from_points(list pts):
     """ Create the smallest rectangle that contains the given points (any number of (x, y) tuples). """

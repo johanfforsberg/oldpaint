@@ -13,6 +13,8 @@ from dataclasses import dataclass
 import struct
 import zlib
 
+import numpy as np
+
 from .constants import ToolName
 from .layer import Layer
 from .picture import LongPicture
@@ -90,19 +92,19 @@ class LayerEdit(Edit):
     @classmethod
     def create(cls, drawing, orig_layer, edit_layer, rect, tool=0):
         "Helper to handle compressing the data."
-        data = orig_layer.make_diff(edit_layer, rect, alpha=False)
+        data = orig_layer.make_diff(edit_layer, rect, alpha=False).tobytes()
         index = drawing.layers.index(orig_layer)
         return cls(index=index, tool=tool, data=zlib.compress(data), rect=rect)
 
     def perform(self, drawing):
         layer = drawing.layers[self.index]
-        diff_data = zlib.decompress(self.data)
-        layer.apply_diff(memoryview(diff_data).cast("h"), self.rect, False)
+        diff_data = np.frombuffer(zlib.decompress(self.data), dtype=np.int16).reshape(self.rect.size)
+        layer.apply_diff(diff_data, self.rect, False)
 
     def revert(self, drawing):
         layer = drawing.layers[self.index]
-        diff_data = zlib.decompress(self.data)
-        layer.apply_diff(memoryview(diff_data).cast("h"), self.rect, True)
+        diff_data = np.frombuffer(zlib.decompress(self.data), dtype=np.int16).reshape(self.rect.size)
+        layer.apply_diff(-diff_data, self.rect, True)
 
     # @classmethod
     # def merge(self, edits):

@@ -37,7 +37,7 @@ def render_drawing(drawing, highlighted_layer=None):
         gl.glClearBufferfv(gl.GL_COLOR, 0, EMPTY_COLOR)
 
         overlay = drawing.overlay
-        overlay_texture = _get_overlay_texture(overlay)
+        overlay_texture = _get_overlay_texture(overlay.size)
 
         if overlay.dirty and overlay.lock.acquire(timeout=0.01):
             # Since we're drawing in a separate thread, we need to be very careful
@@ -49,7 +49,7 @@ def render_drawing(drawing, highlighted_layer=None):
             # not get to update for a long time.
             rect = overlay.dirty
             subimage = overlay.get_subimage(rect)
-            data = bytes(subimage.data)  # TODO Is this making another copy?
+            data = subimage.tobytes("F")  # TODO Is this making another copy?
 
             # Now update the texture with the changed part of the layer.
             try:
@@ -76,10 +76,11 @@ def render_drawing(drawing, highlighted_layer=None):
             if layer.dirty and layer.lock.acquire(timeout=0.03):
                 rect = layer.dirty
                 subimage = layer.get_subimage(rect)
-                data = bytes(subimage.data)
+                data = subimage.tobytes("F")
+                gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)  # Needed for writing 8bit data  
                 gl.glTextureSubImage2D(layer_texture.name, 0, *rect.points,
-                                       gl.GL_RGBA_INTEGER, gl.GL_UNSIGNED_BYTE, data)
-
+                                       gl.GL_RED_INTEGER, gl.GL_UNSIGNED_BYTE, data)
+                gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
                 layer.dirty = None
                 layer.lock.release()
 
@@ -118,8 +119,8 @@ def _get_layer_texture(layer):
 
 
 @lru_cache(1)
-def _get_overlay_texture(overlay):
-    texture = IntegerTexture(overlay.size, unit=1)
+def _get_overlay_texture(shape):
+    texture = IntegerTexture(shape, unit=1)
     texture.clear()
     return texture
 

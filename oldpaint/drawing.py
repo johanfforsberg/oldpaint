@@ -5,6 +5,8 @@ import os
 import shutil
 from uuid import uuid4
 
+import numpy as np
+
 from .brush import PicBrush
 from .constants import ToolName
 from .edit import (LayerEdit, LayerClearEdit, DrawingCropEdit, LayerFlipEdit,
@@ -14,7 +16,7 @@ from .edit import (LayerEdit, LayerClearEdit, DrawingCropEdit, LayerFlipEdit,
                    MultiEdit)
 from .layer import Layer, TemporaryLayer
 from .ora import load_ora, save_ora
-from .picture import LongPicture, load_png, save_png
+# from .picture import LongPicture, load_png, save_png
 from .palette import Palette
 from .rect import Rectangle
 
@@ -46,7 +48,7 @@ class Drawing:
         if layers:
             self.layers = Selectable(layers)
         else:
-            self.layers = Selectable([Layer(LongPicture(size=self.size))])
+            self.layers = Selectable([Layer(size=self.size)])
         self.palette = palette if palette else Palette(transparency=0)
         self.brushes = Selectable()
         self.active_plugins = {}
@@ -81,7 +83,7 @@ class Drawing:
 
     @lru_cache(1)
     def _get_overlay(self, size):
-        return TemporaryLayer(LongPicture(size=size))
+        return TemporaryLayer(size=size)
     
     @property
     def visible_layers(self):
@@ -173,7 +175,7 @@ class Drawing:
         self.selection = None
 
     def add_layer(self, index=None, layer=None):
-        layer = layer or Layer(LongPicture(self.size))
+        layer = layer or Layer(size=self.size)
         index = (index if index is not None else self.layers.get_current_index()) + 1
 
         self.layers.add(layer, index=index)

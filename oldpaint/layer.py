@@ -1,8 +1,11 @@
+from functools import lru_cache
 from threading import RLock
 
+import numpy as np
+
 from .rect import Rectangle
-from .picture import LongPicture, save_png, load_png
-from .draw import draw_line, draw_rectangle, draw_ellipse, draw_fill
+# from .picture import LongPicture, save_png, load_png
+from .draw import draw_line, draw_rectangle, draw_fill
 
 
 class Layer:
@@ -12,12 +15,15 @@ class Layer:
     The image data is kept in a Picture instance.
     """
 
+    dtype = np.uint8
+
     def __init__(self, pic=None, size=None):
         if size:
-            pic = LongPicture(size)
-        assert isinstance(pic, LongPicture), "Layer expects a LongPicture instance."
+            pic = np.zeros(size, dtype=self.dtype)
+        assert isinstance(pic, np.ndarray), "Layer expects a ndarray instance."
         # Here lies the image data for the layer.
         self.pic = pic
+        self.version = 0
 
         # This lock is important to hold while drawing, since otherwise
         # the main thread might start reading from it while we're writing.
@@ -48,9 +54,10 @@ class Layer:
         p0 = (x0 - ox, y0 - oy)
         p1 = (x1 - ox, y1 - oy)
         with self.lock:
-            rect = draw_line(self.pic, p0, p1, brush, **kwargs)
+            rect = draw_line(self.pic, brush, p0, p1)
             if rect and set_dirty:
                 self.dirty = rect.unite(self.dirty)
+        self.version += 1
         return rect
 
     def draw_ellipse(self, pos, size, brush, offset, set_dirty=True, fill=False, **kwargs):
@@ -62,6 +69,7 @@ class Layer:
             rect = draw_ellipse(self.pic, pos, size, brush, fill=fill, **kwargs)
             if rect and set_dirty:
                 self.dirty = rect.unite(self.dirty)
+        self.version += 1
         return rect
 
     def draw_rectangle(self, pos, size, brush, offset=(0, 0), set_dirty=True, fill=False, **kwargs):
@@ -73,6 +81,7 @@ class Layer:
             rect = draw_rectangle(self.pic, pos, size, brush, fill=fill, **kwargs)
             if rect and set_dirty:
                 self.dirty = rect.unite(self.dirty)
+        self.version += 1
         return rect
 
     def draw_fill(self, *args, set_dirty=True, **kwargs):
@@ -80,37 +89,46 @@ class Layer:
             rect = draw_fill(self.pic, *args, **kwargs)
             if rect and set_dirty:
                 self.dirty = rect.unite(self.dirty)
+        self.version += 1
         return rect
 
     def flip_vertical(self):
         self.pic = self.pic.flip_vertical()
         self.dirty = self.rect
+        self.version += 1
 
     def flip_horizontal(self):
         self.pic = self.pic.flip_horizontal()
         self.dirty = self.rect
+        self.version += 1
 
     def swap_colors(self, index1, index2):
         self.pic.swap_colors(index1, index2)
         self.dirty = self.rect
+        self.version += 1
 
     @property
     def size(self):
-        return self.pic.size
+        return self.pic.shape
 
     @property
     def rect(self):
-        return self.pic.rect
+        return self._get_rect(self.pic.shape)
+
+    @lru_cache(1)
+    def _get_rect(self, shape):
+        return Rectangle(size=shape)
 
     def toggle_visibility(self):
         self.visible = not self.visible
 
     def clear(self, rect: Rectangle=None, value=0, set_dirty=True):
         rect = rect or self.rect
-        self.pic.clear(rect.box(), value)
+        self.pic[rect.as_slice()] = value
         rect = self.rect.intersect(rect)
         if set_dirty and rect:
             self.dirty = rect.unite(self.dirty)
+        self.version += 1
         return rect
 
     def clone(self):
@@ -119,31 +137,36 @@ class Layer:
 
     def get_subimage(self, rect: Rectangle):
         with self.lock:
-            return self.pic.crop(*rect.points)
+            return self.pic[rect.as_slice()]
 
     def crop(self, rect: Rectangle):
         return Layer(pic=self.get_subimage(rect))
         
     def blit(self, pic, rect, set_dirty=True, alpha=True):
         with self.lock:
-            self.pic.paste(pic, rect.x, rect.y, alpha)
+            self.pic[rect.as_slice()] = pic
             self.dirty = self.rect.intersect(rect.unite(self.dirty))
+        self.version += 1
         return self.rect.intersect(rect)
 
     def blit_part(self, pic, rect, dest, set_dirty=True, alpha=True):
         with self.lock:
-            self.pic.paste_part(pic, rect.x, rect.y, rect.width, rect.height, *dest, alpha)
             self.dirty = self.rect.intersect(rect.unite(self.dirty))
+        self.version += 1
         return self.rect.intersect(rect)
 
     def make_diff(self, layer, rect, alpha=True):
         with self.lock:
-            return self.pic.make_diff(layer.pic, *rect, alpha=alpha)
+            slc = rect.as_slice()
+            mask = layer.pic[slc].astype(np.bool)
+            return np.subtract(layer.pic[slc], mask * self.pic[slc], dtype=np.int16)
 
     def apply_diff(self, diff, rect, invert=False):
         with self.lock:
-            self.pic.apply_diff(diff, *rect, invert=invert)
+            slc = rect.as_slice()
+            self.pic[slc] = np.add(self.pic[slc], diff, casting="unsafe")
             self.dirty = self.rect.intersect(rect.unite(self.dirty))
+        self.version += 1
         return self.rect.intersect(rect)
 
     def __repr__(self):
@@ -151,10 +174,12 @@ class Layer:
     
     def __hash__(self):
         "For caching purposes, a Layer is considered changed when it's underlying Picture has changed."
-        return hash((id(self), self.size, self.pic.version))
+        return hash((id(self), self.size, self.version))
 
 
 class TemporaryLayer(Layer):
 
+    dtype = np.uint32
+    
     def __hash__(self):
         return hash((id(self), self.size))

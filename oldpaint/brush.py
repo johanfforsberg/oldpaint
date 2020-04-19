@@ -1,93 +1,63 @@
 from functools import lru_cache
 
-from .picture import LongPicture, save_png
-from .draw import draw_ellipse, draw_rectangle
-from .util import cache_clear
+import numpy as np
+
+
+def rgba_to_32bit(color):
+    r, g, b, a = color
+    return r + g*2**8 + b*2**16 + a*2**24
 
 
 class Brush:
 
-    """
-    A brush is essentially a picture that is intended to be drawn with.
-    It's sort of a layer but with fewer operations.
-    """
-
-    # TODO subclass layer?
-
-    pass
-
-
-class PicBrush(Brush):
-
-    def __init__(self, pic, rect=None):
-        self.original = pic
-        self.rect = rect
-        self.size = w, h = pic.size
-        self.center = w // 2, h // 2
-
-    @lru_cache(2)
-    def get_pic(self, color=None):
-        if color is None:
-            return self.original
+    def __init__(self, size=None, data=None):
+        if size:
+            assert len(size) == 2
+            self.size = size
+            self.data = np.ones(size, dtype=np.uint32)
         else:
-            colorized = LongPicture(self.size)
-            colorized.paste(self.original, 0, 0, mask=True, colorize=True, color=color)
-            return colorized
+            self.data = data
+            self.size = data.shape[:2]
 
-    def save_png(self, path, colors):
-        with open(path, "wb") as f:
-            save_png(self.original, f, colors)
-
-    @cache_clear(get_pic)
-    def flip_vertical(self):
-        self.original = self.original.flip_vertical()
-
-    @cache_clear(get_pic)
-    def flip_horizontal(self):
-        self.original = self.original.flip_horizontal()
-
-    @cache_clear(get_pic)
-    def rotate_clockwise(self):
-        self.original = self.original.rotate(False)
         w, h = self.size
-        self.size = h, w
+        self.center = (w // 2, h // 2)
+            
+    @lru_cache(2)
+    def get_draw_data(self, color, colorize=False):
+        return np.clip(self.data, 0, 1) * color + 255 * 2**24
 
-    @cache_clear(get_pic)
-    def rotate_counter_clockwise(self):
-        self.original = self.original.rotate(True)
-        w, h = self.size
-        self.size = h, w
+    def as_rgba(self, colors):
+        colors32 = [rgba_to_32bit(c) for c in colors]
+        return (np.array(colors32, dtype=np.uint32)[self.data]).flatten()
 
-    def __hash__(self):
-        return id(self.original)
+    def rotate(self, d):
+        data = self.data
+        self.data = np.rot90(data, d)
+        self.size = self.data.shape[:2]
+        self.get_draw_data.cache_clear()
 
+    def flip(self, vertical=False):
+        data = self.data
+        self.data = np.flip(data, axis=vertical)
+        self.size = self.data.shape[:2]
+        self.get_draw_data.cache_clear()
+        
 
 class RectangleBrush(Brush):
 
     def __init__(self, size):
-        self.size = w, h = size
-        self.center = (w // 2, h // 2)
-        self.original = self.get_pic(color=1)
+        data = np.ones(size, dtype=np.uint32)
+        super().__init__(data=data)
 
-    @lru_cache(2)
-    def get_pic(self, color):
-        pic = LongPicture(size=self.size)
-        draw_rectangle(pic, (0, 0), self.size,
-                       color=color + 255*2**24, fill=True)
-        return pic
+        
+class PicBrush(Brush):
 
-
-class EllipseBrush(Brush):
-
-    def __init__(self, size):
-        self.size = w, h = size
-        self.center = int((w-1) / 2), int((h-1) / 2)
-        self.original = self.get_pic(color=1)
-
-    @lru_cache(2)
-    def get_pic(self, color):
-        pic = LongPicture(size=self.size)
-        w, h = self.size
-        draw_ellipse(pic, self.center, self.center,
-                     color=color + 255*2**24, fill=True)
-        return pic
+    @lru_cache(2)    
+    def get_draw_data(self, color, colorize=False):
+        filled_pixels = np.clip(self.data, 0, 1)     
+        if colorize:
+            # Fill all non-transparent pixels with the same color
+            return (color + filled_pixels * 2**24).astype(np.uint32)
+        else:
+            # Otiginal brush data
+            return (self.data + filled_pixels * 2**24).astype(np.uint32)
