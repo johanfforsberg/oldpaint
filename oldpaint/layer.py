@@ -4,8 +4,8 @@ from threading import RLock
 import numpy as np
 
 from .rect import Rectangle
-# from .picture import LongPicture, save_png, load_png
 from .draw import draw_line, draw_rectangle, draw_fill, blit, paste
+from .ora import load_png, save_png
 
 
 class Layer:
@@ -44,8 +44,8 @@ class Layer:
 
     @classmethod
     def load_png(cls, path):
-        pic, colors = load_png(path)
-        return cls(pic), colors
+        pic, info = load_png(path)
+        return cls(pic), info["palette"]
 
     def draw_line(self, p0, p1, brush, offset, set_dirty=True, **kwargs):
         ox, oy = offset
