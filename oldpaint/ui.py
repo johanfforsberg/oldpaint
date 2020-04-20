@@ -3,6 +3,7 @@ Helper functions for rendering the user interface.
 """
 
 from functools import lru_cache
+from itertools import chain
 import logging
 from math import floor, ceil
 import os
@@ -61,41 +62,61 @@ def _change_channel(value, delta):
 
 
 def render_color_editor(orig, color):
-    r, g, b, a = color
+    r0, g0, b0, a0 = r, g, b, a = color
 
     io = imgui.get_io()
 
     delta = 0
+    
     imgui.push_id("R")
-    # TODO find a less verbose way to do something like this:
-    # imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, r/255, 0, 0)
-    # imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, r/255, 0, 0)
-    # imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, r/255, 0, 0)
-    # imgui.push_style_color(imgui.COLOR_SLIDER_GRAB, 1, 1, 1)
-    # imgui.push_style_color(imgui.COLOR_SLIDER_GRAB_ACTIVE, 1, 1, 1)
-    _, r = imgui.v_slider_int("", 30, 255, r, min_value=0, max_value=255)
-    # imgui.pop_style_color()
-    # imgui.pop_style_color()
-    # imgui.pop_style_color()
-    # imgui.pop_style_color()
-    # imgui.pop_style_color()
-    if imgui.is_item_hovered():
+    with imgui.colored(imgui.COLOR_FRAME_BACKGROUND, r/255, 0, 0), \
+         imgui.colored(imgui.COLOR_FRAME_BACKGROUND_HOVERED, r/255, 0, 0), \
+         imgui.colored(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, r/255, 0, 0), \
+         imgui.colored(imgui.COLOR_SLIDER_GRAB, .5, .5, .5), \
+         imgui.colored(imgui.COLOR_SLIDER_GRAB_ACTIVE, .7, .7, .7):
+        r_changed, r = imgui.v_slider_int("", 30, 255, r, min_value=0, max_value=255)
+        
+    if r_changed and io.key_shift:
+        dr = r - r0
+        g = _change_channel(g, dr)
+        b = _change_channel(b, dr)
+    elif imgui.is_item_hovered():
         delta = int(io.mouse_wheel)
         if not io.key_shift:
             r = _change_channel(r, delta)
     imgui.pop_id()
+    
     imgui.same_line()
     imgui.push_id("G")
-    _, g = imgui.v_slider_int("", 30, 255, g, min_value=0, max_value=255)
-    if imgui.is_item_hovered():
+    with imgui.colored(imgui.COLOR_FRAME_BACKGROUND, 0, g/255, 0), \
+         imgui.colored(imgui.COLOR_FRAME_BACKGROUND_HOVERED, 0, g/255, 0), \
+         imgui.colored(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, 0, g/255, 0), \
+         imgui.colored(imgui.COLOR_SLIDER_GRAB, .5, .5, .5), \
+         imgui.colored(imgui.COLOR_SLIDER_GRAB_ACTIVE, .7, .7, .7):    
+        g_changed, g = imgui.v_slider_int("", 30, 255, g, min_value=0, max_value=255)
+    if g_changed and io.key_shift:
+        dg = g - g0
+        r = _change_channel(r, dg)
+        b = _change_channel(b, dg)
+    elif imgui.is_item_hovered():
         delta = int(io.mouse_wheel)
         if not io.key_shift:
             g = _change_channel(g, delta)
     imgui.pop_id()
+
     imgui.same_line()
     imgui.push_id("B")
-    _, b = imgui.v_slider_int("", 30, 255, b, min_value=0, max_value=255)
-    if imgui.is_item_hovered():
+    with imgui.colored(imgui.COLOR_FRAME_BACKGROUND, 0, 0, b/255), \
+         imgui.colored(imgui.COLOR_FRAME_BACKGROUND_HOVERED, 0, 0, b/255), \
+         imgui.colored(imgui.COLOR_FRAME_BACKGROUND_ACTIVE, 0, 0, b/255), \
+         imgui.colored(imgui.COLOR_SLIDER_GRAB, .5, .5, .5), \
+         imgui.colored(imgui.COLOR_SLIDER_GRAB_ACTIVE, .7, .7, .7):    
+        b_changed, b = imgui.v_slider_int("", 30, 255, b, min_value=0, max_value=255)
+    if b_changed and io.key_shift:
+        db = b - b0
+        r = _change_channel(r, db)
+        g = _change_channel(g, db)
+    elif imgui.is_item_hovered():
         delta = int(io.mouse_wheel)
         if not io.key_shift:
             b = _change_channel(b, delta)
@@ -143,6 +164,7 @@ def render_palette(drawing: Drawing):
     fg_color = palette.foreground_color
     bg_color = palette.background_color
 
+    imgui.begin_child("Palette", border=False, height=460)
     # Edit foreground color
     if imgui.color_button(f"Foreground (#{fg})", *as_float(fg_color), 0, 30, 30):
         io = imgui.get_io()
@@ -169,41 +191,31 @@ def render_palette(drawing: Drawing):
 
     imgui.same_line()
 
-    # Edit background color
-    if imgui.color_button(f"Background (#{bg})", *as_float(bg_color), 0, 30, 30):
-        imgui.open_popup("Edit background color")
-    # if imgui.begin_popup("Edit background color"):
-    #     done, cancelled, new_color = render_color_editor(palette.colors[bg], bg_color)
-    #     if done:
-    #         drawing.change_colors(bg, [new_color])
-    #         palette.clear_overlay()
-    #     elif cancelled:
-    #         palette.clear_overlay()
-    #     else:
-    #         palette.set_overlay(bg, new_color)
-    #     imgui.end_popup()
-
+    imgui.color_button(f"Background (#{bg})", *as_float(bg_color), 0, 30, 30)
+    
     max_pages = len(palette.colors) // 64 - 1
     imgui.push_item_width(100)
     _, current_color_page = imgui.slider_int("Page", current_color_page, min_value=0, max_value=max_pages)
     start_color = 64 * current_color_page
 
-    imgui.begin_child("Palette", border=False)
+    imgui.begin_child("Colors", border=False)
     imgui.push_style_var(imgui.STYLE_ITEM_SPACING, (0, 0))  # Make layout tighter
     width = int(imgui.get_window_content_region_width()) // 20
 
     imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, 0, 0, 0)
-    
-    for i, color in enumerate(palette[start_color:start_color + 64], start_color):
-        is_foreground = i == fg
-        is_background = (i == bg) * 2
-        selection = is_foreground | is_background
-        if i in palette.overlay:
-            color = as_float(palette.overlay[i])
-        else:
-            color = as_float(color)
 
-        if selection:
+    colors = palette.colors
+
+    # Order the colors by column instead of by row (which is the order we draw them)
+    for i, c in enumerate(chain.from_iterable(zip(range(0, 16), range(16, 32), range(32, 48), range(48, 64)))):
+        index = start_color + c
+        color = colors[index]
+        is_foreground = index == fg
+        is_background = (index == bg) * 2
+        selection = is_foreground | is_background
+        color = as_float(color)
+
+        if color[3] == 0 or selection:
             x, y = imgui.get_cursor_screen_pos()
         
         if imgui.color_button(f"color {i}", *color[:3], 1, 0, 25, 25):
@@ -214,25 +226,34 @@ def render_palette(drawing: Drawing):
             #     else:
             #         temp_vars["spread_start"] = i
             # else:
-            fg = i
+            fg = index
 
         if i % width != width - 1:
             imgui.same_line()
-        
+
+        draw_list = imgui.get_window_draw_list()            
+        if color[3] == 0:
+            # Mark transparent color
+            draw_list.add_line(x+1, y+1, x+24, y+24, imgui.get_color_u32_rgba(0, 0, 0, 1), 1)
+            draw_list.add_line(x+1, y+2, x+23, y+24, imgui.get_color_u32_rgba(1, 1, 1, 1), 1)
+            
         if is_foreground:
-            draw_list = imgui.get_window_draw_list()
-            draw_list.add_rect_filled(x+2, y+2, x+10, y+10, imgui.get_color_u32_rgba(0, 0, 0, 1))
+            # Mark foregroupd color
+            draw_list.add_rect_filled(x+2, y+2, x+10, y+10, imgui.get_color_u32_rgba(1, 1, 1, 1))
+            draw_list.add_rect(x+2, y+2, x+10, y+10, imgui.get_color_u32_rgba(0, 0, 0, 1))
         if is_background:
-            draw_list = imgui.get_window_draw_list()
+            # Mark background color
             draw_list.add_rect_filled(x+15, y+2, x+23, y+10, imgui.get_color_u32_rgba(0, 0, 0, 1))
+            draw_list.add_rect(x+15, y+2, x+23, y+10, imgui.get_color_u32_rgba(1, 1, 1, 1))
 
         if imgui.core.is_item_clicked(2):
-            # Detect right button clicks on the button
-            bg = i
+            # Right button sets background
+            bg = index
 
+        # Drag and drop (currently does not accomplish anything though)
         if imgui.begin_drag_drop_source():
-            imgui.set_drag_drop_payload('start_index', i.to_bytes(1, sys.byteorder))
-            imgui.color_button(f"color {i}", *color[:3], 1, 0, 20, 20)
+            imgui.set_drag_drop_payload('start_index', c.to_bytes(1, sys.byteorder))
+            imgui.color_button(f"color {c}", *color[:3], 1, 0, 20, 20)
             imgui.end_drag_drop_source()
         if imgui.begin_drag_drop_target():
             start_index = imgui.accept_drag_drop_payload('start_index')
@@ -240,18 +261,20 @@ def render_palette(drawing: Drawing):
                 start_index = int.from_bytes(start_index, sys.byteorder)
                 io = imgui.get_io()
                 image_only = io.key_shift
-                drawing.swap_colors(start_index, i, image_only=image_only)
+                drawing.swap_colors(start_index, index, image_only=image_only)
                 palette.clear_overlay()
             imgui.end_drag_drop_target()
 
-    imgui.pop_style_color(1)            
+    imgui.pop_style_color(1)
     imgui.pop_style_var(1)
+    imgui.end_child()
+    
     imgui.end_child()
 
     if imgui.is_item_hovered():
         io = imgui.get_io()
         delta = int(io.mouse_wheel)
-        current_color_page = min(max(current_color_page + delta, 0), max_pages)
+        current_color_page = min(max(current_color_page - delta, 0), max_pages)
 
     palette.foreground = fg
     palette.background = bg
