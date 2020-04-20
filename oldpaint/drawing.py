@@ -15,7 +15,7 @@ from .edit import (LayerEdit, LayerClearEdit, DrawingCropEdit, LayerFlipEdit,
                    SwapColorsImageEdit, SwapColorsPaletteEdit,
                    MultiEdit)
 from .layer import Layer, TemporaryLayer
-from .ora import load_ora, save_ora, load_png
+from .ora import load_ora, save_ora, load_png, save_png
 # from .picture import LongPicture, load_png, save_png
 from .palette import Palette
 from .rect import Rectangle
@@ -42,7 +42,7 @@ class Drawing:
     use the corresponding methods in this class instead. Otherwise you will
     mess up the undo history beyond repair.
     """
-
+    
     def __init__(self, size, layers=None, palette=None, path=None, selection=None):
         self.size = size
         if layers:
