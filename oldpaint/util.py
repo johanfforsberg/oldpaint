@@ -18,12 +18,34 @@ def try_except_log(f):
     return inner
 
 
+class AutoResetting:
+
+    "A descriptor that automatically restores its default value some time after being set."
+
+    def __init__(self, default, reset_time=1):
+        self.value = self.default = default
+        self.reset_time = 0.5
+
+    def __get__(self, obj, type=None):
+        return self.value
+
+    def __set__(self, obj, value):
+        self.value = value
+        pyglet.clock.unschedule(self._reset)
+        pyglet.clock.schedule_once(self._reset, self.reset_time)
+        
+    def _reset(self, dt):
+        self.value = self.default
+
+
 class Selectable:
 
     """
     Wrapper for a list of items where one can be selected.
     Also supports adding and removing items.
     """
+
+    switching = AutoResetting(False)
 
     def __init__(self, items=None):
         self.items = items or []
@@ -50,6 +72,7 @@ class Selectable:
     def select(self, item):
         assert item in self.items, f"No such item {item}!"
         self.current = item
+        self.switching = True
 
     def set_item(self, item, index=None):
         current_index = self.get_current_index()
