@@ -103,7 +103,11 @@ class Layer:
         self.version += 1
 
     def swap_colors(self, index1, index2):
-        self.pic.swap_colors(index1, index2)
+        #self.pic.swap_colors(index1, index2)
+        color1_pixels = self.pic == index1
+        color2_pixels = self.pic == index2
+        self.pic[color1_pixels] = index2
+        self.pic[color2_pixels] = index1
         self.dirty = self.rect
         self.version += 1
 
