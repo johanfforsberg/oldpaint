@@ -54,7 +54,7 @@ class PicBrush(Brush):
 
     @lru_cache(2)    
     def get_draw_data(self, color, colorize=False):
-        filled_pixels = np.clip(self.data, 0, 1)     
+        filled_pixels = self.data > 0
         if colorize:
             # Fill all non-transparent pixels with the same color
             return (color + filled_pixels * 2**24).astype(np.uint32)

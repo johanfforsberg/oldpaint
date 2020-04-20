@@ -66,7 +66,7 @@ class PencilTool(Tool):
         if self.points[-1] == point:
             return
         p0 = tuple(self.points[-1])
-        brush = self.brush.get_draw_data(self.brush_color)
+        brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
         rect = overlay.draw_line(p0, point, brush, self.brush.center)
         if rect:
             self.rect = rect.unite(self.rect)
@@ -74,7 +74,7 @@ class PencilTool(Tool):
 
     def finish(self, overlay, point, buttons, modifiers):
         # Make sure we draw a point even if the mouse was never moved
-        brush = self.brush.get_draw_data(self.brush_color)
+        brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
         rect = overlay.draw_line(self.points[-1], point, brush, self.brush.center)
         if rect:
             self.rect = rect.unite(self.rect)
@@ -93,14 +93,14 @@ class PointsTool(Tool):
             return
         self.points.append(point)
         if len(self.points) % self.step == 0:
-            brush = self.brush.get_draw_data(self.brush_color)
+            brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
             rect = overlay.draw_line(point, point, brush, offset=self.brush.center)
             if rect:
                 self.rect = rect.unite(self.rect)
 
     def finish(self, overlay, point, buttons, modifiers):
         # Make sure we draw a point even if the mouse was never moved
-        brush = self.brush.get_draw_data(self.brush_color)
+        brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
         rect = overlay.draw_line(point, point, brush, offset=self.brush.center)
         if rect:
             self.rect = rect.unite(self.rect)
@@ -124,7 +124,8 @@ class SprayTool(Tool):
         xg = gauss(x, self.size)
         yg = gauss(y, self.size)
         p = (xg, yg)
-        rect = overlay.draw_line(p, p, brush=self.brush.get_draw_data(self.brush_color), offset=self.brush.center)
+        brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
+        rect = overlay.draw_line(p, p, brush=brush, offset=self.brush.center)
         if rect:
             self.rect = rect.unite(self.rect)
 
@@ -139,11 +140,13 @@ class LineTool(Tool):
     def draw(self, overlay, point, buttons, modifiers):
         p0 = tuple(self.points[0][:2])
         p1 = point
-        self.rect = overlay.draw_line(p0, p1, brush=self.brush.get_draw_data(self.brush_color), offset=self.brush.center)
+        brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
+        self.rect = overlay.draw_line(p0, p1, brush=brush, offset=self.brush.center)
         self.points.append(p1)
 
     def finish(self, overlay, point, buttons, modifiers):
-        rect = overlay.draw_line(point, point, brush=self.brush.get_draw_data(self.brush_color), offset=self.brush.center)
+        brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
+        rect = overlay.draw_line(point, point, brush=brush, offset=self.brush.center)
         if rect:
             self.rect = rect.unite(self.rect)
 
@@ -163,7 +166,8 @@ class RectangleTool(Tool):
     def draw(self, overlay, point, buttons, modifiers):
         p0 = self.points[0]
         r = from_points([p0, point])
-        self.rect = overlay.draw_rectangle(r.position, r.size, brush=self.brush.get_draw_data(self.brush_color),
+        brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
+        self.rect = overlay.draw_rectangle(r.position, r.size, brush=brush,
                                            offset=self.brush.center, fill=modifiers & window.key.MOD_SHIFT,
                                            color=self.color + 255*2**24)
         self.points.append(point)
@@ -186,7 +190,8 @@ class EllipseTool(Tool):
         x0, y0 = self.points[0]
         x, y = point
         size = (int(abs(x - x0)), int(abs(y - y0)))
-        self.rect = overlay.draw_ellipse((x0, y0), size, brush=self.brush.get_draw_data(self.brush_color),
+        brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
+        self.rect = overlay.draw_ellipse((x0, y0), size, brush=brush,
                                          offset=self.brush.center, color=self.color + 255*2**24,
                                          fill=modifiers & window.key.MOD_SHIFT)
         self.points.append(point)

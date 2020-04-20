@@ -143,7 +143,7 @@ class Layer:
 
     def get_subimage(self, rect: Rectangle):
         with self.lock:
-            return self.pic[rect.as_slice()]
+            return self.pic[rect.as_slice()].copy()
 
     def crop(self, rect: Rectangle):
         return Layer(pic=self.get_subimage(rect))
