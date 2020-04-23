@@ -267,13 +267,17 @@ class OldpaintWindow(pyglet.window.Window):
             else:
                 self.drawing.prev_layer()
         else:
-            ox, oy = self.offset
-            ix, iy = self._to_image_coords(x, y)
-            self.zoom = max(min(self.zoom + scroll_y, MAX_ZOOM), MIN_ZOOM)
-            self._to_image_coords.cache_clear()
-            x2, y2 = self._to_window_coords(ix, iy)
-            self.offset = ox + (x - x2), oy + (y - y2)
-            self._to_image_coords.cache_clear()
+            self.change_zoom(scroll_y, (x, y))
+
+    def change_zoom(self, delta, pos):
+        x, y = pos
+        ox, oy = self.offset
+        ix, iy = self._to_image_coords(x, y)
+        self.zoom = max(min(self.zoom + delta, MAX_ZOOM), MIN_ZOOM)
+        self._to_image_coords.cache_clear()
+        x2, y2 = self._to_window_coords(ix, iy)
+        self.offset = ox + (x - x2), oy + (y - y2)
+        self._to_image_coords.cache_clear()
 
     def on_mouse_motion(self, x, y, dx, dy):
         "Callback for mouse motion without buttons held"
@@ -355,6 +359,24 @@ class OldpaintWindow(pyglet.window.Window):
                 else:
                     self.drawing.prev_layer()
                     self.highlighted_layer = self.drawing.layers.current
+
+            elif symbol == key.F:
+                self.tools.select(FillTool)
+            elif symbol == key.T:
+                self.tools.select(PencilTool)
+            elif symbol == key.I:
+                self.tools.select(LineTool)
+            elif symbol == key.R:
+                self.tools.select(RectangleTool)
+            elif symbol == key.C:
+                self.tools.select(PickerTool)
+            elif symbol == key.B:
+                self.tools.select(SelectionTool)
+
+            elif symbol == key.PLUS and self.mouse_position:
+                self.change_zoom(1, self.mouse_position)
+            elif symbol == key.MINUS and self.mouse_position:
+                self.change_zoom(-1, self.mouse_position)
 
             elif symbol == key.V:
                 if modifiers & key.MOD_SHIFT:
