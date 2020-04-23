@@ -33,7 +33,8 @@ from .stroke import make_stroke
 from .tool import (PencilTool, PointsTool, SprayTool,
                    LineTool, RectangleTool, EllipseTool,
                    SelectionTool, PickerTool, FillTool)
-from .util import Selectable, make_view_matrix, show_load_dialog, show_save_dialog, cache_clear, debounce
+from .util import (Selectable, Selectable2, make_view_matrix, show_load_dialog, show_save_dialog,
+                   cache_clear, debounce, as_rgba)
 from . import ui
 
 
@@ -68,11 +69,14 @@ class OldpaintWindow(pyglet.window.Window):
             for s in drawing_specs or []
         ])
 
-        self.tools = Selectable([
-            PencilTool, PointsTool, SprayTool,
-            LineTool, RectangleTool, EllipseTool, FillTool,
-            SelectionTool, PickerTool
-        ])
+        self.tools = Selectable2({
+            tool: tool
+            for tool in [
+                PencilTool, PointsTool, SprayTool,
+                LineTool, RectangleTool, EllipseTool, FillTool,
+                SelectionTool, PickerTool
+            ]
+        })
         self.brushes = Selectable([
             RectangleBrush((1, 1)),
             RectangleBrush((2, 2)),
@@ -447,11 +451,11 @@ class OldpaintWindow(pyglet.window.Window):
         size = w, h
         texture = Texture(size, params={gl.GL_TEXTURE_MIN_FILTER: gl.GL_LINEAR})
         texture.clear()
-        data = layer.pic.as_rgba(colors, True)
+        data = as_rgba(layer.pic, colors)
         gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
         gl.glTextureSubImage2D(texture.name, 0,
                                0, 0, w, h,  # min(w, bw), min(w, bh),
-                               gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, bytes(data))
+                               gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, data.tobytes("F"))
         return texture
 
     @cache_clear(get_layer_preview_texture)
@@ -460,13 +464,15 @@ class OldpaintWindow(pyglet.window.Window):
         # Since this is a callback, stroke is a Future and is guaranteed to be finished.
         self.stroke_tool = None
         tool = stroke.result()
-        if tool and tool.rect:
-            # If no rect is set, the tool is presumed to not have changed anything.
-            self.drawing.change_layer(self.overlay, tool.rect, tool.tool)
-            self.overlay.clear(tool.rect)
-
-        else:
-            self.overlay.clear()
+        if tool:
+            if tool.rect:
+                # If no rect is set, the tool is presumed to not have changed anything.
+                self.drawing.change_layer(self.overlay, tool.rect, tool.tool)
+                self.overlay.clear(tool.rect)
+            else:
+                self.overlay.clear()
+            if tool.restore_last:
+                self.tools.restore()
         self.mouse_event_queue = None
         self.stroke = None
         self.autosave_drawing()
@@ -839,10 +845,10 @@ class OldpaintWindow(pyglet.window.Window):
         w, h = size = max(w, bw), max(h, bh)
         texture = Texture(size)
         texture.clear()
-        data = brush.as_rgba(colors)
+        data = as_rgba(brush.data, colors).tobytes("F")
         gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
         gl.glTextureSubImage2D(texture.name, 0,
                                max(0, w//2-bw//2), max(0, h//2-bh//2), bw, bh, # min(w, bw), min(w, bh),
-                               gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, bytes(data))
+                               gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, data)
         return texture
 

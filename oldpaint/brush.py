@@ -3,11 +3,6 @@ from functools import lru_cache
 import numpy as np
 
 
-def rgba_to_32bit(color):
-    r, g, b, a = color
-    return r + g*2**8 + b*2**16 + a*2**24
-
-
 class Brush:
 
     def __init__(self, size=None, data=None):
@@ -26,9 +21,9 @@ class Brush:
     def get_draw_data(self, color, colorize=False):
         return np.clip(self.data, 0, 1) * color + 255 * 2**24
 
-    def as_rgba(self, colors):
-        colors32 = [rgba_to_32bit(c) for c in colors]
-        return (np.array(colors32, dtype=np.uint32)[self.data]).flatten()
+    # def as_rgba(self, colors):
+    #     colors32 = [rgba_to_32bit(c) for c in colors]
+    #     return (np.array(colors32, dtype=np.uint32)[self.data])
 
     def rotate(self, d):
         data = self.data

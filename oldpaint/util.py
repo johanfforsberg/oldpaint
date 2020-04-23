@@ -6,6 +6,7 @@ from traceback import format_exc
 
 from euclid3 import Matrix4
 import pyglet
+import numpy as np
 
 
 def try_except_log(f):
@@ -129,6 +130,37 @@ class Selectable:
         self.items[a], self.items[b] = self.items[b], self.items[a]
 
 
+class Selectable2:
+
+    def __init__(self, items: dict):
+        self._items = items
+        self._current_key = list(items.keys())[0]
+        self._last = []
+
+    @property
+    def current(self):
+        return self._items[self._current_key]
+
+    def select(self, key):
+        assert key in self._items
+        try:
+            self._last.remove(key)
+        except ValueError:
+            pass
+        self._last.append(self._current_key)
+        self._current_key = key
+
+    def restore(self):
+        if self._last:
+            self._current_key = self._last.pop(-1)
+            
+    def __iter__(self):
+        return iter(self._items.values())
+
+    def __len__(self):
+        return len(self._items)
+        
+
 def throttle(interval=0.1):
     """
     A decorator that ensures that the function is not run more often
@@ -241,3 +273,13 @@ def show_load_dialog(**args):
 def show_save_dialog(**args):
     Tk().withdraw()
     return filedialog.asksaveasfilename(**args)
+
+
+def rgba_to_32bit(color):
+    r, g, b, a = color
+    return r + g*2**8 + b*2**16 + a*2**24
+
+
+def as_rgba(arr, colors):
+    colors32 = [rgba_to_32bit(c) for c in colors]
+    return (np.array(colors32, dtype=np.uint32)[arr])

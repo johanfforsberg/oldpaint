@@ -22,6 +22,7 @@ class Tool(metaclass=abc.ABCMeta):
     brush_preview = True  # Whether to show the current brush on top of the image while not drawing
     show_rect = False
     period = None
+    restore_last = False
 
     def __init__(self, drawing: Drawing, brush, color, brush_color):
         self.drawing = drawing
@@ -225,6 +226,7 @@ class SelectionTool(Tool):
     tool = ToolName.brush
     brush_preview = False
     show_rect = True
+    restore_last = True
 
     def start(self, overlay, point, buttons, modifiers):
         super().start(overlay, point, buttons, modifiers)
@@ -234,9 +236,8 @@ class SelectionTool(Tool):
         self.rect = overlay.rect.intersect(from_points([self.points[0], point]))
 
     def finish(self, overlay, point, buttons, modifiers):
-        # self.drawing.selection = self.rect
-        # self.drawing.make_brush(self.rect, clear=buttons & window.mouse.RIGHT)
-        self.drawing.selection = self.rect
+        self.drawing.make_brush(self.rect, clear=buttons & window.mouse.RIGHT)
+        self.rect = None
 
     def __repr__(self):
         if self.rect:
