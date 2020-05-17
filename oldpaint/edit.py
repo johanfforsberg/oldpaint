@@ -84,27 +84,28 @@ class LayerEdit(Edit):
     _struct = "cchhhh"
     _structsize = struct.calcsize(_struct)
 
+    frame: int
     index: int
     tool: int
     rect: Rectangle
     data: bytes
 
     @classmethod
-    def create(cls, drawing, orig_layer, edit_layer, rect, tool=0):
+    def create(cls, drawing, orig_layer, frame, edit_layer, rect, tool=0):
         "Helper to handle compressing the data."
-        data = orig_layer.make_diff(edit_layer, rect, alpha=False).tobytes()
+        data = orig_layer.make_diff(edit_layer, rect, alpha=False, frame=frame).tobytes()
         index = drawing.layers.index(orig_layer)
-        return cls(index=index, tool=tool, data=zlib.compress(data), rect=rect)
+        return cls(frame=frame, index=index, tool=tool, data=zlib.compress(data), rect=rect)
 
     def perform(self, drawing):
         layer = drawing.layers[self.index]
         diff_data = np.frombuffer(zlib.decompress(self.data), dtype=np.int16).reshape(self.rect.size)
-        layer.apply_diff(diff_data, self.rect, False)
+        layer.apply_diff(diff_data, self.rect, False, frame=self.frame)
 
     def revert(self, drawing):
         layer = drawing.layers[self.index]
         diff_data = np.frombuffer(zlib.decompress(self.data), dtype=np.int16).reshape(self.rect.size)
-        layer.apply_diff(-diff_data, self.rect, True)
+        layer.apply_diff(-diff_data, self.rect, True, frame=self.frame)
 
     # @classmethod
     # def merge(self, edits):
@@ -140,9 +141,9 @@ class LayerClearEdit(Edit):
     @classmethod
     def create(cls, drawing, orig_layer, rect=None, color=0):
         if rect:
-            data = orig_layer.get_subimage(rect).data
+            data =  [orig_layer.get_subimage(rect)]
         else:
-            data = orig_layer.pic.data
+            data = orig_layer.frames
             rect = orig_layer.rect
         index = drawing.layers.index(orig_layer)
         return cls(index=index, data=zlib.compress(data), rect=rect, color=color)
@@ -317,11 +318,11 @@ class AddLayerEdit(Edit):
 
     @classmethod
     def create(cls, drawing, layer, index):
-        return cls(index=index, data=zlib.compress(layer.pic.data), size=layer.size)
+        return cls(index=index, data=zlib.compress(layer.frames), size=layer.size)
 
     def perform(self, drawing):
         data = np.frombuffer(zlib.decompress(self.data), dtype=np.uint8).reshape(self.size).copy()
-        layer = Layer(pic=data)
+        layer = Layer(frames=data)
         drawing.layers.add(layer, index=self.index)
 
     def revert(self, drawing):

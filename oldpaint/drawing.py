@@ -51,6 +51,7 @@ class Drawing:
             self.layers = Selectable([Layer(size=self.size)])
         self.palette = palette if palette else Palette(transparency=0)
         self.brushes = Selectable()
+
         self.active_plugins = {}
 
         # History of changes
@@ -64,6 +65,7 @@ class Drawing:
         # Keep track of what we're looking at
         self.offset = (0, 0)
         self.zoom = 0
+        self.frame = 0
 
         self.path = path
         self.uuid = str(uuid4())
@@ -118,7 +120,7 @@ class Drawing:
     def from_png(cls, path):
         """Load a PNG into a single layer drawing."""
         pic, info = load_png(path)
-        layer = Layer(pic)
+        layer = Layer([pic])
         colors = info["palette"]
         palette = Palette(colors, transparency=0, size=len(colors))
         return cls(size=layer.size, layers=[layer], palette=palette, path=path)
@@ -132,7 +134,7 @@ class Drawing:
         transparent_colors = set(self.palette.transparent_colors)
         for layer in self.layers[1:]:
             if layer.visible:
-                layer.pic.fix_alpha(transparent_colors)
+                layer.pic.fix_alpha(transparent_colors)  # TODO
                 combined.blit(layer.pic, layer.rect)
         with open(path, "wb") as f:
             save_png(combined.pic, f, palette=self.palette.colors)
@@ -142,7 +144,7 @@ class Drawing:
         """Load a complete drawing from an ORA file."""
         layer_pics, info, kwargs = load_ora(path)
         palette = Palette(info["palette"], transparency=0)
-        layers = [Layer(pic=p, visible=v) for p, v in layer_pics]
+        layers = [Layer([p], visible=v) for p, v in layer_pics]
         return cls(size=layers[0].size, layers=layers, palette=palette, path=path)
 
     def save_ora(self, path=None, auto=False):
@@ -258,10 +260,10 @@ class Drawing:
         self._add_edit(edit)
 
     @try_except_log
-    def change_layer(self, new, rect, tool=None, layer=None):
+    def change_layer(self, new, rect, tool=None, layer=None, frame=0):
         "Update a part of the layer, keeping track of the change as an 'undo'"
         layer = layer or self.current
-        edit = LayerEdit.create(self, layer, new, rect, tool.value if tool else 0)
+        edit = LayerEdit.create(self, layer, frame, new, rect, tool.value if tool else 0)
         edit.perform(self)
         self._add_edit(edit)
 
@@ -285,14 +287,15 @@ class Drawing:
         edit.perform(self)
         self._add_edit(edit)
 
-    def make_brush(self, rect=None, layer=None, clear=False):
+    def make_brush(self, frame=None, rect=None, layer=None, clear=False):
         "Create a brush from part of the given layer."
         rect = rect or self.selection
+        frame = frame or self.frame
         if rect.area() == 0:
             return
         layer = layer or self.current
         rect = layer.rect.intersect(rect)
-        subimage = layer.get_subimage(rect)
+        subimage = layer.get_subimage(rect, frame=frame)
         #subimage.fix_alpha(set(self.palette.transparent_colors))
         if clear:
             edit = LayerClearEdit.create(self, layer, rect,

@@ -61,6 +61,7 @@ def render_drawing(drawing, highlighted_layer=None):
             except gl.lib.GLException as e:
                 logging.error(str(e))
 
+        frame = drawing.frame
         for layer in drawing.layers:
 
             if highlighted_layer and highlighted_layer != layer:
