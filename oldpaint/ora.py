@@ -34,44 +34,61 @@ def save_ora(size: Tuple[int, int], layers: List["Layer"], palette, path, **kwar
     It can however contain any other application specific data too.
     """
     w, h = size
-    d = len(layers)
+    # d = len(layers)
+
+    # Build "stack.xml" that specifies the structure of the drawing
     image_el = ET.Element("image", version="0.0.3", w=str(w), h=str(h))
     stack_el = ET.SubElement(image_el, "stack")
-    for i, layer in enumerate(reversed(layers), 1):
+    empty_frame = np.zeros(size, dtype=np.uint8)
+    for i, layer in enumerate(layers, 1):
         visibility = "visible" if layer.visible else "hidden"
-        ET.SubElement(stack_el, "layer", name=f"layer{i}", src=f"data/layer{d - i}.png",
-                      visibility=visibility)
+        layer_el = ET.SubElement(stack_el, "stack", name=f"layer{i}",
+                                 visibility=visibility)
+        for j, frame in enumerate(layer.frames, 1):
+            ET.SubElement(layer_el, "layer", name=f"layer{i}_frame{j}",
+                          src=f"data/layer{i}_frame{j}.png")        
     stack_xml = b"<?xml version='1.0' encoding='UTF-8'?>" + ET.tostring(image_el)
+
+    # Create ZIP archive
     with zipfile.ZipFile(path, mode="w", compression=zipfile.ZIP_DEFLATED) as orafile:
         orafile.writestr("mimetype", "image/openraster", compress_type=zipfile.ZIP_STORED)
         orafile.writestr("stack.xml", stack_xml)
-        for i, layer in enumerate(reversed(layers), 1):
-            with io.BytesIO() as f:
-                save_png(layer.pic, f, palette=palette.colors)
-                f.seek(0)
-                orafile.writestr(f"data/layer{d - i}.png", f.read())
-                
+        for i, layer in enumerate(layers, 1):
+            for j, frame in enumerate(layer.frames, 1):
+                with io.BytesIO() as f:
+                    data = frame if frame is not None else empty_frame
+                    save_png(data, f, palette=palette.colors)
+                    f.seek(0)
+                    orafile.writestr(f"data/layer{i}_frame{j}.png", f.read())
+                        
         # Other data
         orafile.writestr("oldpaint.json", json.dumps(kwargs))
+    # TODO thumbnail, mergedimage
                 
 
 def load_ora(path):
-    # TODO we should not allow loading arbitrary ORA, only those
-    # conforming to what oldpaint can handle (basically, only files saved by it...)
     with zipfile.ZipFile(path, mode="r") as orafile:
+        # Check that this is an oldpaint file
+        try:
+            oldpaint_data = orafile.read("oldpaint.json")
+            other_data = json.loads(oldpaint_data)
+        except FileNotFoundError:
+            # TODO check that this is the right exception
+            raise RuntimeError("Can't load ORA files saved with other applications :(")
+        except KeyError:
+            other_data = {}
+        
         stack_xml = orafile.read("stack.xml")
         image_el = ET.fromstring(stack_xml)
         stack_el = image_el[0]
         layers = []
         for layer_el in stack_el:
-            path = layer_el.attrib["src"]
             visibility = layer_el.attrib.get("visibility", "visible")
-            with orafile.open(path) as imgf:
-                data, info = load_png(imgf)
-                layers.append((data, visibility == "visible"))
-        try:
-            # TODO Should verify that this data actually makes sense, maybe using a schema?
-            other_data = json.loads(orafile.read("oldpaint.json"))
-        except KeyError:
-            other_data = {}
-    return list(reversed(layers)), info, other_data
+            frames = []
+            for frame_el in layer_el:
+                path = frame_el.attrib["src"]
+                with orafile.open(path) as imgf:
+                    data, info = load_png(imgf)
+                    frames.append(data)
+            layers.append((frames, visibility == "visible"))
+    return list(layers), info, other_data

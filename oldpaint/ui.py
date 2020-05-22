@@ -705,6 +705,20 @@ def render_main_menu(window):
 
             imgui.end_menu()
 
+        if imgui.begin_menu("Animation", bool(window.drawing)):
+
+            if imgui.menu_item("Next frame", None, False, True)[0]:
+                drawing.next_frame()
+            if imgui.menu_item("Prev frame", None, False, True)[0]:
+                drawing.prev_frame()
+            
+            if imgui.menu_item("Add frame", None, False, True)[0]:
+                drawing.add_frame()
+            if imgui.menu_item("Remove frame", None, False, True)[0]:
+                drawing.remove_frame()
+
+            imgui.end_menu()
+
         if imgui.begin_menu("Brush", bool(window.drawing)):
 
             if imgui.menu_item("Create from selection", None, False, drawing.selection)[0]:
@@ -792,9 +806,11 @@ def render_main_menu(window):
         if drawing:
             imgui.text(f"{drawing.filename} {drawing.size} {'*' if drawing.unsaved else ''}")
 
-            imgui.set_cursor_screen_pos((w - 270, 0))
+            imgui.set_cursor_screen_pos((w - 330, 0))
             imgui.text(f"Layer: {window.drawing.layers.index()} ")
             imgui.text(f"Zoom: x{2**window.zoom}")
+            if drawing.n_frames > 1:
+                imgui.text(f"Frame: {drawing.frame}")
 
             if window.mouse_position:
                 imgui.set_cursor_screen_pos((w - 100, 0))

@@ -39,7 +39,7 @@ def render_drawing(drawing, highlighted_layer=None):
         overlay = drawing.overlay
         overlay_texture = _get_overlay_texture(overlay.size)
 
-        if overlay.dirty and overlay.lock.acquire(timeout=0.01):
+        if overlay.dirty.get(0) and overlay.lock.acquire(timeout=0.01):
             # Since we're drawing in a separate thread, we need to be very careful
             # when accessing the overlay, otherwise we can get nasty problems.
             # While we have the lock, the thread won't draw, so we can safely copy data.
@@ -47,7 +47,7 @@ def render_drawing(drawing, highlighted_layer=None):
             # so long that the user feels stutter, on the other hand,
             # if we never wait, and the draw thread is very busy, we might
             # not get to update for a long time.
-            rect = overlay.dirty
+            rect = overlay.dirty[0]
             subimage = overlay.get_subimage(rect)
             data = subimage.tobytes("F")  # TODO Is this making another copy?
 
@@ -56,7 +56,7 @@ def render_drawing(drawing, highlighted_layer=None):
                 gl.glTextureSubImage2D(overlay_texture.name, 0, *rect.points,
                                        gl.GL_RGBA_INTEGER, gl.GL_UNSIGNED_BYTE, data)
 
-                overlay.dirty = None
+                overlay.dirty.pop(0)
                 overlay.lock.release()  # Allow layer to change again.
             except gl.lib.GLException as e:
                 logging.error(str(e))
@@ -73,16 +73,16 @@ def render_drawing(drawing, highlighted_layer=None):
             # number of textures in GPU memory.
             # Assumes the non-current textures don't change though.
 
-            layer_texture = _get_layer_texture(layer)
-            if layer.dirty and layer.lock.acquire(timeout=0.03):
-                rect = layer.dirty
-                subimage = layer.get_subimage(rect)
+            layer_texture = _get_layer_texture(layer, frame)
+            if layer.dirty.get(frame) and layer.lock.acquire(timeout=0.03):
+                rect = layer.dirty[frame]
+                subimage = layer.get_subimage(rect, frame)
                 data = subimage.tobytes("F")
                 gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)  # Needed for writing 8bit data  
                 gl.glTextureSubImage2D(layer_texture.name, 0, *rect.points,
                                        gl.GL_RED_INTEGER, gl.GL_UNSIGNED_BYTE, data)
                 gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
-                layer.dirty = None
+                layer.dirty.pop(frame)
                 layer.lock.release()
 
             if not layer.visible and highlighted_layer != layer:
@@ -110,8 +110,8 @@ def render_drawing(drawing, highlighted_layer=None):
 # TODO this needs to be limited
 layer_texture_cache = {}
 
-def _get_layer_texture(layer):
-    layer_hash = hash((id(layer), layer.size))
+def _get_layer_texture(layer, frame):
+    layer_hash = hash((id(layer), layer.size, frame if layer.frames[frame] is not None else None))
     texture = layer_texture_cache.get(layer_hash)
     if not texture:
         layer_texture_cache[layer_hash] = texture = ByteIntegerTexture(layer.size)

@@ -73,7 +73,8 @@ class OldpaintWindow(pyglet.window.Window):
             tool: tool
             for tool in [
                 PencilTool, PointsTool, SprayTool,
-                LineTool, RectangleTool, EllipseTool, FillTool,
+                LineTool, RectangleTool,  EllipseTool,
+                FillTool,
                 SelectionTool, PickerTool
             ]
         })
@@ -168,7 +169,7 @@ class OldpaintWindow(pyglet.window.Window):
             yield self.overlay
             rect = self.overlay.dirty
             self.drawing.update(self.overlay, rect)
-            self.overlay.clear(rect)
+            self.overlay.clear(rect, frame=0)
 
         # TODO this works, but figure out a way to exit automatically when the application closes.
         # Thread(target=start_ipython,
@@ -230,7 +231,7 @@ class OldpaintWindow(pyglet.window.Window):
                       pyglet.window.mouse.RIGHT):
 
             if self.brush_preview_dirty:
-                self.overlay.clear(self.brush_preview_dirty)
+                self.overlay.clear(self.brush_preview_dirty, frame=0)
                 self.brush_preview_dirty = None
 
             self.mouse_event_queue = Queue()
@@ -310,7 +311,7 @@ class OldpaintWindow(pyglet.window.Window):
     def on_mouse_leave(self, x, y):
         self.mouse_position = None
         if self.brush_preview_dirty:
-            self.overlay.clear(self.brush_preview_dirty)
+            self.overlay.clear(self.brush_preview_dirty, frame=0)
 
     @no_imgui_events
     def on_key_press(self, symbol, modifiers):
@@ -360,6 +361,17 @@ class OldpaintWindow(pyglet.window.Window):
                     self.drawing.prev_layer()
                     self.highlighted_layer = self.drawing.layers.current
 
+            elif symbol == key.D:
+                if modifiers & key.MOD_SHIFT:
+                    self.drawing.last_frame()
+                else:
+                    self.drawing.next_frame()
+            elif symbol == key.A:
+                if modifiers & key.MOD_SHIFT:
+                    self.drawing.first_frame()
+                else:
+                    self.drawing.prev_frame()
+                    
             elif symbol == key.F:
                 self.tools.select(FillTool)
             elif symbol == key.T:
@@ -490,9 +502,9 @@ class OldpaintWindow(pyglet.window.Window):
             if tool.rect:
                 # If no rect is set, the tool is presumed to not have changed anything.
                 self.drawing.change_layer(self.overlay, tool.rect, tool.tool)
-                self.overlay.clear(tool.rect)
+                self.overlay.clear(tool.rect, frame=0)
             else:
-                self.overlay.clear()
+                self.overlay.clear(frame=0)
             if tool.restore_last:
                 self.tools.restore()
         self.mouse_event_queue = None
@@ -779,7 +791,7 @@ class OldpaintWindow(pyglet.window.Window):
     @try_except_log
     def _draw_brush_preview(self, x0, y0, x, y):
         if self.brush_preview_dirty:
-            self.overlay.clear(self.brush_preview_dirty)
+            self.overlay.clear(self.brush_preview_dirty, frame=0)
         self.brush_preview_dirty = None
         io = imgui.get_io()
         if io.want_capture_mouse:
@@ -795,11 +807,11 @@ class OldpaintWindow(pyglet.window.Window):
         # Clear the previous brush preview
         # TODO when leaving the image, or screen, we also need to clear
         old_rect = Rectangle((ix0 - cx, iy0 - cy), brush.size)
-        overlay.clear(old_rect)
+        overlay.clear(old_rect, frame=0)
         rect = Rectangle((ix - cx, iy - cy), brush.size)
         color = None if isinstance(self.brush, PicBrush) else self.drawing.palette.foreground
         data = brush.get_draw_data(color)
-        rect = overlay.blit(data, rect)
+        rect = overlay.blit(data, rect, frame=0)
         
         self.brush_preview_dirty = rect
 

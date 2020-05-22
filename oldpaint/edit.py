@@ -9,6 +9,7 @@ the drawing is in the state when it was created, and only reverted from the stat
 right after it was applied.
 """
 
+import pickle
 from dataclasses import dataclass
 import struct
 import zlib
@@ -91,7 +92,7 @@ class LayerEdit(Edit):
     data: bytes
 
     @classmethod
-    def create(cls, drawing, orig_layer, frame, edit_layer, rect, tool=0):
+    def create(cls, drawing, orig_layer, edit_layer, frame, rect, tool=0):
         "Helper to handle compressing the data."
         data = orig_layer.make_diff(edit_layer, rect, alpha=False, frame=frame).tobytes()
         index = drawing.layers.index(orig_layer)
@@ -318,11 +319,11 @@ class AddLayerEdit(Edit):
 
     @classmethod
     def create(cls, drawing, layer, index):
-        return cls(index=index, data=zlib.compress(layer.frames), size=layer.size)
+        return cls(index=index, data=zlib.compress(pickle.dumps(layer.frames)), size=layer.size)
 
     def perform(self, drawing):
-        data = np.frombuffer(zlib.decompress(self.data), dtype=np.uint8).reshape(self.size).copy()
-        layer = Layer(frames=data)
+        frames = pickle.loads(zlib.decompress(self.data))
+        layer = Layer(frames=frames, size=self.size)
         drawing.layers.add(layer, index=self.index)
 
     def revert(self, drawing):
@@ -351,7 +352,7 @@ class RemoveLayerEdit(Edit):
     @classmethod
     def create(cls, drawing, layer):
         index = drawing.layers.index(layer)
-        return cls(index=index, data=zlib.compress(layer.pic.data), size=layer.size)
+        return cls(index=index, data=zlib.compress(pickle.dumps(layer.frames)), size=layer.size)
 
     # This is the inverse operation of adding a layer
     perform = AddLayerEdit.revert
@@ -392,10 +393,10 @@ class SwapLayersEdit(Edit):
 class MergeLayersEdit(MultiEdit):
 
     @classmethod
-    def create(cls, drawing, source_layer, destination_layer):
-        source_layer.pic.fix_alpha(set(drawing.palette.transparent_colors))
+    def create(cls, drawing, source_layer, destination_layer, frame):
+        # source_layer.pic.fix_alpha(set(drawing.palette.transparent_colors))
         return cls([
-            LayerEdit.create(drawing, destination_layer, source_layer, source_layer.rect),
+            LayerEdit.create(drawing, destination_layer, source_layer, frame, source_layer.rect),
             RemoveLayerEdit.create(drawing, source_layer)
         ])
 

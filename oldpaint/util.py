@@ -283,3 +283,48 @@ def rgba_to_32bit(color):
 def as_rgba(arr, colors):
     colors32 = [rgba_to_32bit(c) for c in colors]
     return (np.array(colors32, dtype=np.uint32)[arr])
+
+
+class DefaultList(list):
+
+    """
+    >>> l = DefaultList(default='x')
+    >>> l
+    []
+    >>> l[0]
+    'x'
+    >>> l[3]
+    'x'
+    >>> l
+    ['x', 'x', 'x', 'x']
+    >>> l2 = DefaultList([1, 2, 3], default=100)
+    >>> l2[0]
+    1
+    >>> l2[3]
+    100
+    >>> l2
+    [1, 2, 3, 100]
+    >>> l2[2] = 17
+    """
+
+    def __init__(self, values=[], default=None):
+        super().__init__(values)
+        self._default = default
+
+    def __getitem__(self, index):
+        try:
+            return super().__getitem__(index)
+        except IndexError:
+            for i in range(len(self), index + 1):
+                self.append(self._default)
+            return self[index]
+
+    def __setitem__(self, index, value):
+        try:
+            super().__setitem__(index, value)
+        except IndexError:
+            for i in range(len(self), index + 1):
+                self.append(self._default)
+            super().__setitem__(index, value)
+            
+        

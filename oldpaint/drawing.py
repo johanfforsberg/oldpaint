@@ -30,7 +30,8 @@ class Drawing:
 
     """
     The "drawing" is a bunch of images with the same size and palette,
-    stacked on top of each order (from the bottom).
+    stacked on top of each other (from the bottom). They are referred to as
+    "layers".
 
     This is also where most functionality that affects the image is collected,
     e.g. drawing, undo/redo, load/save...
@@ -50,10 +51,14 @@ class Drawing:
         else:
             self.layers = Selectable([Layer(size=self.size)])
         self.palette = palette if palette else Palette(transparency=0)
+
+        self.frame = 0
+        self.n_frames = max(1, *(len(l.frames) for l in self.layers))
+        
         self.brushes = Selectable()
 
         self.active_plugins = {}
-
+        
         # History of changes
         self._edits = []
         self._edits_index = -1
@@ -65,7 +70,6 @@ class Drawing:
         # Keep track of what we're looking at
         self.offset = (0, 0)
         self.zoom = 0
-        self.frame = 0
 
         self.path = path
         self.uuid = str(uuid4())
@@ -144,7 +148,8 @@ class Drawing:
         """Load a complete drawing from an ORA file."""
         layer_pics, info, kwargs = load_ora(path)
         palette = Palette(info["palette"], transparency=0)
-        layers = [Layer([p], visible=v) for p, v in layer_pics]
+        layers = [Layer(frames, visible=visibility)
+                  for frames, visibility in layer_pics]
         return cls(size=layers[0].size, layers=layers, palette=palette, path=path)
 
     def save_ora(self, path=None, auto=False):
@@ -177,6 +182,34 @@ class Drawing:
         self._add_edit(edit)
         self.selection = None
 
+    def add_frame(self, index=None):
+        index = index if index is not None else self.frame
+        for layer in self.layers:
+            layer.add_frame(index + 1)
+        if index <= self.frame:
+            self.frame += 1
+        self.n_frames += 1
+
+    def remove_frame(self, index=None):
+        index = index if index is not None else self.frame
+        for layer in self.layers:
+            layer.remove_frame(index)
+        if index <= self.frame:
+            self.frame -= 1            
+        self.n_frames -= 1
+
+    def next_frame(self):
+        self.frame = (self.frame + 1) % self.n_frames
+
+    def prev_frame(self):
+        self.frame = (self.frame - 1) % self.n_frames
+
+    def first_frame(self):
+        self.frame = 0
+
+    def last_frame(self):
+        self.frame = self.n_frames - 1
+        
     def add_layer(self, index=None, layer=None):
         layer = layer or Layer(size=self.size)
         index = (index if index is not None else self.layers.get_current_index()) + 1
@@ -225,17 +258,18 @@ class Drawing:
         self._add_edit(edit)
 
     @try_except_log
-    def merge_layers(self, layer1, layer2):
-        edit = MergeLayersEdit.create(self, layer1, layer2)
+    def merge_layers(self, layer1, layer2, frame):
+        edit = MergeLayersEdit.create(self, layer1, layer2, frame)
         edit.perform(self)
         self._add_edit(edit)
 
-    def merge_layer_down(self, layer=None):
+    def merge_layer_down(self, layer=None, frame=None):
         layer1 = layer or self.layers.current
         index = self.layers.index(layer1)
+        frame = frame if frame is not None else self.frame
         if index > 0:
             layer2 = self.layers[index - 1]
-            self.merge_layers(layer1, layer2)
+            self.merge_layers(layer1, layer2, frame)
 
     def flip_horizontal(self):
         edit = DrawingFlipEdit(True)
@@ -260,10 +294,11 @@ class Drawing:
         self._add_edit(edit)
 
     @try_except_log
-    def change_layer(self, new, rect, tool=None, layer=None, frame=0):
+    def change_layer(self, new, rect, tool=None, layer=None, frame=None):
         "Update a part of the layer, keeping track of the change as an 'undo'"
         layer = layer or self.current
-        edit = LayerEdit.create(self, layer, frame, new, rect, tool.value if tool else 0)
+        frame = frame if frame is not None else self.frame
+        edit = LayerEdit.create(self, layer, new, frame, rect, tool.value if tool else 0)
         edit.perform(self)
         self._add_edit(edit)
 

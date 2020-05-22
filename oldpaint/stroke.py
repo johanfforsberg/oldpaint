@@ -12,7 +12,7 @@ def make_stroke(layer, event_queue, tool):
     """
 
     if layer.dirty:
-        layer.clear(layer.dirty)
+        layer.clear(layer.dirty[0], frame=0)
 
     event_type = None
 
