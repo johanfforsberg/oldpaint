@@ -5,7 +5,7 @@ from typing import Tuple, List
 import numpy as np
 
 from .rect import Rectangle
-from .draw import draw_line, draw_rectangle, draw_fill, blit, paste
+from .draw import draw_line, draw_rectangle, draw_ellipse, draw_fill, blit, paste
 from .ora import load_png, save_png
 from .util import DefaultList
 
@@ -127,9 +127,9 @@ class Layer:
             x0, y0 = pos
             ox, oy = offset
             pos = (x0 - ox, y0 - oy)
-        pic = self.get_data(frame)
+        data = self.get_data(frame)
         with self.lock:
-            rect = draw_ellipse(pic, pos, size, brush, fill=fill, **kwargs)
+            rect = draw_ellipse(data, brush, pos, size, fill=fill, **kwargs)
             if rect and set_dirty:
                 self.set_dirty(rect, frame)
             self.version += 1
@@ -150,10 +150,10 @@ class Layer:
             self.version += 1
             return rect
 
-    def draw_fill(self, point:Tuple[int, int], color:int, set_dirty:bool=True, frame:int=0):
+    def draw_fill(self, source: np.ndarray, point:Tuple[int, int], color:int, set_dirty:bool=True, frame:int=0):
         pic = self.get_data(frame)
         with self.lock:
-            rect = draw_fill(pic, point, color)
+            rect = draw_fill(source, pic, point, color)
             if rect and set_dirty:
                 # self.dirty[frame] = rect.unite(self.dirty.get(frame))
                 self.set_dirty(rect, frame)
@@ -226,7 +226,7 @@ class Layer:
 
     def clone(self, dtype=dtype):
         with self.lock:
-            return Layer([(f.astype(dtype=dtype) if f is not None else None)
+            return Layer([(f.astype(dtype=dtype, copy=True) if f is not None else None)
                           for f in self.frames])
 
     def get_subimage(self, rect:Rectangle, frame:int=0):

@@ -251,9 +251,10 @@ class Drawing:
             edit.perform(self)
             self._add_edit(edit)
 
-    def clear_layer(self, layer=None, color=0):
+    def clear_layer(self, layer=None, color=0, frame=None):
         layer = layer or self.current
-        edit = LayerClearEdit.create(self, layer, color=color)
+        frame = frame if frame is not None else self.frame
+        edit = LayerClearEdit.create(self, layer, frame, color=color)
         edit.perform(self)
         self._add_edit(edit)
 
@@ -344,6 +345,11 @@ class Drawing:
         brush = PicBrush(data=subimage)
         self.brushes.append(brush)
 
+    def copy_layer(self, frame=None, layer=None):
+        frame = frame if frame is not None else self.frame
+        layer = layer or self.current
+        return layer.get_subimage(layer.rect, frame)
+    
     def _add_edit(self, edit):
         "Insert an edit into the history, keeping track of things"
         if self._edits_index < -1:

@@ -5,6 +5,7 @@ from pyglet import window
 import numpy as np
 
 from .constants import ToolName
+from .draw import draw_fill
 from .drawing import Drawing
 from .rect import from_points
 from .util import try_except_log
@@ -212,11 +213,8 @@ class FillTool(Tool):
 
     def finish(self, overlay, point, buttons, modifiers):
         if point in overlay.rect:
-            clone = self.drawing.current.clone(dtype=np.uint32)
-            rect = clone.draw_fill(point, color=self.color + 255*2**24)
-            if rect:
-                # Here we don't use the overlay, and therefore handle the updating directly
-                self.drawing.change_layer(clone, rect, self.tool)
+            source = self.drawing.current.get_data(self.drawing.frame)
+            self.rect = overlay.draw_fill(source, point, color=self.color + 255*2**24)
 
 
 class SelectionTool(Tool):
@@ -258,8 +256,10 @@ class PickerTool(Tool):
 
     def finish(self, overlay, point, buttons, modifiers):
         # Find the pixel that is visible at the given point.
+        frame = self.drawing.frame
         for layer in reversed(self.drawing.visible_layers):
-            index = layer.pic[point]
+            data = layer.get_data(frame)
+            index = data[point]
             if index != 0:
                 break
         if buttons == window.mouse.LEFT:

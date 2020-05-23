@@ -135,28 +135,29 @@ class LayerEdit(Edit):
 class LayerClearEdit(Edit):
 
     index: int
+    frame: int
     rect: Rectangle
     color: int
     data: bytes
 
     @classmethod
-    def create(cls, drawing, orig_layer, rect=None, color=0):
+    def create(cls, drawing, orig_layer, frame, rect=None, color=0):
         if rect:
-            data =  [orig_layer.get_subimage(rect)]
+            data = [orig_layer.get_subimage(rect, frame=frame)]
         else:
-            data = orig_layer.frames
+            data = orig_layer.get_data(frame)
             rect = orig_layer.rect
         index = drawing.layers.index(orig_layer)
-        return cls(index=index, data=zlib.compress(data), rect=rect, color=color)
+        return cls(index=index, data=zlib.compress(data), frame=frame, rect=rect, color=color)
 
     def perform(self, drawing):
         layer = drawing.layers[self.index]
-        layer.clear(self.rect, value=self.color)
+        layer.clear(self.rect, value=self.color, frame=self.frame)
 
     def revert(self, drawing):
         layer = drawing.layers[self.index]
         data = np.frombuffer(zlib.decompress(self.data), dtype=np.uint8).reshape(self.rect.size)
-        layer.apply_diff(data, self.rect)
+        layer.apply_diff(data, self.rect, frame=self.frame)
 
     @property
     def index_str(self):
