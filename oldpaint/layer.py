@@ -1,5 +1,6 @@
 from functools import lru_cache
 from threading import RLock
+from typing import Tuple, List
 
 import numpy as np
 
@@ -13,14 +14,14 @@ class Layer:
 
     """
     An editable image.
-    The image data is kept in a Picture instance.
+    The image data is kept in one or more 2d numpy arrays, one per animation frame.
+    Note that the frames are initialized whenever they are drawn to, so an
+    empty frame is not allocated (it's represented by None).
     """
 
     dtype = np.uint8
 
-    def __init__(self, frames=None, size=None, visible=True):
-        # if not frames and size:
-        #     frames = [np.zeros(size, dtype=self.dtype)]
+    def __init__(self, frames: List[np.ndarray]=None, size: Tuple[int, int]=None, visible:bool=True):
         if frames:
             assert all(isinstance(f, np.ndarray) for f in frames), "Frames must be ndarray instances."
             self.frames = DefaultList(list(frames))
@@ -54,19 +55,33 @@ class Layer:
     # def get_pic(self, frame=0):
     #     return self.frames[frame]
 
-    def save_png(self, path, palette=None, frame=None):
+    def save_png(self, path:str, palette=None, frame=None):
         save_png(self.frames[frame], path, palette)
 
-    def get_frame(self, index):
+    def get_data(self, frame:int=0):
         "Get the given frame, creating it if needed."
-        frame = self.frames[index]
-        if frame is not None:
-            return frame
-        frame = np.zeros(self.size, dtype=self.dtype)
-        self.frames[index] = frame
-        return frame
+        data = self.frames[frame]
+        if data is not None:
+            return data
+        data = np.zeros(self.size, dtype=self.dtype)
+        self.frames[frame] = data
+        return data
 
-    def add_frame(self, index):
+    def set_data(self, data: np.ndarray, frame:int=0):
+        self.frames[frame] = data
+
+    def get_dirty(self, frame: int=0):
+        return self.dirty.get(frame)
+
+    def set_dirty(self, rect: Rectangle, frame: int=0):
+        if rect:
+            self.dirty[frame] = dirty = rect.unite(self.dirty.get(frame))
+            return dirty
+
+    def clear_dirty(self, frame: int=0):
+        self.dirty.pop(frame, None)
+        
+    def add_frame(self, index: int):
         with self.lock:
             self.frames.insert(index, None)
             # TODO check this logic
@@ -76,7 +91,7 @@ class Layer:
                 if rect
             }
 
-    def remove_frame(self, index):
+    def remove_frame(self, index:int):
         with self.lock:
             self.frames.pop(index)
             # TODO check this logic
@@ -87,84 +102,100 @@ class Layer:
             }
         
     @classmethod
-    def load_png(cls, path):
+    def load_png(cls, path:str):
         pic, info = load_png(path)
         return cls(pic), info["palette"]
 
-    def draw_line(self, p0, p1, brush, offset, set_dirty=True, frame=0, **kwargs):
+    def draw_line(self, p0: Tuple[int, int], p1: Tuple[int, int], brush: np.ndarray,
+                  offset: Tuple[int, int], set_dirty:bool=True, frame:int=0, **kwargs):
         ox, oy = offset
         x0, y0 = p0
         x1, y1 = p1
         p0 = (x0 - ox, y0 - oy)
         p1 = (x1 - ox, y1 - oy)
-        pic = self.get_frame(frame)
+        data = self.get_data(frame)
         with self.lock:
-            rect = draw_line(pic, brush, p0, p1)
+            rect = draw_line(data, brush, p0, p1)
             if rect and set_dirty:
-                self.dirty[frame] = rect.unite(self.dirty.get(frame))
-        self.version += 1
+                self.set_dirty(rect, frame)
+            self.version += 1
         return rect
 
-    def draw_ellipse(self, pos, size, brush, offset, set_dirty=True, fill=False, frame=0, **kwargs):
+    def draw_ellipse(self, pos:Tuple[int, int], size:Tuple[int, int], brush:np.ndarray,
+                     offset:Tuple[int, int], set_dirty:bool=True, fill:bool=False, frame:int=0, **kwargs):
         if not fill:
             x0, y0 = pos
             ox, oy = offset
             pos = (x0 - ox, y0 - oy)
-        pic = self.get_frame(frame)
+        pic = self.get_data(frame)
         with self.lock:
             rect = draw_ellipse(pic, pos, size, brush, fill=fill, **kwargs)
             if rect and set_dirty:
-                self.dirty[frame] = rect.unite(self.dirty.get(frame))
-        self.version += 1
+                self.set_dirty(rect, frame)
+            self.version += 1
         return rect
 
-    def draw_rectangle(self, pos, size, brush, offset=(0, 0), set_dirty=True, color=0, fill=False, frame=0, **kwargs):
+    def draw_rectangle(self, pos:Tuple[int, int], size:Tuple[int, int], brush:np.ndarray,
+                       offset:Tuple[int, int]=(0, 0), set_dirty:bool=True, color:int=0,
+                       fill:bool=False, frame:int=0, **kwargs):
         if not fill:
             x0, y0 = pos
             ox, oy = offset
             pos = (x0 - ox, y0 - oy)
-        pic = self.get_frame(frame)
+        data = self.get_data(frame)
         with self.lock:
-            rect = draw_rectangle(pic, brush, pos, size, color, fill=fill)
+            rect = draw_rectangle(data, brush, pos, size, color, fill=fill)
             if rect and set_dirty:
-                self.dirty[frame] = rect.unite(self.dirty.get(frame))
-        self.version += 1
-        return rect
+                self.set_dirty(rect, frame)
+            self.version += 1
+            return rect
 
-    def draw_fill(self, point, color, set_dirty=True, frame=0):
-        pic = self.get_frame(frame)
+    def draw_fill(self, point:Tuple[int, int], color:int, set_dirty:bool=True, frame:int=0):
+        pic = self.get_data(frame)
         with self.lock:
             rect = draw_fill(pic, point, color)
             if rect and set_dirty:
-                self.dirty[frame] = rect.unite(self.dirty.get(frame))
-        self.version += 1
+                # self.dirty[frame] = rect.unite(self.dirty.get(frame))
+                self.set_dirty(rect, frame)
+            self.version += 1
         return rect
 
-    def flip_vertical(self, frame=None):
-        frames = [self.frames[frame]] if frame is not None else self.frames
-        for i, pic in enumerate(frames):
-            #pic = self.frames[i]
-            if pic is not None:
-                self.frames[i] = np.flip(pic, axis=1)
-        self.dirty[frame] = self.rect
-        self.version += 1
+    def flip(self, frame, axis):
+        if frame is not None:
+            with self.lock:
+                data = self.get_data(frame)
+                self.set_data(np.flip(data, axis=axis), frame)
+                self.set_dirty(self.rect, frame)
+                self.version += 1
+        else:
+            for i, data in enumerate(self.frames):
+                if data is not None:
+                    with self.lock:
+                        self.set_data(np.flip(data, axis=axis), i)
+                        self.set_dirty(self.rect, i)
+                        self.version += 1
+        return self.rect
+        
+    def flip_horizontal(self, frame:int=None):
+        self.flip(frame, axis=0)
+        return self.rect
+   
+    def flip_vertical(self, frame:int=None):
+        self.flip(frame, axis=1)
+        return self.rect
 
-    def flip_horizontal(self, frame=None):
-        frames = [self.frames[frame]] if frame is not None else self.frames
-        for i, data in enumerate(frames):
-            if data:
-                self.frames[i] = np.flip(data, axis=0)
-        self.dirty[frame] = self.rect
-        self.version += 1
-
-    def swap_colors(self, index1, index2):
-        #self.pic.swap_colors(index1, index2)
+    def swap_colors(self, index1:int, index2:int, frame:int=None):
         color1_pixels = self.pic == index1
         color2_pixels = self.pic == index2
-        self.pic[color1_pixels] = index2
-        self.pic[color2_pixels] = index1
-        self.dirty = {f: self.rect for f in range(len(self.frames))}
-        self.version += 1
+        frames = [self.get_data(frame)] if frame is not None else self.frames
+        for i, data in enumerate(frames):
+            if data is not None:
+                with self.lock:
+                    data[color1_pixels] = index2
+                    data[color2_pixels] = index1
+                    self.set_dirty(self.rect, i)
+                    self.version += 1
+                return self.rect
 
     # @property
     # def size(self):
@@ -175,87 +206,86 @@ class Layer:
         return self._get_rect(self.size)
 
     @lru_cache(1)
-    def _get_rect(self, size):
+    def _get_rect(self, size:Tuple[int, int]):
         return Rectangle(size=size)
 
     def toggle_visibility(self):
         self.visible = not self.visible
 
-    def clear(self, rect: Rectangle=None, value=0, set_dirty=True, frame=None):
+    def clear(self, rect:Rectangle=None, value:int=0, set_dirty:bool=True, frame:int=0):
         rect = rect or self.rect
         rect = self.rect.intersect(rect)
-        if not rect:
-            return
-        pic = self.frames[frame]
-        if pic is not None:
-            pic[rect.as_slice()] = value
-            if set_dirty and rect:
-                self.dirty[frame] = rect.unite(self.dirty.get(frame))
-            self.version += 1
+        data = self.get_data(frame)
+        if rect and data is not None:
+            with self.lock:
+                data[rect.as_slice()] = value
+                if set_dirty and rect:
+                    self.set_dirty(rect, frame)
+                self.version += 1
             return rect
 
     def clone(self, dtype=dtype):
         with self.lock:
-            return Layer([(f.astype(dtype=dtype) if f else None)
+            return Layer([(f.astype(dtype=dtype) if f is not None else None)
                           for f in self.frames])
 
-    def get_subimage(self, rect: Rectangle, frame=0):
+    def get_subimage(self, rect:Rectangle, frame:int=0):
         with self.lock:
-            pic = self.get_frame(frame)
-            if pic is not None:
-                return pic[rect.as_slice()].copy()
+            data = self.get_data(frame)
+            if data is not None:
+                return data[rect.as_slice()].copy()
             else:
                 return np.zeros(rect.size)
 
-    def crop(self, rect: Rectangle):
-        return Layer([self.get_subimage(i, rect)
+    def crop(self, rect:Rectangle):
+        return Layer([self.get_subimage(rect, i)
                       for i in range(len(self.frames))])
         
-    def blit(self, data, rect, set_dirty=True, alpha=True, frame=None):
+    def blit(self, new_data:np.ndarray, rect:Rectangle, set_dirty:bool=True, alpha:bool=True, frame:int=0):
         if not rect:
             return
-        pic = self.get_frame(frame)
+        data = self.get_data(frame)
         with self.lock:
             if alpha:
-                blit(pic, data, *rect.position)
+                blit(data, new_data, *rect.position)
             else:
-                paste(pic, data, *rect.position)
+                paste(data, new_data, *rect.position)
             self.dirty[frame] = self.rect.intersect(rect.unite(self.dirty.get(frame)))
             
         self.version += 1
-        return self.rect.intersect(rect)
+        return rect
 
-    def blit_part(self, data, rect, dest, set_dirty=True, alpha=True, frame=None):
-        pic = self.get_frame(frame)
+    def blit_part(self, data, rect, dest, set_dirty:bool=True, alpha:bool=True, frame:int=0):
+        data = self.get_frame(frame)
         # TODO ...
         with self.lock:
             self.dirty[frame] = self.rect.intersect(rect.unite(self.dirty.get(frame)))
         self.version += 1
-        return self.rect.intersect(rect)
+        return rect
 
-    def make_diff(self, other, rect: Rectangle, alpha: bool=True, frame: int=0):
-        pic = self.frames[frame] if self.frames[frame] is not None else np.zeros(self.size, dtype=np.uint8)
+    def make_diff(self, other:np.ndarray, rect:Rectangle, alpha:bool=True, frame:int=0):
+        data = self.get_data(frame)
+        data = data if data is not None else np.zeros(self.size, dtype=np.uint8)
         # TODO this assumes that "other" is an overlay, not good.
-        data = other.frames[0]
+        new_data = other.get_data()
         with self.lock:
             slc = rect.as_slice()
-            mask = data[slc].astype(np.bool)
-            return np.subtract(data[slc], mask * pic[slc], dtype=np.int16)
+            mask = new_data[slc].astype(np.bool)
+            return np.subtract(new_data[slc], mask * data[slc], dtype=np.int16)
 
-    def apply_diff(self, diff, rect, invert=False, frame=None):
-        pic = self.get_frame(frame)
+    def apply_diff(self, diff:np.ndarray, rect:Rectangle, invert:bool=False, frame:int=0):
+        data = self.get_data(frame)
         slc = rect.as_slice()
         with self.lock:
-            pic[slc] = np.add(pic[slc], diff, casting="unsafe")
-            self.dirty[frame] = self.rect.intersect(rect.unite(self.dirty.get(frame)))
+            data[slc] = np.add(data[slc], diff, casting="unsafe")
+            self.set_dirty(rect, frame)
         self.version += 1
-        return self.rect.intersect(rect)
 
     def __repr__(self):
         return f"Layer(id={id(self)}, size={self.size}, pic={self.pic})"
     
     def __hash__(self):
-        "For caching purposes, a Layer is considered changed when it's underlying Picture has changed."
+        "For caching purposes, a Layer is considered changed when it's underlying data has changed."
         return hash((id(self), self.size, self.version))
 
 
