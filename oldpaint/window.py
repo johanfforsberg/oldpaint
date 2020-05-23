@@ -479,13 +479,15 @@ class OldpaintWindow(pyglet.window.Window):
 
     # === Other callbacks ===
 
-    @lru_cache(32)
+    # TODO just caching one texture here because it won't be accessed that much
+    # and performance probably does not matter.
+    @lru_cache(1)
     def get_layer_preview_texture(self, layer, colors, size=(32, 32)):
         w, h = layer.size
         size = w, h
         texture = Texture(size, params={gl.GL_TEXTURE_MIN_FILTER: gl.GL_LINEAR})
         texture.clear()
-        data = as_rgba(layer.pic, colors)
+        data = as_rgba(layer.get_data(self.drawing.frame), colors)
         gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
         gl.glTextureSubImage2D(texture.name, 0,
                                0, 0, w, h,  # min(w, bw), min(w, bh),
