@@ -264,6 +264,7 @@ class Drawing:
         self._add_edit(edit)
 
     def merge_layer_down(self, layer=None, frame=None):
+        "Combine a layer with the layer below it, by superpositioning."
         layer1 = layer or self.layers.current
         index = self.layers.index(layer1)
         frame = frame if frame is not None else self.frame
@@ -271,27 +272,30 @@ class Drawing:
             layer2 = self.layers[index - 1]
             self.merge_layers(layer1, layer2, frame)
 
+    def flip(self, horizontal):
+        "Mirror all layers."
+        edit = DrawingFlipEdit(horizontal)
+        edit.perform(self)
+        self._add_edit(edit)
+        
     def flip_horizontal(self):
-        edit = DrawingFlipEdit(True)
-        edit.perform(self)
-        self._add_edit(edit)
-
+        self.flip(True)
+        
     def flip_vertical(self):
-        edit = DrawingFlipEdit(False)
-        edit.perform(self)
-        self._add_edit(edit)
+        self.flip(False)
 
-    def flip_layer_horizontal(self, layer=None):
+    def flip_layer(self, layer, horizontal):
+        "Mirror a single layer."
         layer = layer or self.current
-        edit = LayerFlipEdit(self.layers.index(layer), True)
+        edit = LayerFlipEdit(self.layers.index(layer), horizontal)
         edit.perform(self)
         self._add_edit(edit)
+        
+    def flip_layer_horizontal(self, layer=None):
+        self.flip_layer(layer, True)
 
     def flip_layer_vertical(self, layer=None):
-        layer = layer or self.current
-        edit = LayerFlipEdit(self.layers.index(layer), False)
-        edit.perform(self)
-        self._add_edit(edit)
+        self.flip_layer(layer, False)
 
     @try_except_log
     def change_layer(self, new, rect, tool=None, layer=None, frame=None):
