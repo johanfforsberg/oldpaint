@@ -9,7 +9,7 @@ import numpy as np
 
 from .brush import PicBrush
 from .constants import ToolName
-from .edit import (LayerEdit, LayerClearEdit, DrawingCropEdit, LayerFlipEdit,
+from .edit import (LayerEdit, LayerClearEdit, DrawingCropEdit, LayerFlipEdit, AddFrameEdit,
                    DrawingFlipEdit, PaletteEdit, AddLayerEdit,
                    RemoveLayerEdit, SwapLayersEdit, MergeLayersEdit,
                    SwapColorsImageEdit, SwapColorsPaletteEdit,
@@ -182,20 +182,30 @@ class Drawing:
         self._add_edit(edit)
         self.selection = None
 
-    def add_frame(self, index=None):
-        index = index if index is not None else self.frame
-        for layer in self.layers:
-            layer.add_frame(index + 1)
-        if index <= self.frame:
-            self.frame += 1
-        self.n_frames += 1
-
+    def add_frame(self, frame=None, copy=False):
+        frame = frame if frame is not None else self.frame + 1
+        if copy:
+            # TODO does not seem to work
+            edit = MultiEdit([
+                AddFrameEdit.create(layer.frames[self.frame], i, frame)
+                for i, layer in enumerate(self.layers)
+            ])
+        else:
+            edit = MultiEdit([
+                AddFrameEdit.create(None, i, frame)
+                for i, layer in enumerate(self.layers)
+            ])
+        edit.perform(self)
+        self._add_edit(edit)
+         
+        self.frame = frame
+ 
     def remove_frame(self, index=None):
         index = index if index is not None else self.frame
         for layer in self.layers:
             layer.remove_frame(index)
         if index <= self.frame:
-            self.frame -= 1            
+            self.frame -= 1        
         self.n_frames -= 1
 
     def next_frame(self):

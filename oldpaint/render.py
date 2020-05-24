@@ -111,10 +111,12 @@ def render_drawing(drawing, highlighted_layer=None):
 layer_texture_cache = {}
 
 def _get_layer_texture(layer, frame):
-    layer_hash = hash((id(layer), layer.size, frame if layer.frames[frame] is not None else None))
-    texture = layer_texture_cache.get(layer_hash)
+    # TODO This key is pretty ugly... we're using ids so that adding/removing
+    # frames does not confuse the cache. But it's not pretty.
+    layer_key = (id(layer), layer.size, id(layer.frames[frame]))
+    texture = layer_texture_cache.get(layer_key)
     if not texture:
-        layer_texture_cache[layer_hash] = texture = ByteIntegerTexture(layer.size)
+        layer_texture_cache[layer_key] = texture = ByteIntegerTexture(layer.size)
         texture.clear()
     return texture
 

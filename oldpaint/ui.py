@@ -707,16 +707,20 @@ def render_main_menu(window):
 
         if imgui.begin_menu("Animation", bool(window.drawing)):
 
+            if imgui.menu_item("Add frame", None, False, True)[0]:
+                drawing.add_frame()
+            if imgui.menu_item("Duplicate frame", None, False, True)[0]:
+                drawing.add_frame(copy=True)
+            if imgui.menu_item("Remove frame", None, False, True)[0]:
+                drawing.remove_frame()
+
+            imgui.separator()
+                
             if imgui.menu_item("Next frame", None, False, True)[0]:
                 drawing.next_frame()
             if imgui.menu_item("Prev frame", None, False, True)[0]:
                 drawing.prev_frame()
-            
-            if imgui.menu_item("Add frame", None, False, True)[0]:
-                drawing.add_frame()
-            if imgui.menu_item("Remove frame", None, False, True)[0]:
-                drawing.remove_frame()
-
+                
             imgui.end_menu()
 
         if imgui.begin_menu("Brush", bool(window.drawing)):

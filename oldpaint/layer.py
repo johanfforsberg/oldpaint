@@ -81,15 +81,16 @@ class Layer:
     def clear_dirty(self, frame: int=0):
         self.dirty.pop(frame, None)
         
-    def add_frame(self, index: int):
+    def add_frame(self, index:int, data:np.ndarray):
         with self.lock:
-            self.frames.insert(index, None)
+            self.frames.insert(index, data)
             # TODO check this logic
             self.dirty = {
                 (i if i <= index else i + 1): self.rect if i == index else rect
-                for i, rect in self.dirty
+                for i, rect in self.dirty.items()
                 if rect
             }
+            # self.dirty.clear()
 
     def remove_frame(self, index:int):
         with self.lock:
@@ -97,9 +98,10 @@ class Layer:
             # TODO check this logic
             self.dirty = {
                 (i if i < index else i - 1): rect
-                for i, rect in self.dirty
+                for i, rect in self.dirty.items()
                 if i != index and rect
             }
+            # self.dirty.clear()
         
     @classmethod
     def load_png(cls, path:str):
@@ -231,9 +233,9 @@ class Layer:
 
     def get_subimage(self, rect:Rectangle, frame:int=0):
         with self.lock:
-            data = self.get_data(frame)
+            data = self.frames[frame]
             if data is not None:
-                return data[rect.as_slice()].copy()
+                return data[rect.as_slice()]
             else:
                 return np.zeros(rect.size)
 

@@ -121,7 +121,7 @@ class LayerEdit(Edit):
 
     @property
     def index_str(self):
-        return f"{self.index}"
+        return f"{self.index}/{self.frame}"
 
     @property
     def info_str(self):
@@ -343,6 +343,7 @@ class AddLayerEdit(Edit):
         return f"{__class__}(index={self.index}, data={len(self.data)}B, size={self.size})"
 
 
+
 @dataclass(frozen=True)
 class RemoveLayerEdit(Edit):
 
@@ -371,6 +372,74 @@ class RemoveLayerEdit(Edit):
         return f"{__class__}(index={self.index}, data={len(self.data)}B, size={self.size})"
 
 
+@dataclass(frozen=True)
+class AddFrameEdit(Edit):
+
+    index: int
+    frame: int
+    # size: tuple
+    data: bytes
+
+    @classmethod
+    def create(cls, data, index, frame):
+        return cls(index=index, frame=frame, data=zlib.compress(data) if data is not None else None)
+
+    def perform(self, drawing):
+        data = zlib.decompress(self.data) if self.data is not None else None
+        layer = drawing.layers[self.index]
+        layer.add_frame(self.frame, data)
+        if self.frame <= drawing.frame:
+            drawing.frame += 1
+        drawing.n_frames += 1
+
+    def revert(self, drawing):
+        layer = drawing.layers[self.index]
+        layer.remove_frame(self.frame)
+        if self.frame <= drawing.frame:
+            drawing.frame -= 1
+        drawing.n_frames -= 1
+
+    @property
+    def index_str(self):
+        return f"{self.index}"
+
+    @property
+    def info_str(self):
+        return f"Add frame"
+
+    def __repr__(self):
+        return f"{__class__}(index={self.index}, data={len(self.data)}B, size={self.size})"
+
+
+@dataclass(frozen=True)
+class RemoveFrameEdit(Edit):
+
+    index: int
+    frame: int
+    size: tuple
+    data: bytes
+
+    @classmethod
+    def create(cls, drawing, index, frame):
+        layer = drawing.layers[index]
+        data = layer.get_data(frame)
+        cls(index=index, frame=frame, size=data.shape, data=zlib.compress(data))
+
+    perform = AddFrameEdit.revert
+    revert = AddFrameEdit.perform
+
+    @property
+    def index_str(self):
+        return f"{self.index}"
+    
+    @property
+    def info_str(self):
+        return f"Remove frame"
+
+    def __repr__(self):
+        return f"{__class__}(index={self.index}, data={len(self.data)}B, size={self.size})"
+    
+    
 @dataclass(frozen=True)
 class SwapLayersEdit(Edit):
 
