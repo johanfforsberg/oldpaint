@@ -739,18 +739,18 @@ def render_main_menu(window):
             imgui.separator()
                 
             if imgui.menu_item("Flip horizontally", None, False, window.drawing.brushes.current)[0]:
-                window.brush.flip_horizontal()
+                window.brush.flip(vertical=False)
                 # window.get_brush_preview_texture.cache_clear()
 
             elif imgui.menu_item("Flip vertically", None, False, window.drawing.brushes.current)[0]:
-                window.brush.flip_vertical()
+                window.brush.flip(vertical=True)
 
             elif imgui.menu_item("Rotate clockwise", None, False, window.drawing.brushes.current)[0]:
-                window.brush.rotate_clockwise()
+                window.brush.rotate(1)
                 # window.get_brush_preview_texture.cache_clear()
 
             elif imgui.menu_item("Rotate counter clockwise", None, False, window.drawing.brushes.current)[0]:
-                window.brush.rotate_counter_clockwise()
+                window.brush.rotate(-1)
                 # window.get_brush_preview_texture.cache_clear()
 
             imgui.separator()

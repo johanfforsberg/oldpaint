@@ -14,12 +14,18 @@ class Brush:
             self.data = data
             self.size = data.shape[:2]
 
-        w, h = self.size
-        self.center = (w // 2, h // 2)
-            
     @lru_cache(2)
     def get_draw_data(self, color, colorize=False):
         return np.clip(self.data, 0, 1) * color + 255 * 2**24
+
+    @property
+    def center(self):
+        return self._get_center(self.size)
+
+    @lru_cache(1)
+    def _get_center(self, size):
+        w, h = self.size
+        return w // 2, h // 2
 
     # def as_rgba(self, colors):
     #     colors32 = [rgba_to_32bit(c) for c in colors]
