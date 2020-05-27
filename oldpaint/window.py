@@ -223,7 +223,7 @@ class OldpaintWindow(pyglet.window.Window):
 
     @no_imgui_events
     def on_mouse_press(self, x, y, button, modifiers):
-        if not self.drawing:
+        if not self.drawing or self.drawing.playing_animation:
             return
         if self.mouse_event_queue:
             return
@@ -339,6 +339,12 @@ class OldpaintWindow(pyglet.window.Window):
                 self.drawing.clear_layer(color=self.drawing.palette.background)
                 self.get_layer_preview_texture.cache_clear()
 
+            elif symbol == key.SPACE:
+                if self.drawing.playing_animation:
+                    self.drawing.stop_animation()
+                else:
+                    self.drawing.start_animation()
+                
             elif symbol == key.Z:
                 self.drawing.undo()
                 self.get_layer_preview_texture.cache_clear()

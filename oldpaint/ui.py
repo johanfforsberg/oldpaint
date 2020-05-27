@@ -720,6 +720,11 @@ def render_main_menu(window):
                 drawing.next_frame()
             if imgui.menu_item("Prev frame", None, False, True)[0]:
                 drawing.prev_frame()
+
+            if imgui.menu_item("Play", None, False, True)[0]:
+                drawing.start_animation()
+            if imgui.menu_item("Stop", None, False, True)[0]:
+                drawing.stop_animation()
                 
             imgui.end_menu()
 

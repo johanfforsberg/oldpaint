@@ -54,8 +54,11 @@ class Drawing:
             self.layers = Selectable([Layer(size=self.size)])
         self.palette = palette if palette else Palette(transparency=0)
 
+        # Animation related things
         self.frame = 0
         self.n_frames = max(1, *(len(l.frames) for l in self.layers))
+        self.framerate = 0.1
+        self.playing_animation = False
         
         self.brushes = Selectable()
 
@@ -222,6 +225,17 @@ class Drawing:
 
     def last_frame(self):
         self.frame = self.n_frames - 1
+
+    def _next_frame_callback(self, dt):
+        self.next_frame()
+        
+    def start_animation(self):
+        clock.schedule_interval(self._next_frame_callback, self.framerate)
+        self.playing_animation = True
+
+    def stop_animation(self):
+        clock.unschedule(self._next_frame_callback)
+        self.playing_animation = False
         
     def add_layer(self, index=None, layer=None):
         layer = layer or Layer(size=self.size)
