@@ -718,15 +718,20 @@ def render_main_menu(window):
                 drawing.remove_frame()
 
             imgui.separator()
-                
-            if imgui.menu_item("Next frame", None, False, True)[0]:
+
+            if imgui.menu_item("First frame  |<", None, False, True)[0]:
+                drawing.first_frame()
+            if imgui.menu_item("Last frame  >|", None, False, True)[0]:
+                drawing.last_frame()
+            
+            if imgui.menu_item("Next frame  >", None, False, True)[0]:
                 drawing.next_frame()
-            if imgui.menu_item("Prev frame", None, False, True)[0]:
+            if imgui.menu_item("Prev frame  <", None, False, True)[0]:
                 drawing.prev_frame()
 
-            if imgui.menu_item("Play", None, False, True)[0]:
+            if imgui.menu_item("Play  >>", None, False, True)[0]:
                 drawing.start_animation()
-            if imgui.menu_item("Stop", None, False, True)[0]:
+            if imgui.menu_item("Stop  ||", None, False, True)[0]:
                 drawing.stop_animation()
                 
             imgui.end_menu()
