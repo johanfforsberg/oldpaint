@@ -193,7 +193,7 @@ def render_palette(drawing: Drawing):
 
     imgui.color_button(f"Background (#{bg})", *as_float(bg_color), 0, 30, 30)
     
-    max_pages = len(palette.colors) // 64 - 1
+    max_pages = max(0, len(palette.colors) // 64 - 1)
     imgui.push_item_width(100)
     _, current_color_page = imgui.slider_int("Page", current_color_page, min_value=0, max_value=max_pages)
     start_color = 64 * current_color_page
@@ -209,61 +209,64 @@ def render_palette(drawing: Drawing):
     # Order the colors by column instead of by row (which is the order we draw them)
     for i, c in enumerate(chain.from_iterable(zip(range(0, 16), range(16, 32), range(32, 48), range(48, 64)))):
         index = start_color + c
-        color = colors[index]
-        is_foreground = index == fg
-        is_background = (index == bg) * 2
-        selection = is_foreground | is_background
-        color = as_float(color)
+        if index < len(colors):
+            color = colors[index]
+            is_foreground = index == fg
+            is_background = (index == bg) * 2
+            selection = is_foreground | is_background
+            color = as_float(color)
 
-        if color[3] == 0 or selection:
-            x, y = imgui.get_cursor_screen_pos()
-        
-        if imgui.color_button(f"color {i}", *color[:3], 1, 0, 25, 25):
-            # io = imgui.get_io()
-            # if io.key_shift:
-            #     if "spread_start" in temp_vars:
-            #         temp_vars["spread_end"] = i
-            #     else:
-            #         temp_vars["spread_start"] = i
-            # else:
-            fg = index
+            if color[3] == 0 or selection:
+                x, y = imgui.get_cursor_screen_pos()
+
+            if imgui.color_button(f"color {i}", *color[:3], 1, 0, 25, 25):
+                # io = imgui.get_io()
+                # if io.key_shift:
+                #     if "spread_start" in temp_vars:
+                #         temp_vars["spread_end"] = i
+                #     else:
+                #         temp_vars["spread_start"] = i
+                # else:
+                fg = index
+
+            draw_list = imgui.get_window_draw_list()            
+            if color[3] == 0:
+                # Mark transparent color
+                draw_list.add_line(x+1, y+1, x+24, y+24, imgui.get_color_u32_rgba(0, 0, 0, 1), 1)
+                draw_list.add_line(x+1, y+2, x+23, y+24, imgui.get_color_u32_rgba(1, 1, 1, 1), 1)
+
+            if is_foreground:
+                # Mark foregroupd color
+                draw_list.add_rect_filled(x+2, y+2, x+10, y+10, imgui.get_color_u32_rgba(1, 1, 1, 1))
+                draw_list.add_rect(x+2, y+2, x+10, y+10, imgui.get_color_u32_rgba(0, 0, 0, 1))
+            if is_background:
+                # Mark background color
+                draw_list.add_rect_filled(x+15, y+2, x+23, y+10, imgui.get_color_u32_rgba(0, 0, 0, 1))
+                draw_list.add_rect(x+15, y+2, x+23, y+10, imgui.get_color_u32_rgba(1, 1, 1, 1))
+
+            if imgui.core.is_item_clicked(2):
+                # Right button sets background
+                bg = index
+
+            # Drag and drop (currently does not accomplish anything though)
+            if imgui.begin_drag_drop_source():
+                imgui.set_drag_drop_payload('start_index', c.to_bytes(1, sys.byteorder))
+                imgui.color_button(f"color {c}", *color[:3], 1, 0, 20, 20)
+                imgui.end_drag_drop_source()
+            if imgui.begin_drag_drop_target():
+                start_index = imgui.accept_drag_drop_payload('start_index')
+                if start_index is not None:
+                    start_index = int.from_bytes(start_index, sys.byteorder)
+                    io = imgui.get_io()
+                    image_only = io.key_shift
+                    drawing.swap_colors(start_index, index, image_only=image_only)
+                    palette.clear_overlay()
+                imgui.end_drag_drop_target()
+        else:
+            imgui.color_button(f"no color", 0, 0, 0, 1, 0, 25, 25)
 
         if i % width != width - 1:
             imgui.same_line()
-
-        draw_list = imgui.get_window_draw_list()            
-        if color[3] == 0:
-            # Mark transparent color
-            draw_list.add_line(x+1, y+1, x+24, y+24, imgui.get_color_u32_rgba(0, 0, 0, 1), 1)
-            draw_list.add_line(x+1, y+2, x+23, y+24, imgui.get_color_u32_rgba(1, 1, 1, 1), 1)
-            
-        if is_foreground:
-            # Mark foregroupd color
-            draw_list.add_rect_filled(x+2, y+2, x+10, y+10, imgui.get_color_u32_rgba(1, 1, 1, 1))
-            draw_list.add_rect(x+2, y+2, x+10, y+10, imgui.get_color_u32_rgba(0, 0, 0, 1))
-        if is_background:
-            # Mark background color
-            draw_list.add_rect_filled(x+15, y+2, x+23, y+10, imgui.get_color_u32_rgba(0, 0, 0, 1))
-            draw_list.add_rect(x+15, y+2, x+23, y+10, imgui.get_color_u32_rgba(1, 1, 1, 1))
-
-        if imgui.core.is_item_clicked(2):
-            # Right button sets background
-            bg = index
-
-        # Drag and drop (currently does not accomplish anything though)
-        if imgui.begin_drag_drop_source():
-            imgui.set_drag_drop_payload('start_index', c.to_bytes(1, sys.byteorder))
-            imgui.color_button(f"color {c}", *color[:3], 1, 0, 20, 20)
-            imgui.end_drag_drop_source()
-        if imgui.begin_drag_drop_target():
-            start_index = imgui.accept_drag_drop_payload('start_index')
-            if start_index is not None:
-                start_index = int.from_bytes(start_index, sys.byteorder)
-                io = imgui.get_io()
-                image_only = io.key_shift
-                drawing.swap_colors(start_index, index, image_only=image_only)
-                palette.clear_overlay()
-            imgui.end_drag_drop_target()
 
     imgui.pop_style_color(1)
     imgui.pop_style_var(1)
