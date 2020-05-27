@@ -6,10 +6,12 @@ import shutil
 from uuid import uuid4
 
 import numpy as np
+from pyglet import clock
 
 from .brush import PicBrush
 from .constants import ToolName
-from .edit import (LayerEdit, LayerClearEdit, DrawingCropEdit, LayerFlipEdit, AddFrameEdit,
+from .edit import (LayerEdit, LayerClearEdit, DrawingCropEdit, LayerFlipEdit,
+                   AddFrameEdit, RemoveFrameEdit,
                    DrawingFlipEdit, PaletteEdit, AddLayerEdit,
                    RemoveLayerEdit, SwapLayersEdit, MergeLayersEdit,
                    SwapColorsImageEdit, SwapColorsPaletteEdit,
@@ -187,12 +189,12 @@ class Drawing:
         if copy:
             # TODO does not seem to work
             edit = MultiEdit([
-                AddFrameEdit.create(layer.frames[self.frame], i, frame)
+                AddFrameEdit.create(layer.frames[self.frame], self.size, i, frame)
                 for i, layer in enumerate(self.layers)
             ])
         else:
             edit = MultiEdit([
-                AddFrameEdit.create(None, i, frame)
+                AddFrameEdit.create(None, self.size, i, frame)
                 for i, layer in enumerate(self.layers)
             ])
         edit.perform(self)
@@ -200,13 +202,14 @@ class Drawing:
          
         self.frame = frame
  
-    def remove_frame(self, index=None):
-        index = index if index is not None else self.frame
-        for layer in self.layers:
-            layer.remove_frame(index)
-        if index <= self.frame:
-            self.frame -= 1        
-        self.n_frames -= 1
+    def remove_frame(self, frame=None):
+        frame = frame if frame is not None else self.frame
+        edit = MultiEdit([
+            RemoveFrameEdit.create(layer.frames[frame], self.size, i, frame)
+            for i, layer in enumerate(self.layers)
+        ])
+        edit.perform(self)
+        self._add_edit(edit)
 
     def next_frame(self):
         self.frame = (self.frame + 1) % self.n_frames

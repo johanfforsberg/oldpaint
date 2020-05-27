@@ -377,15 +377,16 @@ class AddFrameEdit(Edit):
 
     index: int
     frame: int
-    # size: tuple
+    size: tuple
     data: bytes
 
     @classmethod
-    def create(cls, data, index, frame):
-        return cls(index=index, frame=frame, data=zlib.compress(data) if data is not None else None)
+    def create(cls, data, size, index, frame):
+        return cls(index=index, frame=frame, size=size, data=zlib.compress(data.tobytes()) if data is not None else None)
 
     def perform(self, drawing):
-        data = zlib.decompress(self.data) if self.data is not None else None
+        data = (np.frombuffer(zlib.decompress(self.data), dtype=np.uint8).reshape(self.size).copy()
+                if self.data is not None else None)
         layer = drawing.layers[self.index]
         layer.add_frame(self.frame, data)
         if self.frame <= drawing.frame:
@@ -420,10 +421,8 @@ class RemoveFrameEdit(Edit):
     data: bytes
 
     @classmethod
-    def create(cls, drawing, index, frame):
-        layer = drawing.layers[index]
-        data = layer.get_data(frame)
-        cls(index=index, frame=frame, size=data.shape, data=zlib.compress(data))
+    def create(cls, data, size, index, frame):
+        return cls(index=index, frame=frame, size=size, data=zlib.compress(data.tobytes()) if data is not None else None)
 
     perform = AddFrameEdit.revert
     revert = AddFrameEdit.perform

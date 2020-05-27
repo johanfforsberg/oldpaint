@@ -90,7 +90,7 @@ class Layer:
                 for i, rect in self.dirty.items()
                 if rect
             }
-            # self.dirty.clear()
+            self.dirty[index] = self.rect
 
     def remove_frame(self, index:int):
         with self.lock:
@@ -101,7 +101,6 @@ class Layer:
                 for i, rect in self.dirty.items()
                 if i != index and rect
             }
-            # self.dirty.clear()
         
     @classmethod
     def load_png(cls, path:str):
