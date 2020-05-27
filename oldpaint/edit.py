@@ -143,12 +143,12 @@ class LayerClearEdit(Edit):
     @classmethod
     def create(cls, drawing, orig_layer, frame, rect=None, color=0):
         if rect:
-            data = [orig_layer.get_subimage(rect, frame=frame)]
+            data = orig_layer.get_subimage(rect, frame=frame)
         else:
             data = orig_layer.get_data(frame)
             rect = orig_layer.rect
         index = drawing.layers.index(orig_layer)
-        return cls(index=index, data=zlib.compress(data), frame=frame, rect=rect, color=color)
+        return cls(index=index, data=zlib.compress(data.tobytes()), frame=frame, rect=rect, color=color)
 
     def perform(self, drawing):
         layer = drawing.layers[self.index]

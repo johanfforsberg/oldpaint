@@ -234,7 +234,7 @@ class Layer:
         with self.lock:
             data = self.frames[frame]
             if data is not None:
-                return data[rect.as_slice()]
+                return data[rect.as_slice()].copy()
             else:
                 return np.zeros(rect.size)
 

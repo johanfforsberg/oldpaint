@@ -364,15 +364,15 @@ class Drawing:
     def make_brush(self, frame=None, rect=None, layer=None, clear=False):
         "Create a brush from part of the given layer."
         rect = rect or self.selection
-        frame = frame or self.frame
+        frame = frame if frame is not None else self.frame
         if rect.area() == 0:
             return
-        layer = layer or self.current
+        layer = self.layers[layer] if layer is not None else self.current
         rect = layer.rect.intersect(rect)
         subimage = layer.get_subimage(rect, frame=frame)
         #subimage.fix_alpha(set(self.palette.transparent_colors))
         if clear:
-            edit = LayerClearEdit.create(self, layer, rect,
+            edit = LayerClearEdit.create(self, layer, frame, rect,
                                          color=self.palette.background)
             edit.perform(self)
             self._add_edit(edit)
