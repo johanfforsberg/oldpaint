@@ -126,6 +126,13 @@ class Drawing:
         return self._latest_save_index < len(self._edits)
 
     @classmethod
+    def from_spec(cls, spec):
+        if spec.endswith(".ora"):
+            return cls.from_ora(spec)
+        if spec.endswith(".png"):
+            return cls.from_png(spec)
+        
+    @classmethod
     def from_png(cls, path):
         """Load a PNG into a single layer drawing."""
         pic, info = load_png(path)

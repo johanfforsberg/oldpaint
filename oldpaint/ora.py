@@ -25,6 +25,7 @@ def save_png(data, dest, palette=None):
 def load_png(f):
     reader = png.Reader(f)
     w, h, image_data, info = reader.read(f)
+    assert info.get("palette"), "Sorry, can't load non palette based PNGs."
     return np.vstack(list(map(np.uint8, image_data))).T, info
 
     

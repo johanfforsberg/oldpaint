@@ -65,7 +65,7 @@ class OldpaintWindow(pyglet.window.Window):
 
         self.drawings = Drawings([
             (Drawing((s[0], s[1]), layers=[Layer(LongPicture((s[0], s[1])))])
-             if isinstance(s, tuple) else Drawing.from_ora(s))
+             if isinstance(s, tuple) else Drawing.from_spec(s))
             for s in drawing_specs or []
         ])
 
