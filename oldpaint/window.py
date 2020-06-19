@@ -8,7 +8,7 @@ from queue import Queue
 from euclid3 import Matrix4
 import imgui
 import pyglet
-from pyglet import gl
+from pyglet import gl, clock
 from pyglet.window import key
 # from IPython import start_ipython
 
@@ -73,7 +73,7 @@ class OldpaintWindow(pyglet.window.Window):
             tool: tool
             for tool in [
                 PencilTool, PointsTool, SprayTool,
-                LineTool, RectangleTool,  EllipseTool,
+                LineTool, RectangleTool, EllipseTool,
                 FillTool,
                 SelectionTool, PickerTool
             ]
@@ -125,6 +125,8 @@ class OldpaintWindow(pyglet.window.Window):
         style.window_rounding = 0
         io.config_resize_windows_from_edges = True  # TODO does not seem to work?
 
+        self.ui_state = ui.UIState()
+        
         self.selection = None  # Rectangle e.g. for selecting brush region
 
         self.border_vao = VertexArrayObject(vertices_class=SimpleVertices)
@@ -341,9 +343,9 @@ class OldpaintWindow(pyglet.window.Window):
 
             elif symbol == key.SPACE:
                 if self.drawing.playing_animation:
-                    self.drawing.stop_animation()
+                    self.stop_animation()
                 else:
-                    self.drawing.start_animation()
+                    self.start_animation()
                 
             elif symbol == key.Z:
                 self.drawing.undo()
@@ -530,7 +532,7 @@ class OldpaintWindow(pyglet.window.Window):
         imgui.new_frame()
         with imgui.font(self._font):
 
-            ui.render_main_menu(self)
+            self.ui_state = ui.render_main_menu(self.ui_state, self)
 
             # Tools & brushes
 
@@ -543,12 +545,12 @@ class OldpaintWindow(pyglet.window.Window):
                                                    | imgui.WINDOW_NO_RESIZE
                                                    | imgui.WINDOW_NO_MOVE))
 
-                ui.render_tools(self.tools, self.icons)
+                self.ui_state = ui.render_tools(self.ui_state, self.tools, self.icons)
                 imgui.core.separator()
 
-                brush = ui.render_brushes(self.brushes,
-                                          self.get_brush_preview_texture,
-                                          compact=True, size=(16, 16))
+                self.ui_state, brush = ui.render_brushes(self.ui_state, self.brushes,
+                                                         self.get_brush_preview_texture,
+                                                         compact=True, size=(16, 16))
                 if brush:
                     self.brushes.select(brush)
                     self.drawing.brushes.current = None
@@ -556,20 +558,20 @@ class OldpaintWindow(pyglet.window.Window):
                 imgui.core.separator()
 
                 imgui.begin_child("Palette", height=460)
-                ui.render_palette(self.drawing)
+                self.ui_state = ui.render_palette(self.ui_state, self.drawing)
                 imgui.end_child()
 
                 if drawing:
-                    ui.render_layers(drawing)
+                    self.ui_state = ui.render_layers(self.ui_state, drawing)
                 
                 imgui.end()
 
                 if self.window_visibility["edits"]:
-                    ui.render_edits(self.drawing)
+                    self.ui_state = ui.render_edits(self.ui_state, self.drawing)
 
-                if self.window_visibility["colors"]:
-                    self.window_visibility["colors"], open_color_editor = ui.render_palette_popup(self.drawing)
-                    self.window_visibility["color_editor"] |= open_color_editor
+                # if self.window_visibility["colors"]:
+                #     self.window_visibility["colors"], open_color_editor = ui.render_palette_popup(self.drawing)
+                #     self.window_visibility["color_editor"] |= open_color_editor
 
                 # nh = 150
                 # imgui.set_next_window_size(w - 135, nh)
@@ -580,6 +582,9 @@ class OldpaintWindow(pyglet.window.Window):
                 #                                     | imgui.WINDOW_NO_MOVE))
                 # ui.render_layers(self.drawing)
                 # imgui.end()
+
+                if self.ui_state.animation_settings_open:
+                    self.ui_state = ui.render_animation_settings(self.ui_state, self)
 
                 # Exit with unsaved
                 ui.render_unsaved_exit(self)
@@ -628,6 +633,22 @@ class OldpaintWindow(pyglet.window.Window):
         size = self.drawing.size if self.drawing else (640, 480)
         self._new_drawing = dict(size=size)
 
+    def start_animation(self):
+        clock.schedule_interval(self._next_frame_callback, 1 / self.drawing.framerate)
+        self.drawing.playing_animation = True
+
+    def stop_animation(self):
+        clock.unschedule(self._next_frame_callback)
+        self.drawing.playing_animation = False
+
+    def set_framerate(self, framerate):
+        self.drawing.framerate = framerate
+        self.stop_animation()
+        self.start_animation()
+
+    def _next_frame_callback(self, dt):
+        self.drawing.next_frame()
+                        
     @try_except_log
     def save_drawing(self, drawing=None, ask_for_path=False, auto=False):
         "Save the drawing, asking for a file name if neccessary."

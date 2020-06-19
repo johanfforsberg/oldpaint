@@ -8,6 +8,7 @@ import logging
 from math import floor, ceil
 import os
 import sys
+from typing import NamedTuple
 
 import imgui
 import pyglet
@@ -19,6 +20,16 @@ from .util import show_save_dialog, throttle
 
 logger = logging.getLogger(__name__)
 
+
+class UIState(NamedTuple):
+    color_editor_open: bool = False  # Need a persistent way to keep track of the popup being closed...
+    current_color_page: int = 0
+    animation_settings_open: bool = False
+
+
+def update_state(state, **kwargs):
+    return type(state)(**{**state._asdict(), **kwargs})
+    
 
 TOOL_BUTTON_COLORS = [
     (0.5, 0.5, 0.5),  # normal
@@ -33,7 +44,7 @@ SELECTABLE_FRAME_COLORS = [
 ]
 
 
-def render_tools(tools, icons):
+def render_tools(state, tools, icons):
     current_tool = tools.current
     selected = False
     for i, tool in enumerate(tools):
@@ -48,7 +59,7 @@ def render_tools(tools, icons):
             imgui.begin_tooltip()
             imgui.text(tool.tool.name.lower())
             imgui.end_tooltip()
-    return selected
+    return state
 
 
 @lru_cache(256)
@@ -61,7 +72,7 @@ def _change_channel(value, delta):
     return max(0, min(255, value + delta))
 
 
-def render_color_editor(orig, color):
+def render_color_editor(state, orig, color):
     r0, g0, b0, a0 = r, g, b, a = color
 
     io = imgui.get_io()
@@ -140,7 +151,7 @@ def render_color_editor(orig, color):
 
     if imgui.button("OK"):
         imgui.close_current_popup()
-        return True, False, (r, g, b, a)
+        return (r, g, b, a) != orig, False, (r, g, b, a)
     imgui.same_line()
     if imgui.button("Cancel"):
         imgui.close_current_popup()
@@ -153,10 +164,10 @@ palette_overlay = {}
 color_editor_open = False
 current_color_page = 0
 
-def render_palette(drawing: Drawing):
+def render_palette(state: UIState, drawing: Drawing):
 
-    global color_editor_open  # Need a persistent way to keep track of the popup being closed...
-    global current_color_page
+    # global color_editor_open  # Need a persistent way to keep track of the popup being closed...
+    # global current_color_page
 
     palette = drawing.palette
     fg = palette.foreground
@@ -164,6 +175,7 @@ def render_palette(drawing: Drawing):
     fg_color = palette.foreground_color
     bg_color = palette.background_color
 
+    color_editor_open = state.color_editor_open
     imgui.begin_child("Palette", border=False, height=460)
     # Edit foreground color
     if imgui.color_button(f"Foreground (#{fg})", *as_float(fg_color), 0, 30, 30):
@@ -174,16 +186,21 @@ def render_palette(drawing: Drawing):
         color_editor_open = True
     if imgui.begin_popup("Edit foreground color", flags=(imgui.WINDOW_NO_MOVE |
                                                          imgui.WINDOW_NO_SCROLL_WITH_MOUSE)):
-        done, cancelled, new_color = render_color_editor(palette.colors[fg], fg_color)
-        if done and new_color != fg_color:
+        done, cancelled, new_color = render_color_editor(state, palette.colors[fg], fg_color)
+        if done:
+            # Color was changed and then OK was clicked; make change and close
             drawing.change_colors(fg, [new_color])
             palette.clear_overlay()
+            color_editor_open = False
         elif cancelled:
+            # Cancel was clicked; disregard any changes and close
             palette.clear_overlay()
+            color_editor_open = False
         else:
+            # Keep editing color
             palette.set_overlay(fg, new_color)
         imgui.end_popup()
-    elif color_editor_open:
+    elif state.color_editor_open:
         # The popup was closed by clicking outside, keeping the change (same as OK)
         drawing.change_colors(fg, [fg_color])
         palette.clear_overlay()
@@ -195,7 +212,7 @@ def render_palette(drawing: Drawing):
     
     max_pages = max(0, len(palette.colors) // 64 - 1)
     imgui.push_item_width(100)
-    _, current_color_page = imgui.slider_int("Page", current_color_page, min_value=0, max_value=max_pages)
+    _, current_color_page = imgui.slider_int("Page", state.current_color_page, min_value=0, max_value=max_pages)
     start_color = 64 * current_color_page
 
     imgui.begin_child("Colors", border=False)
@@ -290,119 +307,126 @@ def render_palette(drawing: Drawing):
     #     spread_colors = palette.spread(from_index, to_index)
     #     drawing.change_colors(from_index + 1, spread_colors)
 
+    if any([color_editor_open != state.color_editor_open,
+            current_color_page != state.current_color_page]):
+        return update_state(state,
+                            color_editor_open=color_editor_open,
+                            current_color_page=current_color_page)
+    return state
+    
 
-edit_color = 0
+# edit_color = 0
 
-def render_palette_popup(drawing: Drawing):
+# def render_palette_popup(state: UIState, drawing: Drawing):
 
-    global edit_color
-    global color_editor_open
+#     # global edit_color
+#     # global color_editor_open
 
-    palette = drawing.palette
-    fg = palette.foreground
-    bg = palette.background
-    fg_color = palette.foreground_color
-    bg_color = palette.background_color
-    open_color_editor = False
+#     palette = drawing.palette
+#     fg = palette.foreground
+#     bg = palette.background
+#     fg_color = palette.foreground_color
+#     bg_color = palette.background_color
+#     open_color_editor = False
 
-    _, opened = imgui.begin("Color popup", True)
+#     _, opened = imgui.begin("Color popup", True)
 
-    imgui.begin_child("Colors", width=0, height=0)
+#     imgui.begin_child("Colors", width=0, height=0)
 
-    imgui.push_style_var(imgui.STYLE_ITEM_SPACING, (0, 0))  # Make layout tighter
-    width = int(imgui.get_window_content_region_width()) // 25
+#     imgui.push_style_var(imgui.STYLE_ITEM_SPACING, (0, 0))  # Make layout tighter
+#     width = int(imgui.get_window_content_region_width()) // 25
 
-    for i, color in enumerate(palette, 0):
-        is_foreground = i == fg
-        is_background = (i == bg) * 2
-        selection = is_foreground | is_background
-        if i in palette.overlay:
-            color = as_float(palette.overlay[i])
-        else:
-            color = as_float(color)
-        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND,
-                               *SELECTABLE_FRAME_COLORS[selection])
-        if imgui.color_button(f"color {i}", *color[:3], 1, 0, 25, 25):
-            # io = imgui.get_io()
-            # if io.key_shift:
-            #     if "spread_start" in temp_vars:
-            #         temp_vars["spread_end"] = i
-            #     else:
-            #         temp_vars["spread_start"] = i
-            # else:
-            fg = i
-        imgui.pop_style_color(1)
+#     for i, color in enumerate(palette, 0):
+#         is_foreground = i == fg
+#         is_background = (i == bg) * 2
+#         selection = is_foreground | is_background
+#         if i in palette.overlay:
+#             color = as_float(palette.overlay[i])
+#         else:
+#             color = as_float(color)
+#         imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND,
+#                                *SELECTABLE_FRAME_COLORS[selection])
+#         if imgui.color_button(f"color {i}", *color[:3], 1, 0, 25, 25):
+#             # io = imgui.get_io()
+#             # if io.key_shift:
+#             #     if "spread_start" in temp_vars:
+#             #         temp_vars["spread_end"] = i
+#             #     else:
+#             #         temp_vars["spread_start"] = i
+#             # else:
+#             fg = i
+#         imgui.pop_style_color(1)
 
-        if imgui.core.is_item_clicked(1):
-            edit_color = i
-            color_editor_open = True
-            imgui.open_popup("Edit foreground color")
-            # imgui.set_next_window_position(w - 115 - 120, 200)
+#         if imgui.core.is_item_clicked(1):
+#             edit_color = i
+#             color_editor_open = True
+#             imgui.open_popup("Edit foreground color")
+#             # imgui.set_next_window_position(w - 115 - 120, 200)
 
-        if imgui.core.is_item_clicked(2):
-            # Detect right button clicks on the button
-            bg = i
+#         if imgui.core.is_item_clicked(2):
+#             # Detect right button clicks on the button
+#             bg = i
 
-        if imgui.begin_drag_drop_source():
-            imgui.set_drag_drop_payload('start_index', i.to_bytes(1, sys.byteorder))
-            imgui.color_button(f"color {i}", *color[:3], 1, 0, 20, 20)
-            imgui.end_drag_drop_source()
-        if imgui.begin_drag_drop_target():
-            start_index = imgui.accept_drag_drop_payload('start_index')
-            if start_index is not None:
-                start_index = int.from_bytes(start_index, sys.byteorder)
-                io = imgui.get_io()
-                image_only = io.key_shift
-                drawing.swap_colors(start_index, i, image_only=image_only)
-                palette.clear_overlay()
-            imgui.end_drag_drop_target()
+#         if imgui.begin_drag_drop_source():
+#             imgui.set_drag_drop_payload('start_index', i.to_bytes(1, sys.byteorder))
+#             imgui.color_button(f"color {i}", *color[:3], 1, 0, 20, 20)
+#             imgui.end_drag_drop_source()
+#         if imgui.begin_drag_drop_target():
+#             start_index = imgui.accept_drag_drop_payload('start_index')
+#             if start_index is not None:
+#                 start_index = int.from_bytes(start_index, sys.byteorder)
+#                 io = imgui.get_io()
+#                 image_only = io.key_shift
+#                 drawing.swap_colors(start_index, i, image_only=image_only)
+#                 palette.clear_overlay()
+#             imgui.end_drag_drop_target()
 
-        # if imgui.is_item_hovered():
-        #     io = imgui.get_io()
-        #     delta = int(io.mouse_wheel)
+#         # if imgui.is_item_hovered():
+#         #     io = imgui.get_io()
+#         #     delta = int(io.mouse_wheel)
 
-        if i % width != width - 1:
-            imgui.same_line()
+#         if i % width != width - 1:
+#             imgui.same_line()
 
-    imgui.pop_style_var(1)
-    color_editor_open = render_color_editor_popup(drawing, edit_color, color_editor_open)
+#     imgui.pop_style_var(1)
+#     color_editor_open = render_color_editor_popup(drawing, edit_color, color_editor_open)
 
-    imgui.end_child()
-    imgui.end()
+#     imgui.end_child()
+#     imgui.end()
 
-    palette.foreground = fg
-    palette.background = bg
+#     palette.foreground = fg
+#     palette.background = bg
 
-    return opened, open_color_editor
-
-
-def render_color_editor_popup(drawing, i, still_open):
-
-    palette = drawing.palette
-    orig_color = palette.colors[i]
-    color = palette.get_color(i)
-    if imgui.begin_popup("Edit foreground color", flags=(imgui.WINDOW_NO_MOVE |
-                                                         imgui.WINDOW_NO_SCROLL_WITH_MOUSE)):
-        done, cancelled, new_color = render_color_editor(palette.colors[i], color)
-        if done and new_color != orig_color:
-            drawing.change_colors(i, [new_color])
-            palette.clear_overlay()
-            still_open = False
-        elif cancelled:
-            palette.clear_overlay()
-            still_open = False
-        else:
-            palette.set_overlay(i, new_color)
-        imgui.end_popup()
-    elif still_open:
-        # The popup was closed by clicking outside, keeping the change (same as OK)
-        drawing.change_colors(i, [color])
-        palette.clear_overlay()
-        still_open = False
-    return still_open
+#     return opened, open_color_editor
 
 
-def render_layers(drawing: Drawing):
+# def render_color_editor_popup(drawing, i, still_open):
+
+#     palette = drawing.palette
+#     orig_color = palette.colors[i]
+#     color = palette.get_color(i)
+#     if imgui.begin_popup("Edit foreground color", flags=(imgui.WINDOW_NO_MOVE |
+#                                                          imgui.WINDOW_NO_SCROLL_WITH_MOUSE)):
+#         done, cancelled, new_color = render_color_editor(palette.colors[i], color)
+#         if done and new_color != orig_color:
+#             drawing.change_colors(i, [new_color])
+#             palette.clear_overlay()
+#             still_open = False
+#         elif cancelled:
+#             palette.clear_overlay()
+#             still_open = False
+#         else:
+#             palette.set_overlay(i, new_color)
+#         imgui.end_popup()
+#     elif still_open:
+#         # The popup was closed by clicking outside, keeping the change (same as OK)
+#         drawing.change_colors(i, [color])
+#         palette.clear_overlay()
+#         still_open = False
+#     return still_open
+
+
+def render_layers(state: UIState, drawing: Drawing):
     
     # imgui.columns(2, "Layers")
     # imgui.set_column_offset(1, 100)
@@ -459,7 +483,7 @@ def render_layers(drawing: Drawing):
     imgui.end_child()
     imgui.end_child()
 
-    return hovered
+    return state
 
 
 @lru_cache(16)
@@ -476,7 +500,7 @@ def _get_brush_preview_size(size):
     return w, h
 
 
-def render_brushes(brushes, get_texture, size=None, compact=False):
+def render_brushes(state, brushes, get_texture, size=None, compact=False):
 
     clicked = False
 
@@ -499,10 +523,10 @@ def render_brushes(brushes, get_texture, size=None, compact=False):
     imgui.pop_style_color()
 
     imgui.new_line()
-    return clicked
+    return state, clicked
 
 
-def render_edits(drawing):
+def render_edits(state: UIState, drawing):
 
     imgui.begin("Edits", True)
 
@@ -523,6 +547,8 @@ def render_edits(drawing):
         imgui.next_column()
     drawing.selection = selection
     imgui.end()
+
+    return state
 
 
 def render_unsaved_exit(window):
@@ -556,7 +582,7 @@ def render_unsaved_exit(window):
         imgui.end_popup()
 
 
-def render_tool_menu(tools, icons):
+def render_tool_menu(state, tools, icons):
     # TODO find out a way to close if user clicks outside the window
     imgui.open_popup("Tools menu")
     if imgui.begin_popup("Tools menu", flags=(imgui.WINDOW_NO_TITLE_BAR
@@ -565,14 +591,15 @@ def render_tool_menu(tools, icons):
         if done:
             imgui.core.close_current_popup()
         imgui.end_popup()
-        return done
+    return state
 
 
-def render_main_menu(window):
+def render_main_menu(state, window):
 
     w, h = window.get_size()
     drawing = window.drawing
-
+    animation_settings_open = state.animation_settings_open
+    
     if imgui.begin_main_menu_bar():
         if imgui.begin_menu("File", True):
 
@@ -730,9 +757,13 @@ def render_main_menu(window):
                 drawing.prev_frame()
 
             if imgui.menu_item("Play  >>", None, False, True)[0]:
-                drawing.start_animation()
+                window.start_animation()
             if imgui.menu_item("Stop  ||", None, False, True)[0]:
-                drawing.stop_animation()
+                window.stop_animation()
+
+            imgui.separator()
+
+            _, animation_settings_open = imgui.menu_item("Settings", None, state.animation_settings_open, True)
                 
             imgui.end_menu()
 
@@ -801,8 +832,8 @@ def render_main_menu(window):
             imgui.end_menu()
 
         if imgui.begin_menu("Info", bool(window.drawing)):
-            _, state = imgui.menu_item("Show edit history", None, window.window_visibility["edits"], True)
-            window.window_visibility["edits"] = state
+            _, opened = imgui.menu_item("Show edit history", None, window.window_visibility["edits"], True)
+            window.window_visibility["edits"] = opened
             imgui.end_menu()
 
         if imgui.begin_menu("Plugins", bool(window.drawing)):
@@ -826,7 +857,7 @@ def render_main_menu(window):
             imgui.set_cursor_screen_pos((w - 330, 0))
             imgui.text(f"Layer: {window.drawing.layers.index()} ")
             imgui.text(f"Zoom: x{2**window.zoom}")
-            if drawing.n_frames > 1:
+            if drawing.is_animated > 1:
                 imgui.text(f"Frame: {drawing.frame}")
 
             if window.mouse_position:
@@ -847,3 +878,76 @@ def render_main_menu(window):
 
         imgui.end_main_menu_bar()
 
+    if animation_settings_open != state.animation_settings_open:
+        return update_state(state, animation_settings_open=animation_settings_open)
+    return state
+
+
+def render_animation_settings(state, window):
+
+    drawing = window.drawing
+    
+    _, opened = imgui.begin("Animation settings", closable=True)
+    
+    animation_settings_open = opened
+
+    imgui.push_item_width(60)        
+    changed, framerate = imgui.drag_int("Framerate", drawing.framerate,
+                                        min_value=1, max_value=30)
+    if changed:
+        window.set_framerate(framerate)
+
+    imgui.push_item_width(60)
+    changed, time_per_frame = imgui.drag_float("Time per frame", 1 / drawing.framerate,
+                                               min_value=0.0333, max_value=1)
+    if changed:
+        window.set_framerate(round(1 / time_per_frame))
+
+    # Layers & frames
+
+    imgui.begin_child("layers_frames", border=True)
+
+    imgui.columns(drawing.n_frames + 1)
+
+    imgui.text("L/F")
+    imgui.next_column()
+
+    draw_list = imgui.get_window_draw_list()            
+    
+    for i in range(drawing.n_frames):
+        if i == drawing.frame:
+            x, y = imgui.get_cursor_screen_pos()
+            draw_list.add_rect_filled(x-10, y-3, x + 30, y + 20, imgui.get_color_u32_rgba(.1, .1, .1, 1))            
+        imgui.set_column_offset(i+1, 40 + i*30)
+        imgui.text(str(i))
+
+        if imgui.core.is_item_clicked(0):
+            window.drawing.frame = i
+        
+        imgui.next_column()
+
+    imgui.separator()
+    
+    for i, layer in reversed(list(enumerate(drawing.layers))):
+        imgui.text(str(i))
+        imgui.next_column()
+        for j in range(drawing.n_frames):
+            if j == drawing.frame:
+                x, y = imgui.get_cursor_screen_pos()
+                draw_list.add_rect_filled(x-10, y-3, x + 30, y + 20,
+                                          imgui.get_color_u32_rgba(.2, .2, .2, 1))            
+            if layer.frames[j] is not None:
+                imgui.text("*")
+
+                if imgui.core.is_item_clicked(0):
+                    window.drawing.frame = i
+                
+            imgui.next_column()
+            
+    imgui.end_child()
+        
+    imgui.end()
+
+    if animation_settings_open != state.animation_settings_open:
+        return update_state(state, animation_settings_open=animation_settings_open)
+    return state

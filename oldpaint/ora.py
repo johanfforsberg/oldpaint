@@ -64,12 +64,12 @@ def save_ora(size: Tuple[int, int], layers: List["Layer"], palette, path, **kwar
                         
         # Other data
         orafile.writestr("oldpaint.json", json.dumps(kwargs))
-    # TODO thumbnail, mergedimage
+    # TODO thumbnail, mergedimage (to conform to the spec)
                 
 
 def load_ora(path):
     with zipfile.ZipFile(path, mode="r") as orafile:
-        # Check that this is an oldpaint file
+        # Check that this is an oldpaint file.
         try:
             oldpaint_data = orafile.read("oldpaint.json")
             other_data = json.loads(oldpaint_data)
@@ -77,8 +77,10 @@ def load_ora(path):
             # TODO check that this is the right exception
             raise RuntimeError("Can't load ORA files saved with other applications :(")
         except KeyError:
+            # TODO do some better checking here, the format should be described
+            # at least, maybe versioned?
             other_data = {}
-        
+
         stack_xml = orafile.read("stack.xml")
         image_el = ET.fromstring(stack_xml)
         stack_el = image_el[0]
@@ -92,4 +94,5 @@ def load_ora(path):
                     data, info = load_png(imgf)
                     frames.append(data)
             layers.append((frames, visibility == "visible"))
+            
     return list(layers), info, other_data

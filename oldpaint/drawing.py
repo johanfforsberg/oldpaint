@@ -46,7 +46,7 @@ class Drawing:
     mess up the undo history beyond repair.
     """
     
-    def __init__(self, size, layers=None, palette=None, path=None, selection=None):
+    def __init__(self, size, layers=None, palette=None, path=None, selection=None, framerate=10):
         self.size = size
         if layers:
             self.layers = Selectable(layers)
@@ -57,7 +57,7 @@ class Drawing:
         # Animation related things
         self.frame = 0
         self.n_frames = max(1, *(len(l.frames) for l in self.layers))
-        self.framerate = 0.1
+        self.framerate = framerate
         self.playing_animation = False
         
         self.brushes = Selectable()
@@ -185,7 +185,8 @@ class Drawing:
         """
         tmp_path = path + ".tmp"
         selection = self.selection.as_dict() if self.selection else None
-        save_ora(self.size, self.layers, self.palette, tmp_path, selection=selection)
+        save_ora(self.size, self.layers, self.palette, tmp_path,
+                 selection=selection, framerate=self.framerate)
         shutil.move(tmp_path, path)
 
     def crop(self, rect):
@@ -194,6 +195,10 @@ class Drawing:
         self._add_edit(edit)
         self.selection = None
 
+    @property
+    def is_animated(self):
+        return self.n_frames > 1
+        
     def add_frame(self, frame=None, copy=False):
         frame = frame if frame is not None else self.frame + 1
         if copy:
@@ -233,17 +238,6 @@ class Drawing:
     def last_frame(self):
         self.frame = self.n_frames - 1
 
-    def _next_frame_callback(self, dt):
-        self.next_frame()
-        
-    def start_animation(self):
-        clock.schedule_interval(self._next_frame_callback, self.framerate)
-        self.playing_animation = True
-
-    def stop_animation(self):
-        clock.unschedule(self._next_frame_callback)
-        self.playing_animation = False
-        
     def add_layer(self, index=None, layer=None):
         layer = layer or Layer(size=self.size)
         index = (index if index is not None else self.layers.get_current_index()) + 1
