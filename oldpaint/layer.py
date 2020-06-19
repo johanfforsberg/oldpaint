@@ -186,12 +186,12 @@ class Layer:
         return self.rect
 
     def swap_colors(self, index1:int, index2:int, frame:int=None):
-        color1_pixels = self.pic == index1
-        color2_pixels = self.pic == index2
         frames = [self.get_data(frame)] if frame is not None else self.frames
         for i, data in enumerate(frames):
             if data is not None:
                 with self.lock:
+                    color1_pixels = data == index1
+                    color2_pixels = data == index2
                     data[color1_pixels] = index2
                     data[color2_pixels] = index1
                     self.set_dirty(self.rect, i)
