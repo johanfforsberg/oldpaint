@@ -159,7 +159,7 @@ class Drawing:
         palette = Palette(info["palette"], transparency=0)
         layers = [Layer(frames, visible=visibility)
                   for frames, visibility in layer_pics]
-        return cls(size=layers[0].size, layers=layers, palette=palette, path=path)
+        return cls(size=layers[0].size, layers=layers, palette=palette, path=path, **kwargs)
 
     def save_ora(self, path=None, auto=False):
         """Save in ORA format, which keeps all layers intact."""
