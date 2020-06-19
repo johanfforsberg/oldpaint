@@ -122,6 +122,11 @@ class Drawing:
         "Return whether there have been edits since last time the drawing was saved."
         return self._latest_save_index < len(self._edits)
 
+    @property
+    def locked(self):
+        "Whether the drawing is locked for editing."
+        return self.playing_animation
+    
     @classmethod
     def from_spec(cls, spec):
         if spec.endswith(".ora"):

@@ -597,7 +597,7 @@ def render_tool_menu(state, tools, icons):
 def render_main_menu(state, window):
 
     w, h = window.get_size()
-    drawing = window.drawing
+    drawing = window.drawing if not window.drawing.playing_animation else False
     animation_settings_open = state.animation_settings_open
     
     if imgui.begin_main_menu_bar():
@@ -638,87 +638,87 @@ def render_main_menu(state, window):
             if imgui.menu_item("New", None, False, True)[0]:
                 window._create_drawing()
 
-            elif imgui.menu_item("Close", None, False, window.drawing)[0]:
+            elif imgui.menu_item("Close", None, False, drawing)[0]:
                 window._close_drawing()
 
             imgui.separator()
 
-            if imgui.menu_item("Flip horizontally", None, False, window.drawing)[0]:
+            if imgui.menu_item("Flip horizontally", None, False, drawing)[0]:
                 window.drawing.flip_horizontal()
-            if imgui.menu_item("Flip vertically", None, False, window.drawing)[0]:
+            if imgui.menu_item("Flip vertically", None, False, drawing)[0]:
                 window.drawing.flip_vertical()
 
-            if imgui.menu_item("Crop", None, False, window.drawing and window.drawing.selection)[0]:
+            if imgui.menu_item("Crop", None, False, drawing and drawing.selection)[0]:
                 window.drawing.crop(window.drawing.selection)
                 
             imgui.separator()
 
-            if imgui.menu_item("Undo", "z", False, window.drawing and window.drawing.can_undo)[0]:
+            if imgui.menu_item("Undo", "z", False, drawing and drawing.can_undo)[0]:
                 window.drawing.undo()
-            elif imgui.menu_item("Redo", "y", False, window.drawing and window.drawing.can_redo)[0]:
+            elif imgui.menu_item("Redo", "y", False, drawing and drawing.can_redo)[0]:
                 window.drawing.redo()
 
             imgui.separator()
 
-            selected = imgui.menu_item("Show selection", "", window.show_selection, window.drawing)[1]
+            selected = imgui.menu_item("Show selection", "", window.show_selection, drawing)[1]
             window.show_selection = selected
 
             only_show_current_layer = imgui.menu_item("Only show current layer", "",
-                                                      window.drawing and window.drawing.only_show_current_layer,
-                                                      window.drawing)[1]
+                                                      drawing and drawing.only_show_current_layer,
+                                                      drawing)[1]
             if window.drawing:
                 window.drawing.only_show_current_layer = only_show_current_layer
             imgui.separator()
             
-            for i, drawing in enumerate(window.drawings.items):
-                if imgui.menu_item(f"{i+1}: {drawing.filename} {drawing.size}",
-                                   None, drawing == window.drawing, True)[0]:
-                    window.drawings.select(drawing)
+            for i, d in enumerate(window.drawings.items):
+                if imgui.menu_item(f"{i+1}: {d.filename} {d.size}",
+                                   None, d == drawing, True)[0]:
+                    window.drawings.select(d)
             imgui.end_menu()
 
-        if imgui.begin_menu("Layer", bool(window.drawing)):
+        if imgui.begin_menu("Layer", bool(drawing)):
 
-            layer = window.drawing.layers.current
-            index = window.drawing.layers.index(layer)
-            n_layers = len(window.drawing.layers)
+            layer = drawing.layers.current
+            index = drawing.layers.index(layer)
+            n_layers = len(drawing.layers)
 
             if imgui.menu_item("Add", "l", False, True)[0]:
-                window.drawing.add_layer()
+                drawing.add_layer()
             if imgui.menu_item("Remove", None, False, True)[0]:
-                window.drawing.remove_layer()
+                drawing.remove_layer()
             if imgui.menu_item("Merge down", None, False, index > 0)[0]:
-                window.drawing.merge_layer_down()
+                drawing.merge_layer_down()
 
             if imgui.menu_item("Toggle visibility", "V", False, True)[0]:
                 layer.visible = not layer.visible
             if imgui.menu_item("Move up", "W", False, index < n_layers-1)[0]:
-                window.drawing.move_layer_up()
+                drawing.move_layer_up()
             if imgui.menu_item("Move down", "S", False, index > 0)[0]:
-                window.drawing.move_layer_down()
+                drawing.move_layer_down()
 
             imgui.separator()
 
             if imgui.menu_item("Flip horizontally", None, False, True)[0]:
-                window.drawing.flip_layer_horizontal()
+                drawing.flip_layer_horizontal()
             if imgui.menu_item("Flip vertically", None, False, True)[0]:
-                window.drawing.flip_layer_vertical()
+                drawing.flip_layer_vertical()
             if imgui.menu_item("Clear", "Delete", False, True)[0]:
-                window.drawing.clear_layer()
+                drawing.clear_layer()
 
             imgui.separator()
 
             hovered_layer = None
-            for i, layer in enumerate(reversed(window.drawing.layers)):
-                selected = window.drawing.layers.current == layer
+            for i, layer in enumerate(reversed(drawing.layers)):
+                selected = drawing.layers.current == layer
                 index = n_layers - i - 1
                 if imgui.menu_item(f"{index} {'v' if layer.visible else ''}", str(index), selected, True)[1]:
-                    window.drawing.layers.select(layer)
+                    drawing.layers.select(layer)
                 if imgui.is_item_hovered():
                     hovered_layer = layer
 
                     imgui.begin_tooltip()
                     texture = window.get_layer_preview_texture(layer,
-                                                               colors=window.drawing.palette.as_tuple())
+                                                               colors=drawing.palette.as_tuple())
                     lw, lh = texture.size
                     aspect = w / h
                     max_size = 256
@@ -735,7 +735,7 @@ def render_main_menu(state, window):
 
             imgui.end_menu()
 
-        if imgui.begin_menu("Animation", bool(window.drawing)):
+        if imgui.begin_menu("Animation", bool(drawing)):
 
             if imgui.menu_item("Add frame", None, False, True)[0]:
                 drawing.add_frame()
@@ -757,9 +757,9 @@ def render_main_menu(state, window):
                 drawing.prev_frame()
 
             if imgui.menu_item("Play  >>", None, False, True)[0]:
-                window.start_animation()
+                drawing.start_animation()
             if imgui.menu_item("Stop  ||", None, False, True)[0]:
-                window.stop_animation()
+                drawing.stop_animation()
 
             imgui.separator()
 
@@ -767,31 +767,31 @@ def render_main_menu(state, window):
                 
             imgui.end_menu()
 
-        if imgui.begin_menu("Brush", bool(window.drawing)):
+        if imgui.begin_menu("Brush", drawing):
 
             if imgui.menu_item("Create from selection", None, False, drawing.selection)[0]:
                 drawing.make_brush()
 
             imgui.separator()
                 
-            if imgui.menu_item("Flip horizontally", None, False, window.drawing.brushes.current)[0]:
+            if imgui.menu_item("Flip horizontally", None, False, drawing.brushes.current)[0]:
                 window.brush.flip(vertical=False)
                 # window.get_brush_preview_texture.cache_clear()
 
-            elif imgui.menu_item("Flip vertically", None, False, window.drawing.brushes.current)[0]:
+            elif imgui.menu_item("Flip vertically", None, False, drawing.brushes.current)[0]:
                 window.brush.flip(vertical=True)
 
-            elif imgui.menu_item("Rotate clockwise", None, False, window.drawing.brushes.current)[0]:
+            elif imgui.menu_item("Rotate clockwise", None, False, drawing.brushes.current)[0]:
                 window.brush.rotate(1)
                 # window.get_brush_preview_texture.cache_clear()
 
-            elif imgui.menu_item("Rotate counter clockwise", None, False, window.drawing.brushes.current)[0]:
+            elif imgui.menu_item("Rotate counter clockwise", None, False, drawing.brushes.current)[0]:
                 window.brush.rotate(-1)
                 # window.get_brush_preview_texture.cache_clear()
 
             imgui.separator()
 
-            if imgui.menu_item("Save current", None, False, window.drawing.brushes.current)[0]:
+            if imgui.menu_item("Save current", None, False, drawing.brushes.current)[0]:
                 fut = window.executor.submit(show_save_dialog,
                                              title="Select file",
                                              filetypes=(
@@ -803,40 +803,40 @@ def render_main_menu(state, window):
                     path = fut.result()
                     if path:
                         window.add_recent_file(path)
-                        window.drawing.brushes.current.save_png(path, window.drawing.palette.colors)
+                        window.drawing.brushes.current.save_png(path, drawing.palette.colors)
 
                 fut.add_done_callback(save_brush)
 
-            elif imgui.menu_item("Remove", None, False, window.drawing.brushes.current)[0]:
+            elif imgui.menu_item("Remove", None, False, drawing.brushes.current)[0]:
                 window.drawing.brushes.remove()
 
             imgui.separator()
 
-            for i, brush in enumerate(reversed(window.drawing.brushes[-10:])):
+            for i, brush in enumerate(reversed(drawing.brushes[-10:])):
 
-                is_selected = window.drawing.brushes.current == brush
+                is_selected = drawing.brushes.current == brush
 
                 bw, bh = brush.size
                 clicked, selected = imgui.menu_item(f"{bw}x{bh}", None, is_selected, True)
 
                 if selected:
-                    window.drawing.brushes.select(brush)
+                    drawing.brushes.select(brush)
 
                 if imgui.is_item_hovered():
                     imgui.begin_tooltip()
                     texture = window.get_brush_preview_texture(brush,
-                                                               colors=window.drawing.palette.as_tuple())
+                                                               colors=drawing.palette.as_tuple())
                     imgui.image(texture.name, *texture.size, border_color=(.25, .25, .25, 1))
                     imgui.end_tooltip()
 
             imgui.end_menu()
 
-        if imgui.begin_menu("Info", bool(window.drawing)):
+        if imgui.begin_menu("Info", drawing):
             _, opened = imgui.menu_item("Show edit history", None, window.window_visibility["edits"], True)
             window.window_visibility["edits"] = opened
             imgui.end_menu()
 
-        if imgui.begin_menu("Plugins", bool(window.drawing)):
+        if imgui.begin_menu("Plugins", drawing):
             active_plugins = window.drawing.active_plugins.values()
             for name, plugin in window.plugins.items():
                 is_active = plugin in active_plugins

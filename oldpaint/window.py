@@ -225,7 +225,7 @@ class OldpaintWindow(pyglet.window.Window):
 
     @no_imgui_events
     def on_mouse_press(self, x, y, button, modifiers):
-        if not self.drawing or self.drawing.playing_animation:
+        if not self.drawing or self.drawing.locked:
             return
         if self.mouse_event_queue:
             return
@@ -806,6 +806,8 @@ class OldpaintWindow(pyglet.window.Window):
     def _draw_brush_preview(self, x0, y0, x, y):
         if self.brush_preview_dirty:
             self.overlay.clear(self.brush_preview_dirty, frame=0)
+        if self.drawing.locked:
+            return    
         self.brush_preview_dirty = None
         io = imgui.get_io()
         if io.want_capture_mouse:
