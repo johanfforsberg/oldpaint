@@ -343,9 +343,9 @@ class OldpaintWindow(pyglet.window.Window):
 
             elif symbol == key.SPACE:
                 if self.drawing.playing_animation:
-                    self.stop_animation()
+                    self.drawing.stop_animation()
                 else:
-                    self.start_animation()
+                    self.drawing.start_animation()
                 
             elif symbol == key.Z:
                 self.drawing.undo()
@@ -414,7 +414,7 @@ class OldpaintWindow(pyglet.window.Window):
                 else:
                     index = symbol - 49
                 if len(self.drawings) > index:
-                    self.drawings.current = self.drawings[index]
+                    self.drawings.select(self.drawings[index])
                 
             elif symbol == key.C:
                 self.window_visibility["colors"] = not self.window_visibility["colors"]
@@ -633,22 +633,6 @@ class OldpaintWindow(pyglet.window.Window):
         size = self.drawing.size if self.drawing else (640, 480)
         self._new_drawing = dict(size=size)
 
-    def start_animation(self):
-        clock.schedule_interval(self._next_frame_callback, 1 / self.drawing.framerate)
-        self.drawing.playing_animation = True
-
-    def stop_animation(self):
-        clock.unschedule(self._next_frame_callback)
-        self.drawing.playing_animation = False
-
-    def set_framerate(self, framerate):
-        self.drawing.framerate = framerate
-        self.stop_animation()
-        self.start_animation()
-
-    def _next_frame_callback(self, dt):
-        self.drawing.next_frame()
-                        
     @try_except_log
     def save_drawing(self, drawing=None, ask_for_path=False, auto=False):
         "Save the drawing, asking for a file name if neccessary."
@@ -734,6 +718,7 @@ class OldpaintWindow(pyglet.window.Window):
         if self.drawing.unsaved:
             # TODO Pop up something helpful here!
             return
+        self.drawing.stop_animation()
         self.drawings.remove(self.drawing)
 
     def _quit(self):

@@ -3,6 +3,7 @@ import logging
 from time import time
 from tkinter import Tk, filedialog
 from traceback import format_exc
+from weakref import proxy
 
 from euclid3 import Matrix4
 import pyglet
@@ -50,7 +51,7 @@ class Selectable:
 
     def __init__(self, items=None):
         self.items = items or []
-        self.current = items[0] if items else None
+        self.current = proxy(items[0]) if items else None
 
     def __iter__(self):
         return iter(self.items)
@@ -72,7 +73,7 @@ class Selectable:
 
     def select(self, item):
         assert item in self.items, f"No such item {item}!"
-        self.current = item
+        self.current = proxy(item)
         self.switching = True
 
     def set_item(self, item, index=None):
@@ -100,14 +101,14 @@ class Selectable:
 
     def append(self, item):
         self.items.append(item)
-        self.current = item
+        self.current = proxy(item)
 
     def remove(self, item=None):
         item = item or self.current
         try:
             index = self.items.index(item)
             self.items.remove(item)
-            self.current = self.items[min(index, len(self.items) - 1)]
+            self.current = proxy(self.items[min(index, len(self.items) - 1)])
         except (ValueError, IndexError):
             self.current = None
 
@@ -116,14 +117,14 @@ class Selectable:
         if not cyclic and index == len(self) - 1:
             return
         index = (self.get_current_index() + 1) % len(self.items)
-        self.current = self.items[index]
+        self.current = proxy(self.items[index])
 
     def cycle_backward(self, cyclic=False):
         index = self.get_current_index()
         if not cyclic and index == 0:
             return
         index = (index - 1) % len(self.items)
-        self.current = self.items[index]
+        self.current = proxy(self.items[index])
 
     def swap(self, a, b=None):
         b = self.get_current_index() if b is None else b

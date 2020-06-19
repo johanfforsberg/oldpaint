@@ -5,11 +5,9 @@ import os
 import shutil
 from uuid import uuid4
 
-import numpy as np
 from pyglet import clock
 
 from .brush import PicBrush
-from .constants import ToolName
 from .edit import (LayerEdit, LayerClearEdit, DrawingCropEdit, LayerFlipEdit,
                    AddFrameEdit, RemoveFrameEdit,
                    DrawingFlipEdit, PaletteEdit, AddLayerEdit,
@@ -18,7 +16,6 @@ from .edit import (LayerEdit, LayerClearEdit, DrawingCropEdit, LayerFlipEdit,
                    MultiEdit)
 from .layer import Layer, TemporaryLayer
 from .ora import load_ora, save_ora, load_png, save_png
-# from .picture import LongPicture, load_png, save_png
 from .palette import Palette
 from .rect import Rectangle
 
@@ -238,6 +235,22 @@ class Drawing:
     def last_frame(self):
         self.frame = self.n_frames - 1
 
+    def start_animation(self):
+        clock.schedule_interval(self._next_frame_callback, 1 / self.framerate)
+        self.playing_animation = True
+
+    def stop_animation(self):
+        clock.unschedule(self._next_frame_callback)
+        self.playing_animation = False
+
+    def set_framerate(self, framerate):
+        self.framerate = framerate
+        self.stop_animation()
+        self.start_animation()
+
+    def _next_frame_callback(self, dt):
+        self.next_frame()
+        
     def add_layer(self, index=None, layer=None):
         layer = layer or Layer(size=self.size)
         index = (index if index is not None else self.layers.get_current_index()) + 1
@@ -413,10 +426,13 @@ class Drawing:
         self._add_edit(MultiEdit(maker.edits))
 
     def __repr__(self):
-        return f"Drawing(size={self.size}, layers={self.layers}, current={self.get_index()})"
+        return f"Drawing(size={self.size}, layers={self.layers}, current={self.layers.index()})"
 
     def __iter__(self):
         return iter(self.layers)
+
+    def __del__(self):
+        self.stop_animation()
 
 
 class EditMaker():

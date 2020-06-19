@@ -895,13 +895,13 @@ def render_animation_settings(state, window):
     changed, framerate = imgui.drag_int("Framerate", drawing.framerate,
                                         min_value=1, max_value=30)
     if changed:
-        window.set_framerate(framerate)
+        drawing.set_framerate(framerate)
 
     imgui.push_item_width(60)
     changed, time_per_frame = imgui.drag_float("Time per frame", 1 / drawing.framerate,
                                                min_value=0.0333, max_value=1)
     if changed:
-        window.set_framerate(round(1 / time_per_frame))
+        drawing.set_framerate(round(1 / time_per_frame))
 
     # Layers & frames
 
@@ -922,7 +922,7 @@ def render_animation_settings(state, window):
         imgui.text(str(i))
 
         if imgui.core.is_item_clicked(0):
-            window.drawing.frame = i
+            drawing.frame = i
         
         imgui.next_column()
 
@@ -940,7 +940,7 @@ def render_animation_settings(state, window):
                 imgui.text("*")
 
                 if imgui.core.is_item_clicked(0):
-                    window.drawing.frame = i
+                    drawing.frame = i
                 
             imgui.next_column()
             
