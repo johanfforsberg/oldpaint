@@ -17,6 +17,9 @@ class Layer:
     The image data is kept in one or more 2d numpy arrays, one per animation frame.
     Note that the frames are initialized whenever they are drawn to, so an
     empty frame is not allocated (it's represented by None).
+
+    Layer generally should not be messed with directly. They should be modified via the
+    containing Drawing instead, since that's where the undo system sits.
     """
 
     dtype = np.uint8
@@ -33,8 +36,6 @@ class Layer:
 
         self.version = 0
 
-        self.animated = False
-
         # This lock is important to hold while drawing, since otherwise
         # the main thread might start reading from it while we're writing.
         # It's reentrant so we don't have to worry about collisions within
@@ -45,6 +46,7 @@ class Layer:
         # picture has changed and must be refreshed, after which it should
         # set the dirty rect to None. From this side, we should never shrink
         # or remove the dirty rect, but growing it is fine.
+        # Each frame has its own dirty rect.
         self.dirty = {
             frame: self.rect
             for frame in range(len(self.frames))

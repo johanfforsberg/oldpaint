@@ -854,11 +854,11 @@ def render_main_menu(state, window):
         if drawing:
             imgui.text(f"{drawing.filename} {drawing.size} {'*' if drawing.unsaved else ''}")
 
-            imgui.set_cursor_screen_pos((w - 330, 0))
+            imgui.set_cursor_screen_pos((w - 350, 0))
             imgui.text(f"Layer: {window.drawing.layers.index()} ")
             imgui.text(f"Zoom: x{2**window.zoom}")
-            if drawing.is_animated > 1:
-                imgui.text(f"Frame: {drawing.frame}")
+            if drawing.is_animated:
+                imgui.text(f"Frame: {drawing.frame}/{drawing.n_frames}")
 
             if window.mouse_position:
                 imgui.set_cursor_screen_pos((w - 100, 0))
