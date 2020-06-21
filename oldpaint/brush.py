@@ -2,6 +2,8 @@ from functools import lru_cache
 
 import numpy as np
 
+from .ora import save_png
+
 
 class Brush:
 
@@ -42,6 +44,10 @@ class Brush:
         self.data = np.flip(data, axis=vertical)
         self.size = self.data.shape[:2]
         self.get_draw_data.cache_clear()
+
+    def save_png(self, path, colors):
+        with open(path, "wb") as f:
+            save_png(self.data, f, colors)
         
 
 class RectangleBrush(Brush):

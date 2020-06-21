@@ -796,8 +796,7 @@ def render_main_menu(state, window):
                                              title="Select file",
                                              filetypes=(
                                                  ("PNG files", "*.png"),
-                                                 ("all files", "*.*"))
-                                             )
+                                                 ("all files", "*.*")))
 
                 def save_brush(fut):
                     path = fut.result()
