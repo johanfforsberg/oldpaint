@@ -9,8 +9,8 @@ from libc.stdlib cimport abs as iabs
 from .rect cimport Rectangle
 
 
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)   # Deactivate negative indexing.
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cpdef void paste(unsigned int[:, :] pic, unsigned int[:, :] brush, int x, int y) nogil:
     "Copy image data without caring about transparency"
     cdef int w, h, bw, bh
@@ -30,8 +30,8 @@ cpdef void paste(unsigned int[:, :] pic, unsigned int[:, :] brush, int x, int y)
         pic[px0:px1, py0:py1] = brush[bx0:bx1, by0:by1]
 
 
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)   # Deactivate negative indexing.        
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cpdef Rectangle blit(unsigned int[:, :] pic, unsigned int[:, :] brush, int x, int y):
     "Draw a brush onto an image, skipping transparent pixels."
     cdef int w, h, bw, bh, y1, x1, x2, y2, xmin, ymin, xmax, ymax
@@ -64,9 +64,9 @@ cpdef Rectangle blit(unsigned int[:, :] pic, unsigned int[:, :] brush, int x, in
     return Rectangle((xmin, ymin), (xmax - xmin + 1, ymax - ymin + 1))
 
 
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)   # Deactivate negative indexing.        
-cdef void cblit(unsigned int[:, :] pic, unsigned int[:, :] brush, int x, int y) nogil:
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef void _cblit(unsigned int[:, :] pic, unsigned int[:, :] brush, int x, int y) nogil:
     "Draw a brush onto an image, skipping transparent pixels."
     # Faster version for internal use in this module.
     cdef int w, h, bw, bh, y1, x1, x2, y2
@@ -88,12 +88,12 @@ cdef void cblit(unsigned int[:, :] pic, unsigned int[:, :] brush, int x, int y) 
                 pic[x2, y2] = brush[x1, y1]
 
 
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)   # Deactivate negative indexing.
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cpdef draw_line(unsigned int[:, :] pic, unsigned int[:, :] brush,
                 (int, int) p0, (int, int) p1, int step=1):
 
-    "Draw a straight line from p0 to p1 using a brush or a single pixel of given color."
+    "Draw a straight line from p0 to p1 using a brush."
 
     cdef int x, y, w, h, x0, y0, x1, y1, dx, sx, dy, sy, err, bw, bh
     x, y = p0
@@ -118,7 +118,7 @@ cpdef draw_line(unsigned int[:, :] pic, unsigned int[:, :] brush,
     with nogil:
         while True:
             if i % step == 0:
-                cblit(pic, brush, x, y)
+                _cblit(pic, brush, x, y)
             if x == x1 and y == y1:
                 break
             e2 = 2*err
@@ -137,12 +137,12 @@ cpdef draw_line(unsigned int[:, :] pic, unsigned int[:, :] brush,
     return Rectangle((x00, y00), (x11 - x00, y11 - y00))
 
 
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)   # Deactivate negative indexing.
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cdef void cdraw_line(unsigned int[:, :] pic, unsigned int[:, :] brush,
                      (int, int) p0, (int, int) p1, int step=1) nogil:
 
-    "Draw a straight line from p0 to p1 using a brush or a single pixel of given color."
+    "Draw a straight line from p0 to p1 using a brush."
 
     cdef int x, y, w, h, x0, y0, x1, y1, dx, sx, dy, sy, err, bw, bh
     x, y = p0
@@ -165,7 +165,7 @@ cdef void cdraw_line(unsigned int[:, :] pic, unsigned int[:, :] brush,
 
     while True:
         if i % step == 0:
-            cblit(pic, brush, x, y)
+            _cblit(pic, brush, x, y)
         if x == x1 and y == y1:
             break
         e2 = 2*err
@@ -182,12 +182,13 @@ cdef void cdraw_line(unsigned int[:, :] pic, unsigned int[:, :] brush,
     cdef int y11 = min(h, max(y0, y1) + bh)
 
 
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)   # Deactivate negative indexing.        
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cpdef draw_rectangle(unsigned int[:, :] pic, unsigned int[:, :] brush,
                      (int, int) pos, (int, int) size,
                      unsigned int color, bint fill=False):
     cdef int x0, y0, w0, h0, x, y, w, h, cols, rows, bw, bh
+
     x0, y0 = pos
     w0, h0 = size
 
@@ -216,8 +217,8 @@ cpdef draw_rectangle(unsigned int[:, :] pic, unsigned int[:, :] brush,
     return pic_rect.intersect(Rectangle((x, y), (min(cols, w + bw), min(rows, h + bh))))
 
 
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)   # Deactivate negative indexing.        
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cpdef draw_ellipse(unsigned int[:, :] pic, unsigned int[:, :] brush,
                    (int, int) center, (int, int) size,
                    unsigned int color, bint fill=False):
@@ -274,10 +275,10 @@ cpdef draw_ellipse(unsigned int[:, :] pic, unsigned int[:, :] brush,
                 if boty < h:
                     pic[lx:rx, boty] = color
             else:
-                cblit(pic, brush, x0 + x - hw, y0 + y - hh)
-                cblit(pic, brush, x0 - x - hw, y0 + y - hh)
-                cblit(pic, brush, x0 - x - hw, y0 - y - hh)
-                cblit(pic, brush, x0 + x - hw, y0 - y - hh)
+                _cblit(pic, brush, x0 + x - hw, y0 + y - hh)
+                _cblit(pic, brush, x0 - x - hw, y0 + y - hh)
+                _cblit(pic, brush, x0 - x - hw, y0 - y - hh)
+                _cblit(pic, brush, x0 + x - hw, y0 - y - hh)
 
             x += 1
             error -= b2 * (x - 1)
@@ -304,10 +305,10 @@ cpdef draw_ellipse(unsigned int[:, :] pic, unsigned int[:, :] brush,
                 if boty < h:
                     pic[lx:rx, boty] = color
             else:
-                cblit(pic, brush, x0 + x - hw, y0 + y - hh)
-                cblit(pic, brush, x0 - x - hw, y0 + y - hh)
-                cblit(pic, brush, x0 - x - hw, y0 - y - hh)
-                cblit(pic, brush, x0 + x - hw, y0 - y - hh)           
+                _cblit(pic, brush, x0 + x - hw, y0 + y - hh)
+                _cblit(pic, brush, x0 - x - hw, y0 + y - hh)
+                _cblit(pic, brush, x0 - x - hw, y0 - y - hh)
+                _cblit(pic, brush, x0 + x - hw, y0 - y - hh)           
 
             y += 1
             error -= a2 * (y - 1)
@@ -321,8 +322,8 @@ cpdef draw_ellipse(unsigned int[:, :] pic, unsigned int[:, :] brush,
     return pic_rect.intersect(Rectangle((x0-a-hw-1, y0-b-hh-1), (2*a+2*hw+2, 2*b+2*hh+2)))
 
 
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)   # Deactivate negative indexing.        
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cpdef draw_fill(unsigned char[:, :] pic, unsigned int[:, :] dest,
                 (int, int) point, unsigned int color):
 
