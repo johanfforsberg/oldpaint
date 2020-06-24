@@ -272,16 +272,6 @@ class OldpaintWindow(pyglet.window.Window):
         else:
             self.change_zoom(scroll_y, (x, y))
 
-    def change_zoom(self, delta, pos):
-        x, y = pos
-        ox, oy = self.offset
-        ix, iy = self._to_image_coords(x, y)
-        self.zoom = max(min(self.zoom + delta, MAX_ZOOM), MIN_ZOOM)
-        self._to_image_coords.cache_clear()
-        x2, y2 = self._to_window_coords(ix, iy)
-        self.offset = ox + (x - x2), oy + (y - y2)
-        self._to_image_coords.cache_clear()
-
     def on_mouse_motion(self, x, y, dx, dy):
         "Callback for mouse motion without buttons held"
         if (x, y) == self.mouse_position:
@@ -306,9 +296,7 @@ class OldpaintWindow(pyglet.window.Window):
             self.mouse_event_queue.put(("mouse_drag", ipos, button, modifiers))
         elif button == pyglet.window.mouse.MIDDLE:
             # Pan image
-            ox, oy = self.offset
-            self.offset = ox + dx, oy + dy
-            self._to_image_coords.cache_clear()
+            self.change_offset(dx, dy)
 
     def on_mouse_leave(self, x, y):
         self.mouse_position = None
@@ -398,6 +386,19 @@ class OldpaintWindow(pyglet.window.Window):
             elif symbol == key.MINUS and self.mouse_position:
                 self.change_zoom(-1, self.mouse_position)
 
+            elif symbol == key.LEFT:
+                w, h = self.get_size()
+                self.change_offset(w // 2, 0)
+            elif symbol == key.RIGHT:
+                w, h = self.get_size()
+                self.change_offset(-w // 2, 0)
+            elif symbol == key.UP:
+                w, h = self.get_size()
+                self.change_offset(0, -h // 2)
+            elif symbol == key.DOWN:
+                w, h = self.get_size()
+                self.change_offset(0, h // 2)
+
             elif symbol == key.V:
                 if modifiers & key.MOD_SHIFT:
                     self.drawing.current.toggle_visibility()
@@ -486,6 +487,18 @@ class OldpaintWindow(pyglet.window.Window):
         self._quit()
 
     # === Other callbacks ===
+
+    def change_zoom(self, delta, pos):
+        x, y = pos
+        ix, iy = self._to_image_coords(x, y)
+        self.zoom = max(min(self.zoom + delta, MAX_ZOOM), MIN_ZOOM)
+        x2, y2 = self._to_window_coords(ix, iy)
+        self.change_offset(x - x2, y - y2)
+
+    def change_offset(self, dx, dy):
+        ox, oy = self.offset
+        self.offset = ox + dx, oy + dy
+        self._to_image_coords.cache_clear()
 
     # TODO just caching one texture here because it won't be accessed that much
     # and performance probably does not matter.
