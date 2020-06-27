@@ -597,7 +597,7 @@ def render_tool_menu(state, tools, icons):
 def render_main_menu(state, window):
 
     w, h = window.get_size()
-    drawing = window.drawing if not window.drawing.playing_animation else False
+    drawing = window.drawing if window.drawing and not window.drawing.playing_animation else False
     animation_settings_open = state.animation_settings_open
     
     if imgui.begin_main_menu_bar():
@@ -744,6 +744,12 @@ def render_main_menu(state, window):
             if imgui.menu_item("Remove frame", None, False, True)[0]:
                 drawing.remove_frame()
 
+            frame = drawing.frame
+            if imgui.menu_item("Move frame forward", None, False, frame < drawing.n_frames - 1)[0]:
+                drawing.move_frame_forward()
+            if imgui.menu_item("Move frame backward", None, False, frame > 0)[0]:
+                drawing.move_frame_backward()
+                
             imgui.separator()
 
             if imgui.menu_item("First frame  |<", None, False, True)[0]:
@@ -857,7 +863,7 @@ def render_main_menu(state, window):
             imgui.text(f"Layer: {window.drawing.layers.index()} ")
             imgui.text(f"Zoom: x{2**window.zoom}")
             if drawing.is_animated:
-                imgui.text(f"Frame: {drawing.frame}/{drawing.n_frames}")
+                imgui.text(f"Frame: {drawing.frame + 1}/{drawing.n_frames}")
 
             if window.mouse_position:
                 imgui.set_cursor_screen_pos((w - 100, 0))

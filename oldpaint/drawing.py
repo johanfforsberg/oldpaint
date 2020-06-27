@@ -10,6 +10,7 @@ from pyglet import clock
 from .brush import PicBrush
 from .edit import (LayerEdit, LayerClearEdit, DrawingCropEdit, LayerFlipEdit,
                    AddFrameEdit, RemoveFrameEdit,
+                   MoveFrameForwardEdit, MoveFrameBackwardEdit,
                    DrawingFlipEdit, PaletteEdit, AddLayerEdit,
                    RemoveLayerEdit, SwapLayersEdit, MergeLayersEdit,
                    SwapColorsImageEdit, SwapColorsPaletteEdit,
@@ -228,6 +229,20 @@ class Drawing:
         edit.perform(self)
         self._add_edit(edit)
 
+    def move_frame_forward(self, layer=None, frame=None):
+        layer = layer if layer is not None else self.layers.index()
+        frame = frame if frame is not None else self.frame
+        edit = MoveFrameForwardEdit.create(index=layer, frame=frame)
+        edit.perform(self)
+        self._add_edit(edit)
+        
+    def move_frame_backward(self, layer=None, frame=None):
+        layer = layer if layer is not None else self.layers.index()
+        frame = frame if frame is not None else self.frame
+        edit = MoveFrameBackwardEdit.create(index=layer, frame=frame)
+        edit.perform(self)
+        self._add_edit(edit)
+        
     def next_frame(self):
         self.frame = (self.frame + 1) % self.n_frames
 

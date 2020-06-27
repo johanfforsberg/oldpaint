@@ -26,9 +26,10 @@ class Layer:
 
     def __init__(self, frames: List[np.ndarray]=None, size: Tuple[int, int]=None, visible:bool=True):
         if frames:
-            assert all(isinstance(f, np.ndarray) for f in frames), "Frames must be ndarray instances."
+            assert all(isinstance(f, (np.ndarray, type(None))) for f in frames), "Frames must be ndarray instances."
             self.frames = DefaultList(list(frames))
-            self.size = frames[0].shape[:2]
+            if not size:
+                self.size = next(frame for frame in frames if frame is not None).shape[:2]
         else:
             assert size is not None, "Layer size must be specified."
             self.frames = DefaultList()
@@ -103,7 +104,13 @@ class Layer:
                 for i, rect in self.dirty.items()
                 if i != index and rect
             }
-        
+
+    def swap_frames(self, index1, index2):
+        frame1 = self.frames[index1]
+        frame2 = self.frames[index2]
+        self.frames[index1], self.frames[index2] = frame2, frame1
+        self.dirty[index1] = self.dirty[index2] = self.rect
+            
     @classmethod
     def load_png(cls, path:str):
         pic, info = load_png(path)

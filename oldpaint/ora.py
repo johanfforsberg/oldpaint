@@ -35,33 +35,50 @@ def save_ora(size: Tuple[int, int], layers: List["Layer"], palette, path, **kwar
     It can however contain any other application specific data too.
     """
     w, h = size
-    # d = len(layers)
 
     # Build "stack.xml" that specifies the structure of the drawing
     image_el = ET.Element("image", version="0.0.3", w=str(w), h=str(h))
     stack_el = ET.SubElement(image_el, "stack")
-    empty_frame = np.zeros(size, dtype=np.uint8)
-    for i, layer in enumerate(layers, 1):
+    has_empty_frame = False
+    for i, layer in reversed(list(enumerate(layers))):
         visibility = "visible" if layer.visible else "hidden"
-        layer_el = ET.SubElement(stack_el, "stack", name=f"layer{i}",
-                                 visibility=visibility)
-        for j, frame in enumerate(layer.frames, 1):
-            ET.SubElement(layer_el, "layer", name=f"layer{i}_frame{j}",
-                          src=f"data/layer{i}_frame{j}.png")        
+        if len(layer.frames) == 1:
+            # Non-animated layer
+            ET.SubElement(stack_el, "layer", name=f"layer{i}_frame{0}",
+                          src=f"data/layer{i}_frame{0}.png")        
+        else:
+            # Animated layer
+            layer_el = ET.SubElement(stack_el, "stack", name=f"layer{i}",
+                                     visibility=visibility)
+            for j, frame in reversed(list(enumerate(layer.frames))):
+                if frame is not None:
+                    ET.SubElement(layer_el, "layer", name=f"layer{i}_frame{j}",
+                                  src=f"data/layer{i}_frame{j}.png")
+                else:
+                    ET.SubElement(layer_el, "layer", name=f"layer{i}_frame{j}",
+                                  src=f"data/empty.png")
+                    has_empty_frame = True
+                    
     stack_xml = b"<?xml version='1.0' encoding='UTF-8'?>" + ET.tostring(image_el)
 
     # Create ZIP archive
     with zipfile.ZipFile(path, mode="w", compression=zipfile.ZIP_DEFLATED) as orafile:
         orafile.writestr("mimetype", "image/openraster", compress_type=zipfile.ZIP_STORED)
         orafile.writestr("stack.xml", stack_xml)
-        for i, layer in enumerate(layers, 1):
-            for j, frame in enumerate(layer.frames, 1):
-                with io.BytesIO() as f:
-                    data = frame if frame is not None else empty_frame
-                    save_png(data, f, palette=palette.colors)
-                    f.seek(0)
-                    orafile.writestr(f"data/layer{i}_frame{j}.png", f.read())
-                        
+        for i, layer in reversed(list(enumerate(layers))):
+            for j, frame in reversed(list(enumerate(layer.frames))):
+                if frame is not None:
+                    with io.BytesIO() as f:
+                        save_png(frame, f, palette=palette.colors)
+                        f.seek(0)
+                        orafile.writestr(f"data/layer{i}_frame{j}.png", f.read())
+        if has_empty_frame:
+            empty_frame = np.zeros(size, dtype=np.uint8)
+            with io.BytesIO() as f:
+                save_png(empty_frame, f, palette=palette.colors)
+                f.seek(0)
+                orafile.writestr(f"data/empty.png", f.read())
+
         # Other data
         orafile.writestr("oldpaint.json", json.dumps(kwargs))
     # TODO thumbnail, mergedimage (to conform to the spec)
@@ -83,16 +100,28 @@ def load_ora(path):
 
         stack_xml = orafile.read("stack.xml")
         image_el = ET.fromstring(stack_xml)
-        stack_el = image_el[0]
+        stack_el = image_el.find("stack")
         layers = []
-        for layer_el in stack_el:
-            visibility = layer_el.attrib.get("visibility", "visible")
+        for el in stack_el:
+            visibility = el.attrib.get("visibility", "visible")
             frames = []
-            for frame_el in layer_el:
-                path = frame_el.attrib["src"]
+            if el.tag == "layer":
+                # Non-animated layer
+                path = el.attrib["src"]
                 with orafile.open(path) as imgf:
                     data, info = load_png(imgf)
-                    frames.append(data)
-            layers.append((frames, visibility == "visible"))
+                    frames = [data]
+            elif el.tag == "stack":
+                # Animated layer
+                for frame_el in el:
+                    path = frame_el.attrib["src"]
+                    if path.endswith("/empty.png"):
+                        # To save memory an empty frame is represented by None
+                        frames.append(None)
+                    else:
+                        with orafile.open(path) as imgf:
+                            data, info = load_png(imgf)
+                            frames.insert(0, data)
+            layers.insert(0, (frames, visibility == "visible"))
             
     return list(layers), info, other_data

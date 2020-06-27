@@ -437,6 +437,52 @@ class RemoveFrameEdit(Edit):
 
     def __repr__(self):
         return f"{__class__}(index={self.index}, data={len(self.data)}B, size={self.size})"
+
+
+@dataclass(frozen=True)
+class SwapFramesEdit(Edit):
+
+    index: int
+    frame1: int
+    frame2: int
+
+    def perform(self, drawing):
+        drawing.layers[self.index].swap_frames(self.frame1, self.frame2)
+        drawing.frame = self.frame2
+
+    revert = perform
+
+
+@dataclass(frozen=True)
+class MoveFrameForwardEdit(SwapFramesEdit):
+
+    @classmethod
+    def create(cls, index, frame):
+        return cls(index, frame, frame + 1)
+
+    @property
+    def index_str(self):
+        return f"{self.index}/{self.frame1}"
+
+    @property
+    def info_str(self):
+        return "Move frame forward"
+    
+    
+@dataclass(frozen=True)
+class MoveFrameBackwardEdit(SwapFramesEdit):
+
+    @classmethod
+    def create(cls, index, frame):
+        return cls(index, frame, frame - 1)
+
+    @property
+    def index_str(self):
+        return f"{self.index}/{self.frame1}"
+
+    @property
+    def info_str(self):
+        return "Move frame backward"
     
     
 @dataclass(frozen=True)
