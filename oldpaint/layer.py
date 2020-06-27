@@ -28,7 +28,9 @@ class Layer:
         if frames:
             assert all(isinstance(f, (np.ndarray, type(None))) for f in frames), "Frames must be ndarray instances."
             self.frames = DefaultList(list(frames))
-            if not size:
+            if size:
+                self.size = size
+            else:
                 self.size = next(frame for frame in frames if frame is not None).shape[:2]
         else:
             assert size is not None, "Layer size must be specified."
