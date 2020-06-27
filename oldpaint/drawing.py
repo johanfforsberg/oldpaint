@@ -5,6 +5,7 @@ import os
 import shutil
 from uuid import uuid4
 
+import numpy as np
 from pyglet import clock
 
 from .brush import PicBrush
@@ -147,16 +148,17 @@ class Drawing:
     def save_png(self, path):
         """Save as a single PNG file. Flattens all visible layers into one image."""
         if self.layers[0].visible:
-            combined = self.layers[0].clone()
+            combined = self.layers[0].get_data(self.frame).copy()
         else:
-            combined = Layer(size=self.size)
-        transparent_colors = set(self.palette.transparent_colors)
+            combined = np.zeros(self.size, dtype=self.layers[0].dtype)
         for layer in self.layers[1:]:
             if layer.visible:
-                layer.pic.fix_alpha(transparent_colors)  # TODO
-                combined.blit(layer.pic, layer.rect)
+                data = layer.get_data(self.frame)
+                mask = data.astype(np.bool)
+                # TODO Should be doable without copying
+                combined = np.where(mask, data, combined)
         with open(path, "wb") as f:
-            save_png(combined.pic, f, palette=self.palette.colors)
+            save_png(combined, f, palette=self.palette.colors)
 
     @classmethod
     def from_ora(cls, path):

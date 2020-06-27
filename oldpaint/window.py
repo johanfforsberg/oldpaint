@@ -188,7 +188,7 @@ class OldpaintWindow(pyglet.window.Window):
         return self.drawings.current.overlay
 
     @property
-    def drawing(self):
+    def drawing(self) -> Drawing:
         return self.drawings.current
 
     @property
