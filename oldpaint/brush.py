@@ -48,7 +48,7 @@ class Brush:
     def save_png(self, path, colors):
         with open(path, "wb") as f:
             save_png(self.data, f, colors)
-        
+
 
 class RectangleBrush(Brush):
 
@@ -56,7 +56,7 @@ class RectangleBrush(Brush):
         data = np.ones(size, dtype=np.uint32)
         super().__init__(data=data)
 
-        
+
 class PicBrush(Brush):
 
     @lru_cache(2)    

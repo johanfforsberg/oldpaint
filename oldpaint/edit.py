@@ -18,7 +18,6 @@ import numpy as np
 
 from .constants import ToolName
 from .layer import Layer
-from .picture import LongPicture
 from .rect import Rectangle
 
 

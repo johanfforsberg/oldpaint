@@ -1,14 +1,14 @@
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from functools import lru_cache, partial
+from functools import lru_cache
 import os
 from queue import Queue
 
 from euclid3 import Matrix4
 import imgui
 import pyglet
-from pyglet import gl, clock
+from pyglet import gl
 from pyglet.window import key
 # from IPython import start_ipython
 
@@ -25,7 +25,6 @@ from .config import get_autosave_filename
 from .drawing import Drawing
 from .imgui_pyglet import PygletRenderer
 from .layer import Layer
-from .picture import LongPicture
 from .plugin import init_plugins, render_plugins_ui
 from .rect import Rectangle
 from .render import render_drawing
@@ -63,11 +62,7 @@ class OldpaintWindow(pyglet.window.Window):
 
         super().__init__(**kwargs, resizable=True, vsync=False)
 
-        self.drawings = Drawings([
-            (Drawing((s[0], s[1]), layers=[Layer(LongPicture((s[0], s[1])))])
-             if isinstance(s, tuple) else Drawing.from_spec(s))
-            for s in drawing_specs or []
-        ])
+        self.drawings = Drawings([Drawing.from_spec(s) for s in drawing_specs or []])
 
         self.tools = Selectable2({
             tool: tool

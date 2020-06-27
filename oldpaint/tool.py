@@ -2,10 +2,8 @@ import abc
 from random import gauss
 
 from pyglet import window
-import numpy as np
 
 from .constants import ToolName
-from .draw import draw_fill
 from .drawing import Drawing
 from .rect import from_points
 from .util import try_except_log
