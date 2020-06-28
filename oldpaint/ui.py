@@ -8,7 +8,7 @@ import logging
 from math import floor, ceil
 import os
 import sys
-from typing import NamedTuple
+from typing import Tuple, NamedTuple
 
 import imgui
 import pyglet
@@ -25,6 +25,7 @@ class UIState(NamedTuple):
     color_editor_open: bool = False  # Need a persistent way to keep track of the popup being closed...
     current_color_page: int = 0
     animation_settings_open: bool = False
+    new_drawing_size: Tuple[int, int] = None
 
 
 def update_state(state, **kwargs):
@@ -552,6 +553,7 @@ def render_edits(state: UIState, drawing):
 
 
 def render_unsaved_exit(window):
+
     if window.unsaved_drawings:
         imgui.open_popup("Really exit?")
 
@@ -636,7 +638,8 @@ def render_main_menu(state, window):
 
         if imgui.begin_menu("Drawing", True):
             if imgui.menu_item("New", None, False, True)[0]:
-                window._create_drawing()
+                size = drawing.size if drawing else (640, 480)
+                state = update_state(state, new_drawing_size=size)
 
             elif imgui.menu_item("Close", None, False, drawing)[0]:
                 window._close_drawing()
@@ -956,3 +959,59 @@ def render_animation_settings(state, window):
     if animation_settings_open != state.animation_settings_open:
         return update_state(state, animation_settings_open=animation_settings_open)
     return state
+
+
+# TODO Allow configuration
+PREDEFINED_SIZES = {
+    "Presets": None,
+    **{f"{w}, {h}": (w, h)
+       for (w, h) in [
+               (320, 256),
+               (640, 512),
+               (800, 600),
+               
+               (16, 16),
+               (32, 32),
+               (64, 64),
+       ]}
+}
+
+
+def render_new_drawing_popup(state, window):
+
+    "Settings for creating a new drawing."
+
+    size = state.new_drawing_size
+    
+    if size:
+        imgui.open_popup("New drawing")
+        w, h = window.get_size()
+        imgui.set_next_window_size(300, 140)
+        imgui.set_next_window_position(w // 2 - 100, h // 2 - 60)
+
+    if imgui.begin_popup_modal("New drawing")[0]:
+        imgui.text("Creating a new drawing.")
+        imgui.separator()
+        
+        changed, new_size = imgui.drag_int2("Shape", *size,
+                                            min_value=1, max_value=2048)
+        if changed:
+            state = update_state(state, new_drawing_size=new_size)
+
+        clicked, current = imgui.combo("##preset shapes", 0, list(PREDEFINED_SIZES.keys()))
+        if clicked:
+            if current:
+                state = update_state(state, new_drawing_size=list(PREDEFINED_SIZES.values())[current])
+            
+        if imgui.button("OK"):
+            window.create_drawing(state.new_drawing_size)
+            state = update_state(state, new_drawing_size=None)
+            imgui.close_current_popup()
+        imgui.same_line()
+        if imgui.button("Cancel"):
+            state = update_state(state, new_drawing_size=None)
+            imgui.close_current_popup()
+        imgui.end_popup()
+
+    return state
+    

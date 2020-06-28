@@ -602,28 +602,8 @@ class OldpaintWindow(pyglet.window.Window):
                 ui.render_unsaved_exit(self)
 
             # Create new drawing
-            if self._new_drawing:
-                imgui.open_popup("New drawing")
-                imgui.set_next_window_size(200, 120)
-                imgui.set_next_window_position(w // 2 - 100, h // 2 - 60)
-
-            if imgui.begin_popup_modal("New drawing")[0]:
-                imgui.text("Creating a new drawing.")
-                imgui.separator()
-                changed, new_size = imgui.drag_int2("Size", *self._new_drawing["size"])
-                if changed:
-                    self._new_drawing["size"] = new_size
-                if imgui.button("OK"):
-                    drawing = Drawing(size=self._new_drawing["size"])
-                    self.drawings.append(drawing)
-                    self._new_drawing = None
-                    imgui.close_current_popup()
-                imgui.same_line()
-                if imgui.button("Cancel"):
-                    self._new_drawing = None
-                    imgui.close_current_popup()
-                imgui.end_popup()
-
+            self.ui_state = ui.render_new_drawing_popup(self.ui_state, self)
+                
             if self._error:
                 imgui.open_popup("Error")
                 if imgui.begin_popup_modal("Error")[0]:
@@ -641,9 +621,9 @@ class OldpaintWindow(pyglet.window.Window):
 
         self.imgui_renderer.render(imgui.get_draw_data())
 
-    def _create_drawing(self):
-        size = self.drawing.size if self.drawing else (640, 480)
-        self._new_drawing = dict(size=size)
+    def create_drawing(self, size):
+        drawing = Drawing(size=size)
+        self.drawings.append(drawing)
 
     @try_except_log
     def save_drawing(self, drawing=None, ask_for_path=False, auto=False):
