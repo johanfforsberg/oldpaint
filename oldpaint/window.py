@@ -666,7 +666,7 @@ class OldpaintWindow(pyglet.window.Window):
             fut.add_done_callback(
                 lambda fut: really_save_drawing(drawing, fut.result()))
 
-    @debounce(cooldown=60, wait=3)
+    @debounce(cooldown=300, wait=3)
     def autosave_drawing(self):
 
         @try_except_log
