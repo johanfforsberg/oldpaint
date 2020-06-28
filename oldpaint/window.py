@@ -20,11 +20,10 @@ from fogl.util import try_except_log
 from fogl.vao import VertexArrayObject
 from fogl.vertex import SimpleVertices
 
-from .brush import PicBrush, RectangleBrush  #, EllipseBrush
+from .brush import PicBrush, RectangleBrush, EllipseBrush
 from .config import get_autosave_filename
 from .drawing import Drawing
 from .imgui_pyglet import PygletRenderer
-from .layer import Layer
 from .plugin import init_plugins, render_plugins_ui
 from .rect import Rectangle
 from .render import render_drawing
@@ -77,8 +76,8 @@ class OldpaintWindow(pyglet.window.Window):
             RectangleBrush((1, 1)),
             RectangleBrush((2, 2)),
             RectangleBrush((3, 3)),
-            # EllipseBrush((8, 8)),
-            # EllipseBrush((10, 20)),
+            EllipseBrush((8, 8)),
+            EllipseBrush((20, 35)),
         ])
         self.highlighted_layer = None
         self.show_selection = True
@@ -425,7 +424,7 @@ class OldpaintWindow(pyglet.window.Window):
             elif symbol == key.ESCAPE:
                 self.drawing.brushes.current = None
                 self.overlay.clear()
-
+                
     def on_key_release(self, symbol, modifiers):
         self.highlighted_layer = None
 
