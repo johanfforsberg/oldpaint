@@ -17,21 +17,17 @@ class Brush:
         else:
             self.data = data
             self.size = data.shape[:2]
-
-    @lru_cache(2)  
-    def get_draw_data(self, color, colorize=False):
-        filled_pixels = self.data > 0
-        if colorize:
-            # Fill all non-transparent pixels with the same color
-            return (color + filled_pixels * 2**24).astype(np.uint32)
-        else:
-            # Otiginal brush data
-            return (self.data + filled_pixels * 2**24).astype(np.uint32)
     
     @property
     def center(self):
         return self._get_center(self.size)
 
+    @lru_cache(2)  
+    def get_draw_data(self, color, colorize=None):
+        filled_pixels = self.data > 0
+        # Fill all non-transparent pixels with the same color
+        return (color + filled_pixels * 2**24).astype(np.uint32)
+    
     @lru_cache(1)
     def _get_center(self, size):
         w, h = self.size
@@ -76,4 +72,13 @@ class EllipseBrush(Brush):
         
 class PicBrush(Brush):
 
-    pass
+    @lru_cache(2)  
+    def get_draw_data(self, color, colorize=False):
+        filled_pixels = self.data > 0
+        if colorize:
+            # Fill all non-transparent pixels with the same color
+            return (color + filled_pixels * 2**24).astype(np.uint32)
+        else:
+            # Otiginal brush data
+            return (self.data + filled_pixels * 2**24).astype(np.uint32)
+

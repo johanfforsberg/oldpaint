@@ -39,17 +39,15 @@ class Layer:
 
         self.version = 0
 
-        # This lock is important to hold while drawing, since otherwise
-        # the main thread might start reading from it while we're writing.
-        # It's reentrant so we don't have to worry about collisions within
-        # the drawing thread.
+        # This lock is important to hold while drawing, since otherwise the main thread might start
+        # reading from it while we're writing.  It's reentrant so we don't have to worry about
+        # collisions within the drawing thread.
         self.lock = RLock()
 
-        # "dirty" is a rect that tells the visualisation that part of the
-        # picture has changed and must be refreshed, after which it should
-        # set the dirty rect to None. From this side, we should never shrink
-        # or remove the dirty rect, but growing it is fine.
-        # Each frame has its own dirty rect.
+        # "dirty" is a rect that tells the visualisation that part of the picture has changed and
+        # textures must be refreshed, after which it should set the dirty rect to None. From this
+        # side, we should never shrink or remove the dirty rect, but growing it is fine.  Each frame
+        # has its own dirty rect.
         self.dirty = {
             frame: self.rect
             for frame in range(len(self.frames))

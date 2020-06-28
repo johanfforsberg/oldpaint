@@ -80,7 +80,7 @@ class OldpaintWindow(pyglet.window.Window):
             EllipseBrush((20, 35)),
         ])
         self.highlighted_layer = None
-        self.show_selection = True
+        self.show_selection = False
 
         # Some gl setup
         self.copy_program = Program(VertexShader("glsl/copy_vert.glsl"),
@@ -91,6 +91,7 @@ class OldpaintWindow(pyglet.window.Window):
 
         # All the drawing will happen in a thread, managed by this executor
         self.executor = ThreadPoolExecutor(max_workers=1)
+        
         self.stroke = None
         self.stroke_tool = None
         self.mouse_event_queue = None
@@ -245,10 +246,10 @@ class OldpaintWindow(pyglet.window.Window):
                 # Erasing always uses background color
                 color = brush_color = self.drawing.palette.background
             tool = self.tools.current(self.drawing, self.brush, color, brush_color)
-            self.autosave_drawing.cancel()
             self.stroke = self.executor.submit(make_stroke, self.overlay, self.mouse_event_queue, tool)
             self.stroke.add_done_callback(lambda s: self.executor.submit(self._finish_stroke, s))
             self.stroke_tool = tool
+            self.autosave_drawing.cancel()  # No autosave while drawing
 
     def on_mouse_release(self, x, y, button, modifiers):
         if self.mouse_event_queue:

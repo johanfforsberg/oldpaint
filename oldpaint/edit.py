@@ -184,9 +184,11 @@ class LayerCropEdit(Edit):
 
     @classmethod
     def create(cls, drawing, orig_layer, rect):
-        data = orig_layer.pic.data
+        raise NotImplementedError("Sorry, too lazy to fix cropping yet :(")
+        # TODO need to store all frames here!
+        data = orig_layer.data
         index = drawing.layers.index(orig_layer)
-        return cls(index=index, data=zlib.compress(data), rect=rect, orig_size=orig_layer.size)
+        return cls(index=index, data=zlib.compress(data.tobytes()), rect=rect, orig_size=orig_layer.size)
 
     def perform(self, drawing):
         layer = drawing.layers[self.index]
@@ -194,7 +196,7 @@ class LayerCropEdit(Edit):
 
     def revert(self, drawing):
         data = zlib.decompress(self.data)
-        drawing.layers[self.index] = Layer(pic=LongPicture(self.orig_size, data))
+        drawing.layers[self.index] = Layer(data, self.rect.size)
 
     @property
     def index_str(self):
