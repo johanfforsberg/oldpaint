@@ -628,8 +628,8 @@ def render_main_menu(state, window):
 
             imgui.separator()
 
-            clicked_quit, selected_quit = imgui.menu_item(
-                "Quit", 'Cmd+Q', False, True
+            clicked_quit, _ = imgui.menu_item(
+                "Quit", 'Cmd+q', False, True
             )
             if clicked_quit:
                 window._quit()

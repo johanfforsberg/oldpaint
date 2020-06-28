@@ -301,6 +301,9 @@ class OldpaintWindow(pyglet.window.Window):
     @no_imgui_events
     def on_key_press(self, symbol, modifiers):
 
+        if symbol == key.Q and modifiers & key.MOD_CTRL:
+            self._quit()
+
         if self.stroke:
             if symbol == key.ESCAPE:
                 self.mouse_event_queue.put(("abort",))
