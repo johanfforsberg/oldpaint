@@ -526,6 +526,9 @@ class OldpaintWindow(pyglet.window.Window):
                 self.overlay.clear(frame=0)
             if tool.restore_last:
                 self.tools.restore()
+        else:
+            # The stroke was aborted
+            self.overlay.clear()       
         self.mouse_event_queue = None
         self.stroke = None
         self.autosave_drawing()
