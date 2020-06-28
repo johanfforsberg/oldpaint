@@ -308,28 +308,10 @@ class OldpaintWindow(pyglet.window.Window):
 
         if self.drawing:
 
-            # if symbol == key.E:
-            #     self.drawing.palette.foreground += 1
-            # elif symbol == key.D:
-            #     self.drawing.palette.foreground -= 1
-
-            if symbol == key.L:
-                self.drawing.add_layer()
-
-            elif symbol == key.O:
+            if symbol == key.O:
                 if modifiers & key.MOD_CTRL:
                     self.load_drawing()
 
-            elif symbol == key.DELETE:
-                self.drawing.clear_layer(color=self.drawing.palette.background)
-                self.get_layer_preview_texture.cache_clear()
-
-            elif symbol == key.SPACE:
-                if self.drawing.playing_animation:
-                    self.drawing.stop_animation()
-                else:
-                    self.drawing.start_animation()
-                
             elif symbol == key.Z:
                 self.drawing.undo()
                 self.get_layer_preview_texture.cache_clear()
@@ -337,32 +319,7 @@ class OldpaintWindow(pyglet.window.Window):
                 self.drawing.redo()
                 self.get_layer_preview_texture.cache_clear()
 
-            elif symbol == key.W:
-                if modifiers & key.MOD_SHIFT:
-                    self.drawing.move_layer_up()
-                else:
-                    self.drawing.next_layer()
-                    self.highlighted_layer = self.drawing.layers.current
-            elif symbol == key.S:
-                if modifiers & key.MOD_SHIFT:
-                    self.drawing.move_layer_down()
-                elif modifiers & key.MOD_CTRL:
-                    self.drawing and self.save_drawing()
-                else:
-                    self.drawing.prev_layer()
-                    self.highlighted_layer = self.drawing.layers.current
-
-            elif symbol == key.D:
-                if modifiers & key.MOD_SHIFT:
-                    self.drawing.last_frame()
-                else:
-                    self.drawing.next_frame()
-            elif symbol == key.A:
-                if modifiers & key.MOD_SHIFT:
-                    self.drawing.first_frame()
-                else:
-                    self.drawing.prev_frame()
-                    
+            # Tools
             elif symbol == key.F:
                 self.tools.select(FillTool)
             elif symbol == key.T:
@@ -376,6 +333,7 @@ class OldpaintWindow(pyglet.window.Window):
             elif symbol == key.B:
                 self.tools.select(SelectionTool)
 
+            # View
             elif symbol == key.PLUS and self.mouse_position:
                 self.change_zoom(1, self.mouse_position)
             elif symbol == key.MINUS and self.mouse_position:
@@ -394,12 +352,7 @@ class OldpaintWindow(pyglet.window.Window):
                 w, h = self.get_size()
                 self.change_offset(0, h // 2)
 
-            elif symbol == key.V:
-                if modifiers & key.MOD_SHIFT:
-                    self.drawing.current.toggle_visibility()
-                else:
-                    self.highlighted_layer = self.drawing.layers.current
-
+            # Drawings
             elif symbol == key.TAB and modifiers & key.MOD_ALT:
                 # TODO make this toggle to most-recently-used instead
                 self.overlay.clear()
@@ -410,8 +363,56 @@ class OldpaintWindow(pyglet.window.Window):
                 else:
                     index = symbol - 49
                 if len(self.drawings) > index:
-                    self.drawings.select(self.drawings[index])
+                    self.drawings.select(self.drawings[index])                
                 
+            # Layers
+            elif symbol == key.L:
+                self.drawing.add_layer()
+                
+            elif symbol == key.V:
+                if modifiers & key.MOD_SHIFT:
+                    self.drawing.current.toggle_visibility()
+                else:
+                    self.highlighted_layer = self.drawing.layers.current
+                    
+            elif symbol == key.W:
+                if modifiers & key.MOD_SHIFT:
+                    self.drawing.move_layer_up()
+                else:
+                    self.drawing.next_layer()
+                    self.highlighted_layer = self.drawing.layers.current
+            elif symbol == key.S:
+                if modifiers & key.MOD_SHIFT:
+                    self.drawing.move_layer_down()
+                elif modifiers & key.MOD_CTRL:
+                    self.drawing and self.save_drawing()
+                else:
+                    self.drawing.prev_layer()
+                    self.highlighted_layer = self.drawing.layers.current
+
+            elif symbol == key.DELETE:
+                self.drawing.clear_layer(color=self.drawing.palette.background)
+                self.get_layer_preview_texture.cache_clear()
+                    
+            # Animation
+            elif symbol == key.D:
+                if modifiers & key.MOD_SHIFT:
+                    self.drawing.last_frame()
+                else:
+                    self.drawing.next_frame()
+            elif symbol == key.A:
+                if modifiers & key.MOD_SHIFT:
+                    self.drawing.first_frame()
+                else:
+                    self.drawing.prev_frame()
+                    
+            elif symbol == key.SPACE:
+                if self.drawing.playing_animation:
+                    self.drawing.stop_animation()
+                else:
+                    self.drawing.start_animation()
+
+            # Misc
             elif symbol == key.C:
                 self.window_visibility["colors"] = not self.window_visibility["colors"]
                 
