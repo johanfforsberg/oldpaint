@@ -7,6 +7,10 @@ It can be applied and reverted.
 Ordering is very important. In general, an edit can only be correctly applied when
 the drawing is in the state when it was created, and only reverted from the state
 right after it was applied.
+
+TODO Refactor this stuff, it has become messy. In particular, it makes no sense
+to serialize the data when creating an edit, then immediately deserialize it in
+order to apply!
 """
 
 import pickle
