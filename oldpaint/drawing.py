@@ -9,6 +9,7 @@ import numpy as np
 from pyglet import clock
 
 from .brush import PicBrush
+from .config import get_autosave_filename
 from .edit import (LayerEdit, LayerClearEdit, DrawingCropEdit, LayerFlipEdit,
                    AddFrameEdit, RemoveFrameEdit,
                    MoveFrameForwardEdit, MoveFrameBackwardEdit,
@@ -194,6 +195,11 @@ class Drawing:
                  selection=selection, framerate=self.framerate)
         shutil.move(tmp_path, path)
 
+    def autosave(self):
+        path = self.path or self.uuid
+        auto_filename = get_autosave_filename(path)
+        self.save_ora(str(auto_filename), auto=True)
+        
     def crop(self, rect):
         edit = DrawingCropEdit.create(self, rect)
         edit.perform(self)

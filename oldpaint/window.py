@@ -669,17 +669,9 @@ class OldpaintWindow(pyglet.window.Window):
             fut.add_done_callback(
                 lambda fut: really_save_drawing(drawing, fut.result()))
 
-    @debounce(cooldown=300, wait=3)
+    @debounce(cooldown=60, wait=3)
     def autosave_drawing(self):
-
-        @try_except_log
-        def really_autosave():
-            path = self.drawing.path or self.drawing.uuid
-            auto_filename = get_autosave_filename(path)
-            print(f"Autosaving to {auto_filename}...")
-            self.drawing.save_ora(str(auto_filename), auto=True)
-
-        fut = self.executor.submit(really_autosave)
+        fut = self.executor.submit(self.drawing.autosave)
         fut.add_done_callback(lambda fut: print("Autosave done!"))
 
     def load_drawing(self, path=None):
