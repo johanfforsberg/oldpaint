@@ -2,6 +2,7 @@ from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from functools import lru_cache
+import logging
 import os
 from queue import Queue
 
@@ -34,6 +35,9 @@ from .tool import (PencilTool, PointsTool, SprayTool,
 from .util import (Selectable, Selectable2, make_view_matrix, show_load_dialog, show_save_dialog,
                    cache_clear, debounce, as_rgba)
 from . import ui
+
+
+logger = logging.getLogger(__name__)
 
 
 MIN_ZOOM = -2
@@ -679,7 +683,8 @@ class OldpaintWindow(pyglet.window.Window):
     @debounce(cooldown=60, wait=3)
     def autosave_drawing(self):
         fut = self.executor.submit(self.drawing.autosave)
-        fut.add_done_callback(lambda fut: print("Autosave done!"))
+        fut.add_done_callback(lambda path: logger.info(f"Autosaved to '{path.result()}'"))
+
 
     def load_drawing(self, path=None):
 

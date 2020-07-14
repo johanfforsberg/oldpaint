@@ -1,4 +1,5 @@
 import configparser
+import logging
 from pathlib import Path
 
 from pluginbase import PluginBase
@@ -15,6 +16,14 @@ def load_config():
     config_file = configparser.ConfigParser()
     config_file.read(CONFIG_FILE)
     config = {}
+    
+    if "logging" in config_file:
+        level = config_file["logging"].get("level", "DEBUG")
+        logging.basicConfig(level=getattr(logging, level))
+    else:
+        # TODO Change this default when oldpaint is more stable.
+        logging.basicConfig(level=logging.DEBUG)
+        
     if "window" in config_file:
         size = config_file["window"].get("size")
         w, h = [int(v) for v in size.split()]
