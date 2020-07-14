@@ -356,6 +356,9 @@ class OldpaintWindow(pyglet.window.Window):
                 self.change_offset(0, h // 2)
 
             # Drawings
+            elif symbol == key.D and modifiers & key.MOD_SHIFT:
+                self.new_drawing()
+            
             elif symbol == key.TAB and modifiers & key.MOD_ALT:
                 # TODO make this toggle to most-recently-used instead
                 self.overlay.clear()
@@ -623,6 +626,10 @@ class OldpaintWindow(pyglet.window.Window):
         imgui.end_frame()
 
         self.imgui_renderer.render(imgui.get_draw_data())
+
+    def new_drawing(self, default_size=(640, 480)):
+        size = self.drawing.size if self.drawing else default_size
+        self.ui_state = ui.update_state(self.ui_state, new_drawing_size=size)
 
     def create_drawing(self, size):
         drawing = Drawing(size=size)
