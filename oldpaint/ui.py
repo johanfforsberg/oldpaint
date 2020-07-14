@@ -190,7 +190,7 @@ def render_palette(state: UIState, drawing: Drawing):
         done, cancelled, new_color = render_color_editor(state, palette.colors[fg], fg_color)
         if done:
             # Color was changed and then OK was clicked; make change and close
-            drawing.change_colors(fg, [new_color])
+            drawing.change_colors((fg, new_color))
             palette.clear_overlay()
             color_editor_open = False
         elif cancelled:
@@ -200,10 +200,11 @@ def render_palette(state: UIState, drawing: Drawing):
         else:
             # Keep editing color
             palette.set_overlay(fg, new_color)
+
         imgui.end_popup()
     elif state.color_editor_open:
         # The popup was closed by clicking outside, keeping the change (same as OK)
-        drawing.change_colors(fg, [fg_color])
+        drawing.change_colors((fg, fg_color))
         palette.clear_overlay()
         color_editor_open = False
 
@@ -616,6 +617,15 @@ def render_main_menu(state, window):
                         window.load_drawing(path)
                 imgui.end_menu()
 
+            autosaves = drawing and drawing.get_autosaves()
+            if imgui.begin_menu("Load autosave...", autosaves):
+                for save in autosaves:
+                    clicked, _ = imgui.menu_item(save.name, None, False, True)
+                    if clicked:
+                        print("loading", save)
+                        drawing.load_ora(save)
+                imgui.end_menu()
+                
             imgui.separator()
 
             clicked_save, selected_save = imgui.menu_item("Save", "Ctrl+s", False, window.drawing)

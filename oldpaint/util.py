@@ -76,6 +76,10 @@ class Selectable:
         self.current = proxy(item)
         self.switching = True
 
+    def select_index(self, index):
+        assert index in range(len(self)), f"Index {index} is out of range!"
+        self.select(self.items[index])
+        
     def set_item(self, item, index=None):
         current_index = self.get_current_index()
         if index is None or index == current_index:

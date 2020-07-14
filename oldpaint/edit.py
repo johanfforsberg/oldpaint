@@ -294,16 +294,15 @@ class PaletteEdit(Edit):
 
     "A change in the color data of the palette."
 
-    index: int
-    data: list
+    diffs: list
 
     def perform(self, drawing):
-        for i, (dr, dg, db, da) in enumerate(self.data, start=self.index):
+        for i, dr, dg, db, da in self.diffs:
             r0, g0, b0, a0 = drawing.palette.colors[i]
             drawing.palette[i] = r0 + dr, g0 + dg, b0 + db, a0 + da
 
     def revert(self, drawing):
-        for i, (dr, dg, db, da) in enumerate(self.data, start=self.index):
+        for i, dr, dg, db, da in self.diffs:
             r0, g0, b0, a0 = drawing.palette.colors[i]
             drawing.palette[i] = r0 - dr, g0 - dg, b0 - db, a0 - da
 

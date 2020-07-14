@@ -55,7 +55,7 @@ def get_drawing_cache_dir(drawing_path):
 
 def get_autosave_filename(drawing_path, keep=3):
     cache_dir = get_drawing_cache_dir(drawing_path)
-    files = list(cache_dir.glob("*.ora"))
+    files = list(get_autosaves(drawing_path))
     file_nos = sorted(int(fn.name.split(".")[0]) for fn in files[-keep:])
 
     to_remove = file_nos[0:-(keep-1)]
@@ -67,6 +67,11 @@ def get_autosave_filename(drawing_path, keep=3):
     else:
         latest = -1
     return cache_dir / f"{latest + 1}.ora"
+
+
+def get_autosaves(drawing_path):
+    cache_dir = get_drawing_cache_dir(drawing_path)
+    return cache_dir.glob("*.ora")
 
 
 PLUGIN_DIR = Path(__file__).parent.parent / "plugins"

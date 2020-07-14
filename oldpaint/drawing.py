@@ -9,7 +9,7 @@ import numpy as np
 from pyglet import clock
 
 from .brush import PicBrush
-from .config import get_autosave_filename
+from .config import get_autosave_filename, get_autosaves
 from .edit import (LayerEdit, LayerClearEdit, DrawingCropEdit, LayerFlipEdit,
                    AddFrameEdit, RemoveFrameEdit,
                    MoveFrameForwardEdit, MoveFrameBackwardEdit,
@@ -172,6 +172,27 @@ class Drawing:
                   for frames, visibility in layer_pics]
         return cls(size=layers[0].size, layers=layers, palette=palette, path=path, **kwargs)
 
+    def load_ora(self, path):
+        """ Replace the current data with data from an ORA file. """
+        layer_pics, info, kwargs = load_ora(path)
+        layers = [Layer(frames, visible=visibility)
+                  for frames, visibility in layer_pics]
+
+        def diff_colors(c1, c2):
+            r1, g1, b1, a1 = c1
+            r2, g2, b2, a2 = c2
+            return r2 - r1, g2 - g1, b2 - b1, a2 - a1
+        
+        color_diffs = [(i, *diff_colors(c1, c2))
+                       for i, (c1, c2) in enumerate(zip(self.palette, info["palette"]))
+                       if c1 != c2]
+        edit = MultiEdit([
+            *(RemoveLayerEdit.create(self, l) for l in self.layers),
+            *(AddLayerEdit.create(self, l, i) for i, l in enumerate(layers)),
+            PaletteEdit(diffs=color_diffs)
+        ])
+        self._make_edit(edit)
+    
     def save_ora(self, path=None, auto=False):
         """Save in ORA format, which keeps all layers intact."""
         if path is None and self.path:
@@ -201,11 +222,13 @@ class Drawing:
         path = self.path or self.uuid
         auto_filename = get_autosave_filename(path)
         self.save_ora(str(auto_filename), auto=True)
-        
+
+    def get_autosaves(self):
+        return list(get_autosaves(self.path or self.uuid))
+
     def crop(self, rect):
         edit = DrawingCropEdit.create(self, rect)
-        edit.perform(self)
-        self._add_edit(edit)
+        self._make_edit(edit)
         self.selection = None
 
     @property
@@ -225,8 +248,7 @@ class Drawing:
                 AddFrameEdit.create(None, self.size, i, frame)
                 for i, layer in enumerate(self.layers)
             ])
-        edit.perform(self)
-        self._add_edit(edit)
+        self._make_edit(edit)
          
         self.frame = frame
  
@@ -236,22 +258,19 @@ class Drawing:
             RemoveFrameEdit.create(layer.frames[frame], self.size, i, frame)
             for i, layer in enumerate(self.layers)
         ])
-        edit.perform(self)
-        self._add_edit(edit)
+        self._make_edit(edit)
 
     def move_frame_forward(self, layer=None, frame=None):
         layer = layer if layer is not None else self.layers.index()
         frame = frame if frame is not None else self.frame
         edit = MoveFrameForwardEdit.create(index=layer, frame=frame)
-        edit.perform(self)
-        self._add_edit(edit)
+        self._make_edit(edit)
         
     def move_frame_backward(self, layer=None, frame=None):
         layer = layer if layer is not None else self.layers.index()
         frame = frame if frame is not None else self.frame
         edit = MoveFrameBackwardEdit.create(index=layer, frame=frame)
-        edit.perform(self)
-        self._add_edit(edit)
+        self._make_edit(edit)
         
     def next_frame(self):
         self.frame = (self.frame + 1) % self.n_frames
@@ -285,10 +304,9 @@ class Drawing:
         layer = layer or Layer(size=self.size)
         index = (index if index is not None else self.layers.get_current_index()) + 1
 
-        self.layers.add(layer, index=index)
-        self.layers.select(layer)
         edit = AddLayerEdit.create(self, layer, index)
-        self._add_edit(edit)
+        self._make_edit(edit)
+        self.layers.select_index(index)
 
     def remove_layer(self, index=None):
         if len(self.layers) == 1:
@@ -296,8 +314,7 @@ class Drawing:
         index = index or self.layers.get_current_index()
         layer = self.layers[index]
         edit = RemoveLayerEdit.create(self, layer)
-        edit.perform(self)
-        self._add_edit(edit)
+        self._make_edit(edit)
 
     def next_layer(self):
         self.layers.cycle_forward()
@@ -310,8 +327,7 @@ class Drawing:
         if index1 < (len(self.layers) - 1):
             index2 = index1 + 1
             edit = SwapLayersEdit(index1, index2)
-            edit.perform(self)
-            self._add_edit(edit)
+            self._make_edit(edit)
 
     def move_layer_down(self):
         index1 = self.layers.get_current_index()
@@ -319,21 +335,18 @@ class Drawing:
             index1 = self.layers.get_current_index()
             index2 = index1 - 1
             edit = SwapLayersEdit(index1, index2)
-            edit.perform(self)
-            self._add_edit(edit)
+            self._make_edit(edit)
 
     def clear_layer(self, layer=None, color=0, frame=None):
         layer = layer or self.current
         frame = frame if frame is not None else self.frame
         edit = LayerClearEdit.create(self, layer, frame, color=color)
-        edit.perform(self)
-        self._add_edit(edit)
+        self._make_edit(edit)
 
     @try_except_log
     def merge_layers(self, layer1, layer2, frame):
         edit = MergeLayersEdit.create(self, layer1, layer2, frame)
-        edit.perform(self)
-        self._add_edit(edit)
+        self._make_edit(edit)
 
     def merge_layer_down(self, layer=None, frame=None):
         "Combine a layer with the layer below it, by superpositioning."
@@ -347,8 +360,7 @@ class Drawing:
     def flip(self, horizontal):
         "Mirror all layers."
         edit = DrawingFlipEdit(horizontal)
-        edit.perform(self)
-        self._add_edit(edit)
+        self._make_edit(edit)
         
     def flip_horizontal(self):
         self.flip(True)
@@ -360,8 +372,7 @@ class Drawing:
         "Mirror a single layer."
         layer = layer or self.current
         edit = LayerFlipEdit(self.layers.index(layer), horizontal)
-        edit.perform(self)
-        self._add_edit(edit)
+        self._make_edit(edit)
         
     def flip_layer_horizontal(self, layer=None):
         self.flip_layer(layer, True)
@@ -375,28 +386,26 @@ class Drawing:
         layer = layer or self.current
         frame = frame if frame is not None else self.frame
         edit = LayerEdit.create(self, layer, new, frame, rect, tool.value if tool else 0)
-        edit.perform(self)
-        self._add_edit(edit)
+        self._make_edit(edit)
 
     @try_except_log
-    def change_colors(self, i, colors):
-        data = []
-        for j, color in enumerate(colors):
-            r0, g0, b0, a0 = self.palette[i + j]
-            r1, g1, b1, a1 = color
+    def change_colors(self, *colors):
+        """ Change any number of colors in the palette at once, as a single undoable edit. """
+        diffs = []
+        for i, (r1, g1, b1, a1) in colors:
+            r0, g0, b0, a0 = self.palette[i]
             delta = r1-r0, g1-g0, b1-b0, a1-a0
-            data.append(delta)
-        edit = PaletteEdit(index=i, data=data)
-        edit.perform(self)
-        self._add_edit(edit)
+            diffs.append((i, *delta))
+        edit = PaletteEdit(diffs)
+        self._make_edit(edit)
 
     def swap_colors(self, index1, index2, image_only=False):
+        """ Change places between two colors in the palette. """
         if image_only:
             edit = SwapColorsImageEdit(index1, index2)
         else:
             edit = SwapColorsPaletteEdit.create(index1=index1, index2=index2)
-        edit.perform(self)
-        self._add_edit(edit)
+        self._make_edit(edit)
 
     def make_brush(self, frame=None, rect=None, layer=None, clear=False):
         "Create a brush from part of the given layer."
@@ -407,12 +416,10 @@ class Drawing:
         layer = self.layers[layer] if layer is not None else self.current
         rect = layer.rect.intersect(rect)
         subimage = layer.get_subimage(rect, frame=frame)
-        #subimage.fix_alpha(set(self.palette.transparent_colors))
         if clear:
             edit = LayerClearEdit.create(self, layer, frame, rect,
                                          color=self.palette.background)
-            edit.perform(self)
-            self._add_edit(edit)
+            self._make_edit(edit)
         brush = PicBrush(data=subimage)
         self.brushes.append(brush)
 
@@ -421,8 +428,9 @@ class Drawing:
         layer = layer or self.current
         return layer.get_subimage(layer.rect, frame)
     
-    def _add_edit(self, edit):
-        "Insert an edit into the history, keeping track of things"
+    def _make_edit(self, edit):
+        """ Perform an edit and insert it into the history, keeping track of things """
+        edit.perform(self)
         if self._edits_index < -1:
             del self._edits[self._edits_index + 1:]
             self._edits_index = -1
@@ -453,7 +461,7 @@ class Drawing:
         maker = EditMaker(self)
         yield maker
         maker.finish()
-        self._add_edit(MultiEdit(maker.edits))
+        self._make_edit(MultiEdit(maker.edits))
 
     def __repr__(self):
         return f"Drawing(size={self.size}, layers={self.layers}, current={self.layers.index()})"
