@@ -2,12 +2,13 @@ import configparser
 from pathlib import Path
 
 from pluginbase import PluginBase
-from xdg import XDG_CONFIG_HOME, XDG_CACHE_HOME
+from appdirs import AppDirs
 
-OLDPAINT_CONFIG_HOME = XDG_CONFIG_HOME / "oldpaint"
-OLDPAINT_CONFIG_HOME.mkdir(parents=True, exist_ok=True)
-CONFIG_FILE = OLDPAINT_CONFIG_HOME / "oldpaint.ini"
-CACHE_DIR = XDG_CACHE_HOME / "oldpaint"
+oldpaint_dirs = AppDirs("oldpaint", "nurbldoff")
+
+CONFIG_HOME = Path(oldpaint_dirs.user_config_dir)
+CONFIG_FILE = CONFIG_HOME / "oldpaint.ini"
+CACHE_DIR = Path(oldpaint_dirs.user_cache_dir)
 
 
 def load_config():
@@ -68,9 +69,8 @@ def get_autosave_filename(drawing_path, keep=3):
     return cache_dir / f"{latest + 1}.ora"
 
 
-OLDPAINT_PLUGIN_DIR = Path(__file__).parent.parent / "plugins"
-OLDPAINT_USER_PLUGIN_DIR = OLDPAINT_CONFIG_HOME / "plugins"
-OLDPAINT_USER_PLUGIN_DIR.mkdir(parents=True, exist_ok=True)
+PLUGIN_DIR = Path(__file__).parent.parent / "plugins"
+USER_PLUGIN_DIR = CONFIG_HOME / "plugins"
+USER_PLUGIN_DIR.mkdir(parents=True, exist_ok=True)
 plugin_base = PluginBase(package='oldpaint.plugins')
-plugin_source = plugin_base.make_plugin_source(searchpath=[str(OLDPAINT_PLUGIN_DIR),
-                                                           str(OLDPAINT_USER_PLUGIN_DIR)])
+plugin_source = plugin_base.make_plugin_source(searchpath=[str(PLUGIN_DIR), str(USER_PLUGIN_DIR)])
