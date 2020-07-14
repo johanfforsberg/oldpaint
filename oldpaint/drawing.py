@@ -222,6 +222,7 @@ class Drawing:
         path = self.path or self.uuid
         auto_filename = get_autosave_filename(path)
         self.save_ora(str(auto_filename), auto=True)
+        return auto_filename
 
     def get_autosaves(self):
         return list(get_autosaves(self.path or self.uuid))
@@ -443,7 +444,8 @@ class Drawing:
             edit = self._edits[self._edits_index]
             edit.revert(self)
             self._edits_index -= 1
-        logger.info("No more edits to undo!")
+        else:
+            logger.info("No more edits to undo!")
 
     @try_except_log
     def redo(self):
@@ -452,7 +454,8 @@ class Drawing:
             self._edits_index += 1
             edit = self._edits[self._edits_index]
             edit.perform(self)
-        logger.info("No more edits to redo!")
+        else:
+            logger.info("No more edits to redo!")
 
     # Drawing helpers, for scripting/plugin use
 
