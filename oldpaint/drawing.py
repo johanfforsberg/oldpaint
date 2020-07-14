@@ -46,7 +46,9 @@ class Drawing:
     mess up the undo history beyond repair.
     """
     
-    def __init__(self, size, layers=None, palette=None, path=None, selection=None, framerate=10):
+    def __init__(self, size, layers=None, palette=None, path=None, selection=None, framerate=10, **kwargs):
+        if kwargs:
+            logger.warning("Ignoring the following arguments: %r", kwargs)
         self.size = size
         if layers:
             self.layers = Selectable(layers)
