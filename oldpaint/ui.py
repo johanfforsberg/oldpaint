@@ -8,6 +8,7 @@ import logging
 from math import floor, ceil
 import os
 import sys
+from time import time
 from typing import Tuple, NamedTuple
 
 import imgui
@@ -619,8 +620,19 @@ def render_main_menu(state, window):
 
             autosaves = drawing and drawing.get_autosaves()
             if imgui.begin_menu("Load autosave...", autosaves):
+                t = time()
                 for save in autosaves:
-                    clicked, _ = imgui.menu_item(save.name, None, False, True)
+                    age = int(t - save.stat().st_mtime)
+                    
+                    if age > 86400:
+                        age_str = f"{age // 86400} days"
+                    elif age > 3600:
+                        age_str = f"{age // 3600} hours"
+                    elif age > 60:
+                        age_str = f"{age // 60} minutes"
+                    else:
+                        age_str = "seconds"
+                    clicked, _ = imgui.menu_item(f"{save.name} ({age_str} ago)", None, False, True)
                     if clicked:
                         print("loading", save)
                         drawing.load_ora(save)
