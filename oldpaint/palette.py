@@ -131,3 +131,16 @@ class Palette:
     def get_color_as_float(self, color):
         r, g, b, a = color
         return r / 255, g / 255, b / 255, a / 255
+
+    def make_diff(self, colors):
+        
+        def diff_colors(c1, c2):
+            r1, g1, b1, a1 = c1
+            r2, g2, b2, a2 = c2
+            return r2 - r1, g2 - g1, b2 - b1, a2 - a1
+        
+        return [
+            (i, *diff_colors(self.colors[i], new_color))
+            for i, new_color in colors
+            if new_color != self.colors[i]
+        ]

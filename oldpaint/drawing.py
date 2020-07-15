@@ -176,20 +176,12 @@ class Drawing:
         """ Replace the current data with data from an ORA file. """
         layer_pics, info, kwargs = load_ora(path)
         layers = [Layer(frames, visible=visibility)
-                  for frames, visibility in layer_pics]
-
-        def diff_colors(c1, c2):
-            r1, g1, b1, a1 = c1
-            r2, g2, b2, a2 = c2
-            return r2 - r1, g2 - g1, b2 - b1, a2 - a1
-        
-        color_diffs = [(i, *diff_colors(c1, c2))
-                       for i, (c1, c2) in enumerate(zip(self.palette, info["palette"]))
-                       if c1 != c2]
+                  for frames, visibility in layer_pics]        
+        color_diffs = self.palette.make_diff(enumerate(info["palette"]))
         edit = MultiEdit([
-            *(RemoveLayerEdit.create(self, l) for l in self.layers),
+            *(RemoveLayerEdit.create(self, l) for l in reversed(self.layers)),  # always remove layers from the top!
+            PaletteEdit(diffs=color_diffs),
             *(AddLayerEdit.create(self, l, i) for i, l in enumerate(layers)),
-            PaletteEdit(diffs=color_diffs)
         ])
         self._make_edit(edit)
     
@@ -392,11 +384,7 @@ class Drawing:
     @try_except_log
     def change_colors(self, *colors):
         """ Change any number of colors in the palette at once, as a single undoable edit. """
-        diffs = []
-        for i, (r1, g1, b1, a1) in colors:
-            r0, g0, b0, a0 = self.palette[i]
-            delta = r1-r0, g1-g0, b1-b0, a1-a0
-            diffs.append((i, *delta))
+        diffs = self.palette.make_diff(colors)
         edit = PaletteEdit(diffs)
         self._make_edit(edit)
 
