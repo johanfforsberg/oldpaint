@@ -150,7 +150,8 @@ class OldpaintWindow(pyglet.window.Window):
         self.window_visibility = {
             "edits": False,
             "colors": False,
-            "color_editor": False
+            "color_editor": False,
+            "metrics": False
         }
 
         # TODO This is the basics for using tablet pressure info
@@ -625,6 +626,9 @@ class OldpaintWindow(pyglet.window.Window):
 
             render_plugins_ui(self)
 
+            if self.window_visibility["metrics"]:
+                self.window_visibility["metrics"] = imgui.show_metrics_window(closable=True)
+            
         imgui.render()
 
         imgui.end_frame()
