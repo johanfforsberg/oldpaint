@@ -179,6 +179,10 @@ class OldpaintWindow(pyglet.window.Window):
 
         self.keys = key.KeyStateHandler()
         self.push_handlers(self.keys)
+
+        # TODO Keyboard navigation might be nice, at least for dialogs... not quite this easy though.
+        io.config_flags |= imgui.CONFIG_NAV_ENABLE_KEYBOARD | imgui.CONFIG_NAV_NO_CAPTURE_KEYBOARD
+        io.key_map[imgui.KEY_SPACE] = key.SPACE
         
     @property
     def overlay(self):
