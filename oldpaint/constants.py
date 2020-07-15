@@ -9,5 +9,5 @@ class ToolName(Enum):
     rectangle = 5
     ellipse = 6
     floodfill = 7
-    brush = 8
+    selection = 8
     picker = 9

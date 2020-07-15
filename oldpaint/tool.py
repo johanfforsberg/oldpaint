@@ -217,12 +217,12 @@ class FillTool(Tool):
 
 class SelectionTool(Tool):
 
-    "Create a brush from a rectangular region of the current layer."
+    "Set the current selection rectangle."
 
-    tool = ToolName.brush
+    tool = ToolName.selection
     brush_preview = False
     show_rect = True
-    restore_last = True
+    # restore_last = True
 
     def start(self, overlay, point, buttons, modifiers):
         super().start(overlay, point, buttons, modifiers)
@@ -231,7 +231,7 @@ class SelectionTool(Tool):
         self.rect = overlay.rect.intersect(from_points([self.points[0], point]))
 
     def finish(self, overlay, point, buttons, modifiers):
-        self.drawing.make_brush(self.drawing.frame, self.rect, clear=buttons & window.mouse.RIGHT)
+        # self.drawing.make_brush(self.drawing.frame, self.rect, clear=buttons & window.mouse.RIGHT)
         self.drawing.selection = self.rect
         self.rect = None
 

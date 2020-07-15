@@ -22,7 +22,6 @@ from fogl.vao import VertexArrayObject
 from fogl.vertex import SimpleVertices
 
 from .brush import PicBrush, RectangleBrush, EllipseBrush
-from .config import get_autosave_filename
 from .drawing import Drawing
 from .imgui_pyglet import PygletRenderer
 from .plugin import init_plugins, render_plugins_ui
@@ -84,7 +83,7 @@ class OldpaintWindow(pyglet.window.Window):
             EllipseBrush((20, 35)),
         ])
         self.highlighted_layer = None
-        self.show_selection = False
+        # self.show_selection = False
 
         # Some gl setup
         self.copy_program = Program(VertexShader("glsl/copy_vert.glsl"),
@@ -109,7 +108,7 @@ class OldpaintWindow(pyglet.window.Window):
         self.imgui_renderer = PygletRenderer(self)
         self.icons = {
             name: ImageTexture(*load_png(f"icons/{name}.png"))
-            for name in ["brush", "ellipse", "floodfill", "line", "spray",
+            for name in ["selection", "ellipse", "floodfill", "line", "spray",
                          "pencil", "picker", "points", "rectangle"]
         }
 
@@ -126,8 +125,6 @@ class OldpaintWindow(pyglet.window.Window):
 
         self.ui_state = ui.UIState()
         
-        self.selection = None  # Rectangle e.g. for selecting brush region
-
         self.border_vao = VertexArrayObject(vertices_class=SimpleVertices)
         self.border_vertices = self.border_vao.create_vertices(
             [((0, 0, 0),),
@@ -204,6 +201,10 @@ class OldpaintWindow(pyglet.window.Window):
         self.drawings.current.zoom = zoom
 
     @property
+    def scale(self):
+        return 2**self.zoom
+
+    @property
     def offset(self):
         return self.drawings.current.offset
 
@@ -223,9 +224,14 @@ class OldpaintWindow(pyglet.window.Window):
             f = list(self.recent_files.keys())[-1]
             return os.path.dirname(f)
 
+    @property
+    def selection(self):
+        if self.drawing.selection and self.tools.current == SelectionTool:
+            return self.drawing.selection
+        
     @no_imgui_events
     def on_mouse_press(self, x, y, button, modifiers):
-        if not self.drawing or self.drawing.locked:
+        if not self.drawing or self.drawing.locked or self.selection:
             return
         if self.mouse_event_queue:
             return
@@ -338,9 +344,19 @@ class OldpaintWindow(pyglet.window.Window):
                 self.tools.select(RectangleTool)
             elif symbol == key.C:
                 self.tools.select(PickerTool)
-            elif symbol == key.B:
+                
+            elif symbol == key.SPACE:
                 self.tools.select(SelectionTool)
 
+            elif symbol == key.B:
+                if self.selection:
+                    self.drawing.make_brush()
+                    self.tools.restore()
+
+            elif symbol == key.ESCAPE:
+                if self.selection:
+                    self.tools.restore()
+                    
             # View
             elif symbol == key.PLUS and self.mouse_position:
                 self.change_zoom(1, self.mouse_position)
@@ -360,9 +376,9 @@ class OldpaintWindow(pyglet.window.Window):
                 w, h = self.get_size()
                 self.change_offset(0, h // 2)
 
-            # Drawings
-            elif symbol == key.D and modifiers & key.MOD_SHIFT:
-                self.new_drawing()
+            # # Drawings
+            # elif symbol == key.D and modifiers & key.MOD_SHIFT:
+            #     self.new_drawing()
             
             elif symbol == key.TAB and modifiers & key.MOD_ALT:
                 # TODO make this toggle to most-recently-used instead
@@ -417,7 +433,7 @@ class OldpaintWindow(pyglet.window.Window):
                 else:
                     self.drawing.prev_frame()
                     
-            elif symbol == key.SPACE:
+            elif symbol == key.COMMA:
                 if self.drawing.playing_animation:
                     self.drawing.stop_animation()
                 else:
@@ -473,8 +489,7 @@ class OldpaintWindow(pyglet.window.Window):
 
             # Selection rectangle
             tool = self.stroke_tool
-            selection = ((self.show_selection and self.drawing.selection)
-                         or (tool and tool.show_rect and tool.rect))
+            selection = ((tool and tool.show_rect and tool.rect) or self.selection)
             if selection:
                 self.set_selection(selection)
                 with self.selection_vao, self.line_program:
@@ -608,10 +623,16 @@ class OldpaintWindow(pyglet.window.Window):
 
                 if self.ui_state.animation_settings_open:
                     self.ui_state = ui.render_animation_settings(self.ui_state, self)
-
+                    
                 # Exit with unsaved
                 ui.render_unsaved_exit(self)
 
+                if self.selection:
+                    # Display selection rectangle with handles for tweaking
+                    imgui.set_next_window_size(w - 115, h - 20)
+                    imgui.set_next_window_position(0, 20)
+                    self.ui_state = ui.render_selection_rectangle(self.ui_state, self)
+                
             # Create new drawing
             self.ui_state = ui.render_new_drawing_popup(self.ui_state, self)
                 
@@ -688,7 +709,6 @@ class OldpaintWindow(pyglet.window.Window):
     def autosave_drawing(self):
         fut = self.executor.submit(self.drawing.autosave)
         fut.add_done_callback(lambda path: logger.info(f"Autosaved to '{path.result()}'"))
-
 
     def load_drawing(self, path=None):
 
@@ -838,7 +858,7 @@ class OldpaintWindow(pyglet.window.Window):
         over_image = self._over_image(x, y)
         if over_image:
             io = imgui.get_io()
-            if io.want_capture_mouse:
+            if io.want_capture_mouse or self.selection:
                 self.mouse_position = None
                 self.set_mouse_visible(True)
             else:
