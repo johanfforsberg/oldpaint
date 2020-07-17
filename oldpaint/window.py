@@ -62,8 +62,8 @@ class OldpaintWindow(pyglet.window.Window):
 
     def __init__(self, recent_files, drawing_specs, **kwargs):
 
-        super().__init__(**kwargs, resizable=True, vsync=False)
-
+        super().__init__(**kwargs, caption="Oldpaint", resizable=True, vsync=False)
+        
         self.drawings = Drawings([Drawing.from_spec(s) for s in drawing_specs or []])
 
         self.tools = Selectable2({
