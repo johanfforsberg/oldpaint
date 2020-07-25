@@ -61,7 +61,7 @@ class Layer:
     def save_png(self, path:str, palette=None, frame=None):
         save_png(self.frames[frame], path, palette)
 
-    def get_data(self, frame:int=0):
+    def get_data(self, frame:int=0) -> np.ndarray:
         "Get the given frame, creating it if needed."
         data = self.frames[frame]
         if data is not None:

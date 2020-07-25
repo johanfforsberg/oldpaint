@@ -13,6 +13,9 @@ to serialize the data when creating an edit, then immediately deserialize it in
 order to apply!
 """
 
+from __future__ import annotations
+
+from abc import ABCMeta, abstractmethod, abstractproperty
 import pickle
 from dataclasses import dataclass
 import struct
@@ -25,7 +28,7 @@ from .layer import Layer
 from .rect import Rectangle
 
 
-class Edit:
+class Edit(metaclass=ABCMeta):
 
     @classmethod
     def get_type_mapping(cls):
@@ -44,13 +47,21 @@ class Edit:
         data = z.decompress(stored[5:])
         return cls(index=index, rect=Rectangle(*rect), data=data), z.unused_data
 
-    @property
-    def layer_str(self):
-        return ""
+    @abstractmethod
+    def perform(drawing: Drawing):
+        pass
 
-    @property
-    def info_str(self):
-        return ""
+    @abstractmethod
+    def revert(drawing: Drawing):
+        pass
+    
+    @abstractproperty
+    def index_str(self) -> str:
+        pass
+
+    @abstractproperty
+    def info_str(self) -> str:
+        pass
 
 
 @dataclass(frozen=True)
@@ -95,7 +106,7 @@ class LayerEdit(Edit):
     data: bytes
 
     @classmethod
-    def create(cls, drawing, orig_layer, edit_layer, frame, rect, tool=0):
+    def create(cls, drawing, orig_layer, edit_layer, frame, rect, tool=0) -> LayerEdit:
         "Helper to handle compressing the data."
         data = orig_layer.make_diff(edit_layer, rect, alpha=False, frame=frame).tobytes()
         index = drawing.layers.index(orig_layer)

@@ -79,6 +79,7 @@ class Drawing:
         self.zoom = 0
 
         self.path = path
+        self.export_path = None
         self.uuid = str(uuid4())
 
     @property

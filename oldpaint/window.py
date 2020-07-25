@@ -670,16 +670,16 @@ class OldpaintWindow(pyglet.window.Window):
 
     @try_except_log
     def save_drawing(self, drawing=None, ask_for_path=False, auto=False):
-        "Save the drawing, asking for a file name if neccessary."
+        """
+        Save the drawing as ORA, asking for a file name if neccessary.
+        This format preserves all the layers, frames and other metadata.
+        """
         drawing = drawing or self.drawing
         if not ask_for_path and drawing.path:
             if drawing.path.endswith(".ora"):
                 drawing.save_ora()
-            elif drawing.path.endswith(".png") and len(drawing.layers) == 1:
-                drawing.save_png()
             else:
-                # TODO Hopefully this can't happen
-                raise RuntimeError("Unknown file ending: {drawing.path}")
+                raise RuntimeError("Sorry; can only save drawing as ORA!")
         else:
             last_dir = self.get_latest_dir()
             # The point here is to not block the UI redraws while showing the
@@ -688,7 +688,7 @@ class OldpaintWindow(pyglet.window.Window):
                                        title="Select file",
                                        initialdir=last_dir,
                                        filetypes=(("ORA files", "*.ora"),
-                                                  ("PNG files", "*.png"),
+                                                  # ("PNG files", "*.png"),
                                                   ("all files", "*.*")))
 
             def really_save_drawing(drawing, path):
@@ -697,18 +697,50 @@ class OldpaintWindow(pyglet.window.Window):
                         if path.endswith(".ora"):
                             drawing.save_ora(path)
                             self.add_recent_file(path)
-                        elif path.endswith(".png"):
-                            drawing.save_png(path)
-                            self.add_recent_file(path)
                         else:
-                            _, ext = os.path.splitext(path)
-                            self._error = f"Could not save:\n Unsupported file format '{ext}'"
+                            self._error = f"Sorry, can only save drawing as ORA!"
                 except OSError as e:
                     self._error = f"Could not save:\n {e}"
 
             fut.add_done_callback(
                 lambda fut: really_save_drawing(drawing, fut.result()))
 
+    def export_drawing(self, drawing=None, ask_for_path=False):
+        """
+        'Exporting' means saving as a flat image format - for now, only PNG is supported.
+        What is saved is what is currently visible.
+        *This does not preserve layers or other metadata and should not be used for persisting your work.*
+        """
+        drawing = drawing or self.drawing
+        if not ask_for_path and drawing.path:
+            if drawing.export_path.endswith(".png"):
+                drawing.save_png(drawing.export_path)
+            else:
+                raise RuntimeError("Sorry; can only export as PNG!")
+        else:
+            last_dir = self.get_latest_dir()
+            # The point here is to not block the UI redraws while showing the
+            # dialog. May be a horrible idea but it seems to work...
+            fut = self.executor.submit(show_save_dialog,
+                                       title="Select file",
+                                       initialdir=last_dir,
+                                       filetypes=(("PNG files", "*.png"),))
+
+            def really_export_drawing(drawing, path):
+                try:
+                    if path:
+                        if path.endswith(".png"):
+                            drawing.save_png(path)
+                            drawing.export_path = path
+                            self.add_recent_file(path)
+                        else:
+                            self._error = f"Sorry, can only export drawing as PNG!"
+                except OSError as e:
+                    self._error = f"Could not save:\n {e}"
+
+            fut.add_done_callback(
+                lambda fut: really_export_drawing(drawing, fut.result()))
+    
     @debounce(cooldown=60, wait=3)
     def autosave_drawing(self):
         fut = self.executor.submit(self.drawing.autosave)

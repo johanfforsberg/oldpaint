@@ -652,6 +652,17 @@ def render_main_menu(state, window):
                 window.save_drawing(ask_for_path=True)
 
             imgui.separator()
+                
+            clicked_export, selected_export = imgui.menu_item("Export", "Ctrl+e", False,
+                                                              window.drawing and window.drawing.export_path)
+            if clicked_export:
+                window.export_drawing()
+
+            clicked_export_as, selected_export = imgui.menu_item("Export as", None, False, window.drawing)
+            if clicked_export_as:
+                window.export_drawing(ask_for_path=True)
+
+            imgui.separator()
 
             clicked_quit, _ = imgui.menu_item(
                 "Quit", 'Cmd+q', False, True
