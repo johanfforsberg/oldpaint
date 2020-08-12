@@ -137,8 +137,8 @@ class Selectable:
 
 class Selectable2:
 
-    def __init__(self, items: dict):
-        self._items = items
+    def __init__(self, items: dict=None):
+        self._items = items or {}
         self._current_key = list(items.keys())[0]
         self._last = []
 
