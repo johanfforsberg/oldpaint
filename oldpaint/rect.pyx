@@ -33,7 +33,7 @@ cdef class Rectangle:
         return Rectangle(self.position, self.size)
 
     cpdef Rectangle intersect(self, Rectangle other):
-        "Return the rectangle that covers the intersection of self and other."
+        "Return the rectangle that covers the intersection of self and other (in the coordinate system of self)"
         if not other:
             return None
 
@@ -42,11 +42,11 @@ cdef class Rectangle:
                 (self.bottom <= other.top) | (self.top >= other.bottom)):
             return None
 
-        cdef int x = max(self.left, other.left)
-        cdef int y = max(self.top, other.top)
-        return Rectangle((x, y), (min(self.right, other.right) - x,
-                                  min(self.bottom, other.bottom) - y))
-
+        cdef int x = max(self.left, other.left) - self.left
+        cdef int y = max(self.top, other.top) - self.top
+        return Rectangle((x, y), (min(self.right, other.right) - x - self.left,
+                                  min(self.bottom, other.bottom) - y - self.top))
+    
     cpdef Rectangle unite(self, Rectangle other):
         "Return the smallest rectangle that covers both self and other."
         if other is None:
