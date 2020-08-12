@@ -142,14 +142,14 @@ class LineTool(Tool):
         p1 = point
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
         self.rect = overlay.draw_line(p0, p1, brush=brush, offset=self.brush.center)
-        self.points.append(p1)
 
     def finish(self, overlay, point, buttons, modifiers):
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
         rect = overlay.draw_line(point, point, brush=brush, offset=self.brush.center)
         if rect:
             self.rect = rect.unite(self.rect)
-
+        self.points.append(point)
+            
     def __repr__(self):
         x0, y0 = self.points[0]
         x1, y1 = self.points[-1]
@@ -170,8 +170,10 @@ class RectangleTool(Tool):
         self.rect = overlay.draw_rectangle(r.position, r.size, brush=brush,
                                            offset=self.brush.center, fill=modifiers & window.key.MOD_SHIFT,
                                            color=self.color + 255*2**24)
-        self.points.append(point)
 
+    def finish(self, overlay, point, buttons, modifiers):
+        self.points.append(point)
+        
     def __repr__(self):
         x0, y0 = self.points[0]
         x1, y1 = self.points[-1]
@@ -194,6 +196,8 @@ class EllipseTool(Tool):
         self.rect = overlay.draw_ellipse((x0, y0), size, brush=brush,
                                          offset=self.brush.center, color=self.color + 255*2**24,
                                          fill=modifiers & window.key.MOD_SHIFT)
+
+    def finish(self, overlay, point, buttons, modifiers):
         self.points.append(point)
 
     def __repr__(self):
@@ -213,6 +217,7 @@ class FillTool(Tool):
         if point in overlay.rect:
             source = self.drawing.current.get_data(self.drawing.frame)
             self.rect = overlay.draw_fill(source, point, color=self.color + 255*2**24)
+            self.points = [point]
 
 
 class SelectionTool(Tool):
