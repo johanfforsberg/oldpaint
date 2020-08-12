@@ -32,16 +32,19 @@ cpdef void paste(unsigned int[:, :] pic, unsigned int[:, :] brush, int x, int y)
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cpdef Rectangle blit(unsigned int[:, :] pic, unsigned int[:, :] brush, int x, int y):
+cpdef Rectangle blit(unsigned int[:, :] pic, unsigned char[:, :] brush, int x, int y):
+    # TODO consider rewriting this to use numpy instead, see layer.blit.
+    # Not sure if it would be faster but it's more general and it hurts a little
+    # to have two ways of doing the same thing...
     "Draw a brush onto an image, skipping transparent pixels."
     cdef int w, h, bw, bh, y1, x1, x2, y2, xmin, ymin, xmax, ymax
     w, h = pic.shape[:2]
     bw, bh = brush.shape[:2]
-    xmin = w
-    ymin = h
-    xmax = 0
-    ymax = 0
     with nogil:
+        xmin = w
+        ymin = h
+        xmax = 0
+        ymax = 0
         for y1 in range(bh):
             y2 = y + y1
             if (y2 < 0):
