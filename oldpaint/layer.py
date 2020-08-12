@@ -239,40 +239,45 @@ class Layer:
             return Layer([(f.astype(dtype=dtype, copy=True) if f is not None else None)
                           for f in self.frames])
 
-    def get_subimage(self, rect:Rectangle, frame:int=0):
+    def get_subimage(self, rect:Rectangle, frame:int=0) -> np.ndarray:
+        """
+        Return a section of the layer.
+        Note that this is a view, not a copy, so any changes to it are reflected in the original layer.
+        """
         with self.lock:
             data = self.frames[frame]
             if data is not None:
-                return data[rect.as_slice()].copy()
+                return data[rect.as_slice()]
             else:
-                return np.zeros(rect.size)
+                return np.zeros(rect.size, dtype=self.dtype)
 
     def crop(self, rect:Rectangle):
         return Layer([self.get_subimage(rect, i)
                       for i in range(len(self.frames))])
-        
+    
     def blit(self, new_data:np.ndarray, rect:Rectangle, set_dirty:bool=True, alpha:bool=True, frame:int=0):
         if not rect:
             return
         data = self.get_data(frame)
+        from_rect = rect.intersect(self.rect)
+        to_rect = self.rect.intersect(rect)
+        if not from_rect:
+            return
         with self.lock:
+            from_slc = from_rect.as_slice()
+            to_slc = to_rect.as_slice()
+            dest = data[to_slc]            
+            source = new_data[from_slc]
             if alpha:
-                blit(data, new_data, *rect.position)
+                mask = source >> 24
+                dest[:] = np.where(mask, source, dest).astype(self.dtype)
             else:
-                paste(data, new_data, *rect.position)
+                dest[:] = source
             self.dirty[frame] = self.rect.intersect(rect.unite(self.dirty.get(frame)))
             
         self.version += 1
         return rect
-
-    def blit_part(self, data, rect, dest, set_dirty:bool=True, alpha:bool=True, frame:int=0):
-        data = self.get_frame(frame)
-        # TODO ...
-        with self.lock:
-            self.dirty[frame] = self.rect.intersect(rect.unite(self.dirty.get(frame)))
-        self.version += 1
-        return rect
-
+    
     def make_diff(self, other:np.ndarray, rect:Rectangle, alpha:bool=True, frame:int=0):
         data = self.get_data(frame)
         data = data if data is not None else np.zeros(self.size, dtype=np.uint8)

@@ -405,7 +405,7 @@ class Drawing:
             return
         layer = self.layers[layer] if layer is not None else self.current
         rect = layer.rect.intersect(rect)
-        subimage = layer.get_subimage(rect, frame=frame)
+        subimage = layer.get_subimage(rect, frame=frame).copy()
         if clear:
             edit = LayerClearEdit.create(self, layer, frame, rect,
                                          color=self.palette.background)
