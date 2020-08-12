@@ -21,7 +21,8 @@ def parse_drawing_spec(spec):
         return width, height
     elif os.path.exists:
         return spec
-    raise ArgumentTypeError("Could not understand '{spec}' as drawing specification.")
+    raise ArgumentTypeError("Could not understand '{spec}' as drawing specification. "
+                            "It should be either a valid filename or something like '@WxH'.")
 
 
 class OldpaintEventLoop(pyglet.app.EventLoop):
