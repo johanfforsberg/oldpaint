@@ -135,10 +135,18 @@ class Drawing:
     
     @classmethod
     def from_spec(cls, spec):
-        if spec.endswith(".ora"):
-            return cls.from_ora(spec)
-        if spec.endswith(".png"):
-            return cls.from_png(spec)
+        """
+        Create a new drawing from a 'spec'.
+        The spec should be a tuple on the form (width, height) or a valid filename of an image.
+        """
+        if isinstance(spec, tuple):
+            return cls(size=spec)
+        elif isinstance(spec, str):
+            if spec.endswith(".ora"):
+                return cls.from_ora(spec)
+            elif spec.endswith(".png"):
+                return cls.from_png(spec)
+        raise RuntimeError(f"Could not create an image from spec {spec}")
         
     @classmethod
     def from_png(cls, path):
