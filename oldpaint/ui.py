@@ -242,7 +242,7 @@ def render_palette(state: UIState, drawing: Drawing):
             if color[3] == 0 or selection:
                 x, y = imgui.get_cursor_screen_pos()
 
-            if imgui.color_button(f"color {i}", *color[:3], 1, 0, 25, 25):
+            if imgui.color_button(f"color {index}", *color[:3], 1, 0, 25, 25):
                 # io = imgui.get_io()
                 # if io.key_shift:
                 #     if "spread_start" in temp_vars:
