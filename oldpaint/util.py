@@ -239,28 +239,34 @@ def cache_clear(cached_func):
 
 @lru_cache(1)
 def make_view_matrix(window_size, image_size, zoom, offset):
-    "Calculate a view matrix that places the image on the screen, at scale."
+    
+    """Calculate a view matrix that places the image on the screen, at scale."""
+
     ww, wh = window_size
     iw, ih = image_size
 
+    # Force window dimensions down to nearest even number, to avoid alignment issues.
+    # TODO This is kind of a hack; does it have negative consequences?
+    ww2 = (ww // 2) * 2  
+    wh2 = (wh // 2) * 2
+    
     scale = 2**zoom
-    width = ww / iw / scale
-    height = wh / ih / scale
+    width = ww2 / iw / scale
+    height = wh2 / ih / scale
     far = 10
     near = -10
 
     frust = Matrix4()
-    frust[:] = (2/width, 0, 0, 0,
-                0, 2/height, 0, 0,
-                0, 0, -2/(far-near), 0,
-                0, 0, -(far+near)/(far-near), 1)
+    frust[:] = (2 / width, 0,          0,                        0,
+                0,         2 / height, 0,                        0,
+                0,         0,          -2 / (far-near),          0,
+                0,         0,          -(far+near) / (far-near), 1)
 
     x, y = offset
     lx = x / iw / scale
     ly = y / ih / scale
 
-    view = (Matrix4()
-            .new_translate(lx, ly, 0))
+    view = Matrix4.new_translate(lx, ly, 0)
 
     return frust * view
 
