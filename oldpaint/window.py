@@ -788,10 +788,9 @@ class OldpaintWindow(pyglet.window.Window):
             fut.add_done_callback(
                 lambda fut: really_load_drawing(fut.result()))
 
-    def _close_drawing(self):
-        if self.drawing.unsaved:
-            # TODO Pop up something helpful here!
-            return
+    def close_drawing(self, unsaved=False):
+        if not unsaved and self.drawing.unsaved:
+            raise RuntimeError("Trying to close an unsaved image by mistake!")
         self.drawing.stop_animation()
         self.drawings.remove(self.drawing)
 

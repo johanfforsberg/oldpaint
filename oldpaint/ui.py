@@ -677,8 +677,16 @@ def render_main_menu(state, window):
                 size = drawing.size if drawing else (640, 480)
                 state = update_state(state, new_drawing_size=size)
 
-            elif imgui.menu_item("Close", None, False, drawing)[0]:
-                window._close_drawing()
+            if drawing and drawing.unsaved:
+                if imgui.begin_menu("Close unsaved...", window.recent_files):
+                    clicked, _ = imgui.menu_item("Really? You can't undo this.", None, False, True)
+                    if clicked:
+                        window.close_drawing(unsaved=True)
+                    imgui.menu_item("No way!", None, False, True)
+                    imgui.end_menu()
+            else:
+                if imgui.menu_item("Close", None, False, drawing)[0]:
+                    window.close_drawing()
 
             imgui.separator()
 
