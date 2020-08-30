@@ -100,13 +100,13 @@ def save_ora(size: Tuple[int, int],
             for j, frame in reversed(list(enumerate(layer.frames))):
                 if frame is not None:
                     with io.BytesIO() as f:
-                        save_png(frame, f, palette=colors)
+                        save_png(frame, f, colors=colors)
                         f.seek(0)
                         orafile.writestr(f"data/layer{i}_frame{j}.png", f.read())
         if has_empty_frame:
             empty_frame = np.zeros(size, dtype=np.uint8)
             with io.BytesIO() as f:
-                save_png(empty_frame, f, palette=colors)
+                save_png(empty_frame, f, colors=colors)
                 f.seek(0)
                 orafile.writestr(f"data/empty.png", f.read())
 
@@ -133,7 +133,7 @@ def save_ora(size: Tuple[int, int],
         with io.BytesIO() as f:
             writer = png.Writer(width=w, height=h, bitdepth=8, greyscale=False, alpha=True)
             rows = (rgba_thumbnail[:, i].tobytes() for i in range(ht))
-            save_png(f, rows)
+            writer.write(f, rows)
             f.seek(0)
             orafile.writestr(f"mergedimage.png", f.read())
         
