@@ -21,7 +21,7 @@ Put your own custom plugins go in XDG_CONFIG_HOME/oldpaint/plugins, as .py files
 and oldpaint will find them.
 """
 
-def plugin(oldpaint, drawing, brush,  # These args are mandatory even if you don't need them
+def plugin(oldpaint, imgui, drawing, brush,  # These args are mandatory even if you don't need them
            offset: int=5, extra_width: int=0, fill: bool=False):  # Any number of parameter arguments.
     """
     This simple script plugin draws two symmetric rectangles based on the current selection.

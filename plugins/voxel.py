@@ -207,7 +207,7 @@ class Plugin:
                                             if layer.visible))
         return Mesh(data=vertices, vertices_class=VoxelVertices)
         
-    def __call__(self, oldpaint, drawing, brush,
+    def __call__(self, oldpaint, imgui, drawing, brush,
                  altitude: float=-2*math.pi/3, azimuth: float=0, spin: bool=False):
         selection = drawing.selection
         if selection:

@@ -33,14 +33,18 @@ def init_plugins(window):
             if hasattr(plugin, "plugin"):
                 # Simple function plugin
                 sig = inspect.signature(plugin.plugin)
-                window.plugins[plugin_name] = plugin.plugin, sig.parameters, {}
+                window.plugins[plugin_name] = plugin.plugin, None, sig.parameters, {}
             elif hasattr(plugin, "Plugin"):
                 # Class plugin
                 sig = inspect.signature(plugin.Plugin.__call__)
                 params = dict(islice(sig.parameters.items(), 1, None))
                 # TODO Broken if plugin is active for more than one drawing!
                 # Need one instance per drawing.
-                window.plugins[plugin_name] = plugin.Plugin(), params, {}
+                window.plugins[plugin_name] = plugin.Plugin(), None, params, {}
+            elif hasattr(plugin, "ui_plugin"):
+                # Simple function plugin
+                sig = inspect.signature(plugin.ui_plugin)
+                window.plugins[plugin_name] = None, plugin.ui_plugin, sig.parameters, {}
         except Exception:
             print_exc()
             
@@ -53,12 +57,12 @@ def render_plugins_ui(window):
     
     deactivated = set()
     for name in window.drawing.active_plugins:
-        plugin, sig, args = window.plugins[name]
+        plugin, ui, sig, args = window.plugins[name]
         _, opened = imgui.begin(name, True)
         if not opened:
             deactivated.add(name)
         imgui.columns(2)
-        for param_name, param_sig in islice(sig.items(), 3, None):
+        for param_name, param_sig in islice(sig.items(), 4, None):
             imgui.text(param_name)
             imgui.next_column()
             default_value = args.get(param_name)
@@ -86,13 +90,16 @@ def render_plugins_ui(window):
             scale = max(1, (ww - 10) // w)
             imgui.image(texture.name, w*scale, h*scale, border_color=(1, 1, 1, 1))
 
+        if ui:
+            ui(oldpaint, imgui, window.drawing, window.brush, **args)
+            
         last_run = getattr(plugin, "last_run", 0)
         period = getattr(plugin, "period", None)
         t = time()
-        if period and t > last_run + period or imgui.button("Execute"):
+        if plugin and (period and t > last_run + period or imgui.button("Execute")):
             plugin.last_run = last_run
             try:
-                result = plugin(oldpaint, window.drawing, window.brush, **args)
+                result = plugin(oldpaint, imgui, window.drawing, window.brush, **args)
                 if result:
                     args.update(result)
             except Exception:
@@ -102,6 +109,8 @@ def render_plugins_ui(window):
         if imgui.begin_popup_context_item("Help", mouse_button=0):
             if plugin.__doc__:
                 imgui.text(inspect.cleandoc(plugin.__doc__))
+            elif ui.__doc__:
+                imgui.text(inspect.cleandoc(ui.__doc__))
             else:
                 imgui.text("No documentation available.")
             imgui.end_popup()
