@@ -157,10 +157,11 @@ class Drawing:
         palette = Palette(colors, transparency=0, size=len(colors))
         return cls(size=layer.size, layers=[layer], palette=palette, path=path)
 
-    def save_png(self, path):
-        """Save as a single PNG file. Flattens all visible layers into one image."""
+    def flatten(self, frame=None):
+        """Return a single flattened version of the drawing data."""
+        frame = frame if frame is not None else self.frame
         if self.layers[0].visible:
-            combined = self.layers[0].get_data(self.frame).copy()
+            combined = self.layers[0].get_data(frame).copy()
         else:
             combined = np.zeros(self.size, dtype=self.layers[0].dtype)
         for layer in self.layers[1:]:
@@ -169,8 +170,13 @@ class Drawing:
                 mask = data.astype(np.bool)
                 # TODO Should be doable without copying
                 combined = np.where(mask, data, combined)
+        return combined
+    
+    def save_png(self, path):
+        """Save as a single PNG file. Flattens all visible layers into one image."""
+        flattened = self.flatten()
         with open(path, "wb") as f:
-            save_png(combined, f, palette=self.palette.colors)
+            save_png(flattened, f, palette=self.palette.colors)
 
     @classmethod
     def from_ora(cls, path):
@@ -215,7 +221,7 @@ class Drawing:
         """
         tmp_path = path + ".tmp"
         selection = self.selection.as_dict() if self.selection else None
-        save_ora(self.size, self.layers, self.palette, tmp_path,
+        save_ora(self.size, self.layers, self.palette, self.flatten(frame=0), tmp_path,
                  selection=selection, framerate=self.framerate)
         shutil.move(tmp_path, path)
 

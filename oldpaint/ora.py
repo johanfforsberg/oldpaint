@@ -28,8 +28,32 @@ def load_png(f):
     assert info.get("palette"), "Sorry, can't load non palette based PNGs."
     return np.vstack(list(map(np.uint8, image_data))).T, info
 
-    
-def save_ora(size: Tuple[int, int], layers: List["Layer"], palette, path, **kwargs):
+
+def scale(data, w, h):
+    w0, h0 = data.shape
+    # w0 = len(im)     # source number of rows 
+    # h0 = len(data[0])  # source number of columns 
+    return np.array([
+        [
+            data[int(w0 * c / w)][int(h0 * r / h)]
+            for r in range(h)
+        ]
+        for c in range(w)
+    ])
+
+
+def make_rgba_image(data, palette):
+    rgba_data = []
+    for row in data.T:
+        rgba_row = []
+        for pixel in row:
+            rgba_pixel = palette.colors[pixel]
+            rgba_row.extend(rgba_pixel)
+        rgba_data.append(rgba_row)
+    return np.array(rgba_data, dtype=np.uint8).T
+
+
+def save_ora(size: Tuple[int, int], layers: List["Layer"], palette, merged, path, **kwargs):
     """
     An ORA file is basically a zip archive containing an XML manifest and a bunch of PNGs.
     It can however contain any other application specific data too.
@@ -79,9 +103,35 @@ def save_ora(size: Tuple[int, int], layers: List["Layer"], palette, path, **kwar
                 f.seek(0)
                 orafile.writestr(f"data/empty.png", f.read())
 
-        # Other data
+        # Thumbnail
+        # Can be max 256 pixels in either dimension.
+        aspect = w / h
+        if aspect >= 1:
+            wt = min(w, 256)
+            ht = int(wt / aspect)
+        else:
+            ht = min(h, 256)
+            wt = int(ht * aspect)
+        thumbnail = scale(merged, wt, ht)
+        rgba_thumbnail = make_rgba_image(thumbnail, palette)
+        with io.BytesIO() as f:
+            writer = png.Writer(width=wt, height=ht, bitdepth=8, greyscale=False, alpha=True)
+            rows = (rgba_thumbnail[:, i].tobytes() for i in range(ht))
+            writer.write(f, rows)    
+            f.seek(0)
+            orafile.writestr(f"Thumbnails/thumbnail.png", f.read())        
+                
+        # Merged image
+        rgba_merged = make_rgba_image(merged, palette)
+        with io.BytesIO() as f:
+            writer = png.Writer(width=w, height=h, bitdepth=8, greyscale=False, alpha=True)
+            rows = (rgba_thumbnail[:, i].tobytes() for i in range(ht))
+            save_png(f, rows)
+            f.seek(0)
+            orafile.writestr(f"mergedimage.png", f.read())
+        
+        # Other data (not part of ORA standard)
         orafile.writestr("oldpaint.json", json.dumps(kwargs))
-    # TODO thumbnail, mergedimage (to conform to the spec)
                 
 
 def load_ora(path):
