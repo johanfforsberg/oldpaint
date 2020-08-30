@@ -44,7 +44,7 @@ def scale(data: np.ndarray, w: int, h: int) -> np.ndarray:
 
 
 def make_rgba_image(data: np.ndarray,
-                    color: List[Tuple[int, int, int, int]]) -> np.ndarray:
+                    colors: List[Tuple[int, int, int, int]]) -> np.ndarray:
     rgba_data = []
     for row in data.T:
         rgba_row = []
@@ -132,7 +132,7 @@ def save_ora(size: Tuple[int, int],
         rgba_merged = make_rgba_image(merged, colors)
         with io.BytesIO() as f:
             writer = png.Writer(width=w, height=h, bitdepth=8, greyscale=False, alpha=True)
-            rows = (rgba_thumbnail[:, i].tobytes() for i in range(ht))
+            rows = (rgba_merged[:, i].tobytes() for i in range(ht))
             writer.write(f, rows)
             f.seek(0)
             orafile.writestr(f"mergedimage.png", f.read())
