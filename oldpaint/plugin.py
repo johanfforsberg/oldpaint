@@ -91,7 +91,9 @@ def render_plugins_ui(window):
             imgui.image(texture.name, w*scale, h*scale, border_color=(1, 1, 1, 1))
 
         if ui:
-            ui(oldpaint, imgui, window.drawing, window.brush, **args)
+            result = ui(oldpaint, imgui, window.drawing, window.brush, **args)
+            if result:
+                args.update(result)
             
         last_run = getattr(plugin, "last_run", 0)
         period = getattr(plugin, "period", None)
