@@ -8,6 +8,7 @@ specific requirements.
 from typing import List, Tuple
 import io
 import json
+from typing import List, Tuple, BinaryIO
 import zipfile
 from xml.etree import ElementTree as ET
 
@@ -15,21 +16,21 @@ import numpy as np
 import png
 
 
-def save_png(data, dest, palette=None):
+def save_png(data: np.ndarray, dest: BinaryIO, colors=None):
     w, h = data.shape
-    writer = png.Writer(w, h, bitdepth=8, alpha=False, palette=palette)
+    writer = png.Writer(w, h, bitdepth=8, alpha=False, palette=colors)
     rows = (data[:, i].tobytes() for i in range(data.shape[1]))
     writer.write(dest, rows)
+    
 
-
-def load_png(f):
+def load_png(f: BinaryIO) -> Tuple[np.ndarray, dict]:
     reader = png.Reader(f)
     w, h, image_data, info = reader.read(f)
     assert info.get("palette"), "Sorry, can't load non palette based PNGs."
     return np.vstack(list(map(np.uint8, image_data))).T, info
 
 
-def scale(data, w, h):
+def scale(data: np.ndarray, w: int, h: int) -> np.ndarray:
     w0, h0 = data.shape
     # w0 = len(im)     # source number of rows 
     # h0 = len(data[0])  # source number of columns 
@@ -42,18 +43,24 @@ def scale(data, w, h):
     ])
 
 
-def make_rgba_image(data, palette):
+def make_rgba_image(data: np.ndarray,
+                    color: List[Tuple[int, int, int, int]]) -> np.ndarray:
     rgba_data = []
     for row in data.T:
         rgba_row = []
         for pixel in row:
-            rgba_pixel = palette.colors[pixel]
+            rgba_pixel = colors[pixel]
             rgba_row.extend(rgba_pixel)
         rgba_data.append(rgba_row)
     return np.array(rgba_data, dtype=np.uint8).T
 
 
-def save_ora(size: Tuple[int, int], layers: List["Layer"], palette, merged, path, **kwargs):
+def save_ora(size: Tuple[int, int],
+             layers: List["Layer"],
+             colors: List[Tuple[int, int, int, int]],
+             merged: np.ndarray,
+             path: str,
+             **kwargs):
     """
     An ORA file is basically a zip archive containing an XML manifest and a bunch of PNGs.
     It can however contain any other application specific data too.
@@ -93,13 +100,13 @@ def save_ora(size: Tuple[int, int], layers: List["Layer"], palette, merged, path
             for j, frame in reversed(list(enumerate(layer.frames))):
                 if frame is not None:
                     with io.BytesIO() as f:
-                        save_png(frame, f, palette=palette.colors)
+                        save_png(frame, f, palette=colors)
                         f.seek(0)
                         orafile.writestr(f"data/layer{i}_frame{j}.png", f.read())
         if has_empty_frame:
             empty_frame = np.zeros(size, dtype=np.uint8)
             with io.BytesIO() as f:
-                save_png(empty_frame, f, palette=palette.colors)
+                save_png(empty_frame, f, palette=colors)
                 f.seek(0)
                 orafile.writestr(f"data/empty.png", f.read())
 
@@ -113,7 +120,7 @@ def save_ora(size: Tuple[int, int], layers: List["Layer"], palette, merged, path
             ht = min(h, 256)
             wt = int(ht * aspect)
         thumbnail = scale(merged, wt, ht)
-        rgba_thumbnail = make_rgba_image(thumbnail, palette)
+        rgba_thumbnail = make_rgba_image(thumbnail, colors)
         with io.BytesIO() as f:
             writer = png.Writer(width=wt, height=ht, bitdepth=8, greyscale=False, alpha=True)
             rows = (rgba_thumbnail[:, i].tobytes() for i in range(ht))
@@ -122,7 +129,7 @@ def save_ora(size: Tuple[int, int], layers: List["Layer"], palette, merged, path
             orafile.writestr(f"Thumbnails/thumbnail.png", f.read())        
                 
         # Merged image
-        rgba_merged = make_rgba_image(merged, palette)
+        rgba_merged = make_rgba_image(merged, colors)
         with io.BytesIO() as f:
             writer = png.Writer(width=w, height=h, bitdepth=8, greyscale=False, alpha=True)
             rows = (rgba_thumbnail[:, i].tobytes() for i in range(ht))
@@ -134,7 +141,7 @@ def save_ora(size: Tuple[int, int], layers: List["Layer"], palette, merged, path
         orafile.writestr("oldpaint.json", json.dumps(kwargs))
                 
 
-def load_ora(path):
+def load_ora(path: str) -> Tuple[List[np.ndarray], dict, dict]:
     with zipfile.ZipFile(path, mode="r") as orafile:
         # Check that this is an oldpaint file.
         try:
@@ -175,3 +182,12 @@ def load_ora(path):
             layers.insert(0, (frames, visibility == "visible"))
             
     return list(layers), info, other_data
+
+
+def load_ora_thumbnail(path: str) -> Tuple[Tuple[int, int], np.ndarray, dict]:
+    with zipfile.ZipFile(path, mode="r") as orafile:
+        with orafile.open("Thumbnails/thumbnail.png") as tf:
+            reader = png.Reader(f)
+            w, h, image_data, info = reader.read(f)
+    return (w, h), image_data, info
+            
