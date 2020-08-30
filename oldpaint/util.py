@@ -245,14 +245,10 @@ def make_view_matrix(window_size, image_size, zoom, offset):
     ww, wh = window_size
     iw, ih = image_size
 
-    # Force window dimensions down to nearest even number, to avoid alignment issues.
-    # TODO This is kind of a hack; does it have negative consequences?
-    ww2 = (ww // 2) * 2  
-    wh2 = (wh // 2) * 2
-    
     scale = 2**zoom
-    width = ww2 / iw / scale
-    height = wh2 / ih / scale
+        
+    width = ww / iw / scale
+    height = wh / ih / scale
     far = 10
     near = -10
 

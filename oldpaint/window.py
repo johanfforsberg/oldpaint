@@ -214,7 +214,8 @@ class OldpaintWindow(pyglet.window.Window):
 
     @offset.setter
     def offset(self, offset):
-        self.drawings.current.offset = offset
+        dx, dy = offset
+        self.drawings.current.offset = round(dx), round(dy)
 
     def add_recent_file(self, filename, maxsize=10):
         self.recent_files[filename] = None
@@ -456,6 +457,20 @@ class OldpaintWindow(pyglet.window.Window):
                 
     def on_key_release(self, symbol, modifiers):
         self.highlighted_layer = None
+        
+    def get_pixel_aligned_size(self):
+        return self._get_pixel_aligned_size(self.get_size(), self.zoom)
+
+    @staticmethod
+    @lru_cache(1)
+    def _get_pixel_aligned_size(window_size, zoom):
+        # Force window dimensions down to nearest even multiple of the pixel size, to avoid alignment issues.
+        # TODO This is kind of a hack; does it have negative consequences?
+        s2 = 2 ** (zoom + 1)
+        ww, wh = window_size
+        ww2 = (ww // s2) * s2
+        wh2 = (wh // s2) * s2
+        return ww2, wh2
 
     @try_except_log
     def on_draw(self):
@@ -464,7 +479,7 @@ class OldpaintWindow(pyglet.window.Window):
 
         if self.drawing:
 
-            window_size = self.get_size()
+            window_size = self.get_pixel_aligned_size()
 
             vm = make_view_matrix(window_size, self.drawing.size, self.zoom, self.offset)
             offscreen_buffer = render_drawing(self.drawing, self.highlighted_layer)
