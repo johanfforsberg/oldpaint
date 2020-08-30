@@ -886,7 +886,7 @@ def render_main_menu(state, window):
         if imgui.begin_menu("Info", drawing):
             _, opened = imgui.menu_item("Edit history", None, window.window_visibility["edits"], True)
             window.window_visibility["edits"] = opened
-            _, opened = imgui.menu_item("Metrics", None, window.window_visibility["metrics"], True)
+            _, opened = imgui.menu_item("ImGui Metrics", None, window.window_visibility["metrics"], True)
             window.window_visibility["metrics"] = opened
             imgui.end_menu()
 
