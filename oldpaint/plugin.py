@@ -15,13 +15,12 @@ import oldpaint
 
 from .config import plugin_source
 from .util import try_except_log
-from .window import OldpaintWindow
 
 
 logger = getLogger("oldpaint").getChild("plugins")
 
 
-def init_plugins(window: OldpaintWindow):
+def init_plugins(window):
     "(Re)initialize all found plugins"
     plugins = plugin_source.list_plugins()
     for plugin_name in plugins:
@@ -34,24 +33,20 @@ def init_plugins(window: OldpaintWindow):
             if hasattr(plugin, "plugin"):
                 # Simple function plugin
                 sig = inspect.signature(plugin.plugin)
-                window.plugins[plugin_name] = plugin.plugin, None, sig.parameters
+                window.plugins[plugin_name] = plugin.plugin, sig.parameters
             elif hasattr(plugin, "Plugin"):
                 # Class plugin
                 sig = inspect.signature(plugin.Plugin.__call__)
                 params = dict(islice(sig.parameters.items(), 1, None))
                 # TODO Broken if plugin is active for more than one drawing!
                 # Need one instance per drawing.
-                window.plugins[plugin_name] = plugin.Plugin(), None, params
-            elif hasattr(plugin, "ui_plugin"):
-                # Simple function plugin
-                sig = inspect.signature(plugin.ui_plugin)
-                window.plugins[plugin_name] = None, plugin.ui_plugin, sig.parameters
+                window.plugins[plugin_name] = plugin.Plugin(), params
         except Exception:
             print_exc()
 
 
 @try_except_log
-def render_plugins_ui(window: OldpaintWindow):
+def render_plugins_ui(window):
     "Draw UI windows for all plugins active for the current drawing."
     if not window.drawing:
         return
@@ -60,7 +55,7 @@ def render_plugins_ui(window: OldpaintWindow):
 
     deactivated = set()
     for name, args in window.drawing.active_plugins.items():
-        plugin, ui, sig = window.plugins[name]
+        plugin, sig = window.plugins[name]
         _, opened = imgui.begin(f"{ name } ##{ drawing.path or drawing.uuid }", True)
         if not opened:
             deactivated.add(name)
@@ -95,15 +90,15 @@ def render_plugins_ui(window: OldpaintWindow):
             scale = max(1, (ww - 10) // w)
             imgui.image(texture.name, w*scale, h*scale, border_color=(1, 1, 1, 1))
 
-        if ui:
-            result = ui(oldpaint, imgui, window.drawing, window.brush, **args)
+        if hasattr(plugin, "ui"):
+            result = plugin.ui(oldpaint, imgui, window.drawing, window.brush, **args)
             if result:
                 args.update(result)
 
         last_run = getattr(plugin, "last_run", 0)
         period = getattr(plugin, "period", None)
         t = time()
-        if plugin and (period and t > last_run + period or imgui.button("Execute")):
+        if callable(plugin) and (period and t > last_run + period or imgui.button("Execute")):
             plugin.last_run = last_run
             try:
                 result = plugin(oldpaint, imgui, window.drawing, window.brush, **args)

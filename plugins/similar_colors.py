@@ -62,44 +62,46 @@ def get_similar_colors(color, palette):
     return sorted(similarity, key=lambda c: c[0])[:9]
 
 
-def ui_plugin(oldpaint, imgui, drawing, brush,
-              current_color:int=-1):
-    """
-    Displays the colors in the palette that are
-    "most similar" to the selected color using the
-    YUV color space.
-    """    
-    if current_color is -1:
-        current_color = drawing.palette.foreground
+class Plugin:
 
-    max_index = len(drawing.palette.colors)
-    if current_color < 0:
-        current_color = 0
-    elif current_color >= max_index:
-        current_color = max_index - 1
-        
-    color = drawing.palette.colors[current_color]
-    most_similar_colors = get_similar_colors(color, drawing.palette)
-    most_similar_colors.sort(key=lambda c: c[1])  # order by palette index
-    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, 0, 0, 0)
-    imgui.push_style_var(imgui.STYLE_ITEM_SPACING, (0, 0))
-    for i in range(3):
-        for j in range(3):
-            _, index, c = most_similar_colors[i*3 + j]
-            selected = index == drawing.palette.foreground
-            if selected:
-                imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, .25, .25, .25)
-            if imgui.color_button(f"color_{index}", *c, 0, 25, 25):
-                drawing.palette.foreground = index
-            if j != 2:
-                imgui.same_line()
-            if selected:
-                imgui.pop_style_color()
+    def ui(self, oldpaint, imgui, drawing, brush,
+           current_color:int=-1):
+        """
+        Displays the colors in the palette that are
+        "most similar" to the selected color using the
+        YUV color space.
+        """
+        if current_color is -1:
+            current_color = drawing.palette.foreground
 
-    if imgui.button("Update colors"):
-        current_color = drawing.palette.foreground
-                
-    imgui.pop_style_var()
-    imgui.pop_style_color()
-    
-    return {"current_color": current_color}        
+        max_index = len(drawing.palette.colors)
+        if current_color < 0:
+            current_color = 0
+        elif current_color >= max_index:
+            current_color = max_index - 1
+
+        color = drawing.palette.colors[current_color]
+        most_similar_colors = get_similar_colors(color, drawing.palette)
+        most_similar_colors.sort(key=lambda c: c[1])  # order by palette index
+        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, 0, 0, 0)
+        imgui.push_style_var(imgui.STYLE_ITEM_SPACING, (0, 0))
+        for i in range(3):
+            for j in range(3):
+                _, index, c = most_similar_colors[i*3 + j]
+                selected = index == drawing.palette.foreground
+                if selected:
+                    imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, .25, .25, .25)
+                if imgui.color_button(f"color_{index}", *c, 0, 25, 25):
+                    drawing.palette.foreground = index
+                if j != 2:
+                    imgui.same_line()
+                if selected:
+                    imgui.pop_style_color()
+
+        if imgui.button("Update colors"):
+            current_color = drawing.palette.foreground
+
+        imgui.pop_style_var()
+        imgui.pop_style_color()
+
+        return {"current_color": current_color}
