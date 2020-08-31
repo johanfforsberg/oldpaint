@@ -63,19 +63,21 @@ def get_similar_colors(color, palette):
 
 
 def ui_plugin(oldpaint, imgui, drawing, brush,
-              current_color=None):
+              current_color:int=-1):
     """
     Displays the colors in the palette that are
     "most similar" to the selected color using the
     YUV color space.
-    """
+    """    
+    if current_color is -1:
+        current_color = drawing.palette.foreground
 
-    if current_color is None:
-        current_color = drawing.palette.foreground
-    
-    if imgui.button("Update colors"):
-        current_color = drawing.palette.foreground
-    
+    max_index = len(drawing.palette.colors)
+    if current_color < 0:
+        current_color = 0
+    elif current_color >= max_index:
+        current_color = max_index - 1
+        
     color = drawing.palette.colors[current_color]
     most_similar_colors = get_similar_colors(color, drawing.palette)
     most_similar_colors.sort(key=lambda c: c[1])  # order by palette index
@@ -94,6 +96,9 @@ def ui_plugin(oldpaint, imgui, drawing, brush,
             if selected:
                 imgui.pop_style_color()
 
+    if imgui.button("Update colors"):
+        current_color = drawing.palette.foreground
+                
     imgui.pop_style_var()
     imgui.pop_style_color()
     
