@@ -891,14 +891,17 @@ def render_main_menu(state, window):
             imgui.end_menu()
 
         if imgui.begin_menu("Plugins", drawing):
-            active_plugins = window.drawing.active_plugins.values()
+            active_plugins = window.drawing.active_plugins
             for name, plugin in window.plugins.items():
-                is_active = plugin in active_plugins
+                is_active = name in active_plugins
                 clicked, selected = imgui.menu_item(name, None, is_active, True)
-                if selected:
-                    window.drawing.active_plugins[name] = plugin
-                elif is_active:
-                    del window.drawing.active_plugins[name]
+                if clicked and selected:
+                    active_plugins[name] = {}
+                elif not selected and is_active:
+                    del active_plugins[name]
+            imgui.separator()
+            if imgui.menu_item("Clear", None, False, True)[0]:
+                active_plugins.clear()
             imgui.end_menu()
 
         # Show some info in the right part of the menu bar

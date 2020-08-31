@@ -46,7 +46,8 @@ class Drawing:
     mess up the undo history beyond repair.
     """
     
-    def __init__(self, size, layers=None, palette=None, path=None, selection=None, framerate=10, **kwargs):
+    def __init__(self, size, layers=None, palette=None, path=None, selection=None, framerate=10,
+                 active_plugins=None, **kwargs):
         if kwargs:
             logger.warning("Ignoring the following arguments: %r", kwargs)
         self.size = size
@@ -64,7 +65,7 @@ class Drawing:
         
         self.brushes = Selectable()
 
-        self.active_plugins = {}
+        self.active_plugins = active_plugins or {}
         
         # History of changes
         self._edits = []
@@ -222,7 +223,7 @@ class Drawing:
         tmp_path = path + ".tmp"
         selection = self.selection.as_dict() if self.selection else None
         save_ora(self.size, self.layers, self.palette, self.flatten(frame=0), tmp_path,
-                 selection=selection, framerate=self.framerate)
+                 selection=selection, framerate=self.framerate, active_plugins=self.active_plugins)
         shutil.move(tmp_path, path)
 
     def autosave(self):
@@ -470,7 +471,7 @@ class Drawing:
         self._make_edit(MultiEdit(maker.edits))
 
     def __repr__(self):
-        return f"Drawing(size={self.size}, layers={self.layers}, current={self.layers.index()})"
+        return f"Drawing({self.path or self.uuid} size={self.size}, layers={self.layers}, current={self.layers.index()})"
 
     def __iter__(self):
         return iter(self.layers)
