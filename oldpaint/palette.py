@@ -30,11 +30,29 @@ class Palette:
             self.colors = DEFAULT_COLORS + [(0, 0, 0, 255)] * (self.size - len(DEFAULT_COLORS))
         assert len(self.colors) == self.size, f"Bad number of colors: {len(self.colors)}"
         # self.transparency = transparency
-        self.foreground = 1
-        self.background = 0
+        self._foreground = 1
+        self._background = 0
 
         self.overlay = {}
 
+    @property
+    def foreground(self):
+        return self._foreground
+
+    @foreground.setter
+    def foreground(self, fg):
+        assert 0 <= fg <= len(self.colors), f"Color index {fg} out of range!"
+        self._foreground = fg
+    
+    @property
+    def background(self):
+        return self._background
+    
+    @background.setter
+    def background(self, bg):
+        assert 0 <= bg <= len(self.colors), f"Color index {bg} out of range!"
+        self._background = bg
+    
     def set_overlay(self, i, color):
         self.overlay[i] = color
         self.overlayed_color.cache_clear()
