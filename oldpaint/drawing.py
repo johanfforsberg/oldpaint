@@ -233,7 +233,7 @@ class Drawing:
         return auto_filename
 
     def get_autosaves(self):
-        return list(get_autosaves(self.path or self.uuid))
+        return reversed(sorted(get_autosaves(self.path or self.uuid)))
 
     def crop(self, rect):
         edit = DrawingCropEdit.create(self, rect)
