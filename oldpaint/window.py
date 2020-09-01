@@ -369,16 +369,16 @@ class OldpaintWindow(pyglet.window.Window):
                 self.change_zoom(-1, self.mouse_position)
 
             elif symbol == key.LEFT:
-                w, h = self.get_size()
+                w, h = self.get_pixel_aligned_size()
                 self.change_offset(w // 2, 0)
             elif symbol == key.RIGHT:
-                w, h = self.get_size()
+                w, h = self.get_pixel_aligned_size()
                 self.change_offset(-w // 2, 0)
             elif symbol == key.UP:
-                w, h = self.get_size()
+                w, h = self.get_pixel_aligned_size()
                 self.change_offset(0, -h // 2)
             elif symbol == key.DOWN:
-                w, h = self.get_size()
+                w, h = self.get_pixel_aligned_size()
                 self.change_offset(0, h // 2)
 
             # # Drawings
@@ -815,7 +815,7 @@ class OldpaintWindow(pyglet.window.Window):
     def _to_image_coords(self, x, y):
         "Convert window coordinates to image coordinates."
         w, h = self.drawing.size
-        ww, wh = self.get_size()
+        ww, wh = self.get_pixel_aligned_size()
         scale = 2 ** self.zoom
         ox, oy = self.offset
         ix = (x - (ww / 2 + ox)) / scale + w / 2
@@ -825,7 +825,7 @@ class OldpaintWindow(pyglet.window.Window):
     def _to_window_coords(self, x, y):
         "Convert image coordinates to window coordinates"
         w, h = self.drawing.size
-        ww, wh = self.get_size()
+        ww, wh = self.get_pixel_aligned_size()
         scale = 2 ** self.zoom
         ox, oy = self.offset
         wx = scale * (x - w / 2) + ww / 2 + ox

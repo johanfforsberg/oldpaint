@@ -1070,8 +1070,7 @@ def render_selection_rectangle(state, window):
     if rectangle:
         # if not state.original_selection:
         #     state = update_state(state, original_selection=rectangle)
-            
-        w, h = window.get_size()
+        w, h = window.get_pixel_aligned_size()
         x0, y0, x1, y1 = rectangle.box()
 
         tl_x, tl_y = window._to_window_coords(x0, y0)
