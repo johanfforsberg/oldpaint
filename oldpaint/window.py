@@ -43,7 +43,10 @@ MIN_ZOOM = -2
 MAX_ZOOM = 5
 
 BG_COLOR = (gl.GLfloat * 4)(0.25, 0.25, 0.25, 1)
-
+EYE4 = (gl.GLfloat*16)(1, 0, 0, 0,
+                       0, 1, 0, 0,
+                       0, 0, 1, 0,
+                       0, 0, 0, 1)
 
 def no_imgui_events(f):
     "Decorator for event callbacks that should ignore events on imgui windows."
@@ -61,7 +64,7 @@ class Drawings(Selectable):
 class OldpaintWindow(pyglet.window.Window):
 
     def __init__(self, recent_files, drawing_specs, **kwargs):
-
+ 
         super().__init__(**kwargs, caption="Oldpaint", resizable=True, vsync=False)
         
         self.drawings = Drawings([Drawing.from_spec(s) for s in drawing_specs or []])
@@ -504,8 +507,6 @@ class OldpaintWindow(pyglet.window.Window):
                     gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
                     gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 
-                self._draw_mouse_cursor()
-
             # Selection rectangle
             tool = self.stroke_tool
             selection = ((tool and tool.show_rect and tool.rect) or self.selection)
@@ -516,6 +517,8 @@ class OldpaintWindow(pyglet.window.Window):
                     gl.glUniform3f(1, 1., 1., 0.)
                     gl.glLineWidth(1)
                     gl.glDrawArrays(gl.GL_LINE_LOOP, 0, 4)
+
+        self._draw_mouse_cursor()                    
 
         self._render_gui()
 
@@ -919,46 +922,20 @@ class OldpaintWindow(pyglet.window.Window):
             self.set_mouse_visible(True)
 
     def _draw_mouse_cursor(self):
-        """ If the mouse is over the image, draw a cursom crosshair. """
+        """ If the mouse is over the image, draw a cursor crosshair. """
         if self.mouse_position is None:
             return
-        w, h = self.get_size()
+        w, h = self.get_pixel_aligned_size()
         x, y = self.mouse_position
-        vm = self._make_cursor_view_matrix(x, y)
-        with self.mouse_texture:
-            gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)
-            gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
-            gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
-            gl.glBlendFunc(gl.GL_ONE, gl.GL_ZERO)
-
-    @lru_cache(256)
-    def _make_cursor_view_matrix(self, x, y):
-
-        "Calculate a view matrix for placing the custom cursor on screen."
-
-        ww, wh = self.get_size()
-        iw, ih = self.mouse_texture.size
-
-        scale = 1
-        width = ww / iw / scale
-        height = wh / ih / scale
-        far = 10
-        near = -10
-
-        frust = Matrix4()
-        frust[:] = (2/width, 0, 0, 0,
-                    0, 2/height, 0, 0,
-                    0, 0, -2/(far-near), 0,
-                    0, 0, -(far+near)/(far-near), 1)
-
-        x -= ww / 2
-        y -= wh / 2
-        lx = x / iw / scale
-        ly = y / ih / scale
-
-        view = Matrix4().new_translate(lx, ly, 0)
-
-        return frust * view
+        tw, th = self.mouse_texture.size
+        gl.glViewport(x - tw, y - th - 1, tw * 2 + 1, th * 2 + 1)
+        with self.vao, self.copy_program:        
+            with self.mouse_texture:
+                gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)
+                gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, EYE4)
+                gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+                gl.glBlendFunc(gl.GL_ONE, gl.GL_ZERO)
+        gl.glViewport(0, 0, w, h)            
 
     @lru_cache(32)
     def get_brush_preview_texture(self, brush, colors=None, size=(8, 8)):
