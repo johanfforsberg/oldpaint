@@ -695,7 +695,7 @@ def render_main_menu(state, window):
             if imgui.menu_item("Flip vertically", None, False, drawing)[0]:
                 window.drawing.flip_vertical()
 
-            if imgui.menu_item("Crop", None, False, drawing and drawing.selection)[0]:
+            if imgui.menu_item("Crop", None, False, False)[0]:
                 window.drawing.crop(window.drawing.selection)
                 
             imgui.separator()
@@ -709,7 +709,17 @@ def render_main_menu(state, window):
 
             # selected = imgui.menu_item("Show selection", "", window.show_selection, drawing)[1]
             # window.show_selection = selected
-
+            
+            grid = imgui.menu_item("Show grid", "", drawing and drawing.grid, drawing)[1]
+            if drawing:
+                drawing.grid = grid
+            if imgui.begin_menu("Grid size", drawing and drawing.grid):
+                gw, gh = drawing.grid_size
+                wc, (gw, gh) = imgui.drag_int2("W, H", gw, gh)
+                if gw > 0 and gh > 0:
+                    drawing.grid_size = (gw, gh)
+                imgui.end_menu()
+            
             only_show_current_layer = imgui.menu_item("Only show current layer", "",
                                                       drawing and drawing.only_show_current_layer,
                                                       drawing)[1]
@@ -1087,7 +1097,6 @@ def render_selection_rectangle(state, window):
                                                | imgui.WINDOW_NO_RESIZE
                                                | imgui.WINDOW_NO_MOVE
                                                | imgui.WINDOW_NO_FOCUS_ON_APPEARING))
-
         io = imgui.get_io()
         left_mouse = io.mouse_down[0]
         handle_size = 10

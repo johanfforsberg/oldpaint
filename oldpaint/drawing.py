@@ -73,7 +73,10 @@ class Drawing:
         self._latest_save_index = 0
 
         self.selection = Rectangle.from_dict(selection) if selection else None
+        self.decorations = {}
         self.only_show_current_layer = False
+        self.grid = False
+        self.grid_size = (16, 16)
 
         # Keep track of what we're looking at
         self.offset = (0, 0)

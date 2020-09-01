@@ -107,6 +107,9 @@ class OldpaintWindow(pyglet.window.Window):
         self.mouse_position = None
         self.brush_preview_dirty = None  # A hacky way to keep brush preview dirt away
 
+        # Background texture
+        #self.background_texture = ImageTexture(*load_png("icons/background.png"))
+        
         # UI stuff
         self.imgui_renderer = PygletRenderer(self)
         self.icons = {
@@ -220,6 +223,14 @@ class OldpaintWindow(pyglet.window.Window):
         dx, dy = offset
         self.drawings.current.offset = round(dx), round(dy)
 
+    @lru_cache(1)
+    def get_background_texture(self, color, contrast=1):
+        r, g, b, _ = color
+        return ImageTexture((2, 2), [round(r*contrast), round(g*contrast), round(b*contrast), 255,
+                                     r, g, b, 255,
+                                     r, g, b, 255,
+                                     round(r*contrast), round(g*contrast), round(b*contrast), 255])
+        
     def add_recent_file(self, filename, maxsize=10):
         self.recent_files[filename] = None
         if len(self.recent_files) > maxsize:
@@ -483,40 +494,63 @@ class OldpaintWindow(pyglet.window.Window):
         if self.drawing:
 
             window_size = self.get_pixel_aligned_size()
+            w, h = self.drawing.size
 
-            vm = make_view_matrix(window_size, self.drawing.size, self.zoom, self.offset)
+            vm = (gl.GLfloat*16)(*make_view_matrix(window_size, self.drawing.size, self.zoom, self.offset))
             offscreen_buffer = render_drawing(self.drawing, self.highlighted_layer)
 
             gl.glViewport(0, 0, *window_size)
 
             # Draw a background rectangle
-            self.update_border(self.drawing.current.rect)
-            with self.border_vao, self.line_program:
-                gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
-                r, g, b, _ = self.drawing.palette.get_color_as_float(self.drawing.palette.colors[0])
-                gl.glUniform3f(1, r, g, b)
-                gl.glDrawArrays(gl.GL_TRIANGLE_FAN, 0, 4)
-                gl.glUniform3f(1, 0., 0., 0.)
-                gl.glLineWidth(1)
-                gl.glDrawArrays(gl.GL_LINE_LOOP, 0, 4)
-
             with self.vao, self.copy_program:
-                # Draw the actual drawing
-                with offscreen_buffer["color"]:
-                    gl.glEnable(gl.GL_BLEND)
-                    gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
-                    gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+                gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))                
+                if self.drawing and self.drawing.grid:
+                    with self.get_background_texture(self.drawing.palette.colors[0], 0.9):
+                        gw, gh = self.drawing.grid_size
+                        gl.glUniform2f(1, w / (gw * 2), h / (gh * 2))
+                        gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)
+                        gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+                else:
+                    #gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+                    # r, g, b, _ = self.drawing.palette.get_color_as_float(self.drawing.palette.colors[0])
+                    # gl.glClearColor(r, g, b, 1)
+                    # TODO should fill with color 0 here!
+                    # gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+                    with self.get_background_texture(self.drawing.palette.colors[0], 1):
+                        gw, gh = self.drawing.grid_size
+                        gl.glUniform2f(1, w / (gw * 2), h / (gh * 2))
+                        gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)
+                        gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+                    
 
-            # Selection rectangle
-            tool = self.stroke_tool
-            selection = ((tool and tool.show_rect and tool.rect) or self.selection)
-            if selection:
-                self.set_selection(selection)
-                with self.selection_vao, self.line_program:
-                    gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
-                    gl.glUniform3f(1, 1., 1., 0.)
+                with offscreen_buffer["color"]:
+                    gl.glUniform2f(1, 1, 1)
+                    gl.glEnable(gl.GL_BLEND)
+                    gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)
+                    gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, vm)
+                    gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+                    
+            with self.line_program:
+                with self.border_vao:
+                    self.update_border(self.drawing.current.rect)
+                    gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, vm)
+                    # r, g, b, _ = self.drawing.palette.get_color_as_float(self.drawing.palette.colors[0])
+                    # gl.glUniform3f(1, r, g, b)
+                    # gl.glDrawArrays(gl.GL_TRIANGLE_FAN, 0, 4)
+                    gl.glUniform3f(1, 0., 0., 0.)
                     gl.glLineWidth(1)
                     gl.glDrawArrays(gl.GL_LINE_LOOP, 0, 4)
+
+                # Selection rectangle
+                tool = self.stroke_tool
+                selection = ((tool and tool.show_rect and tool.rect) or self.selection)
+                if selection:
+                    self.set_selection(selection)
+                    with self.selection_vao:
+                        gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, vm)
+                        gl.glUniform3f(1, 1., 1., 0.)
+                        gl.glLineWidth(1)
+                        gl.glDrawArrays(gl.GL_LINE_LOOP, 0, 4)
 
         self._draw_mouse_cursor()                    
 
@@ -931,6 +965,7 @@ class OldpaintWindow(pyglet.window.Window):
         gl.glViewport(x - tw, y - th - 1, tw * 2 + 1, th * 2 + 1)
         with self.vao, self.copy_program:        
             with self.mouse_texture:
+                gl.glEnable(gl.GL_BLEND)
                 gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)
                 gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, EYE4)
                 gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
