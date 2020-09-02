@@ -208,7 +208,7 @@ class Plugin:
         return Mesh(data=vertices, vertices_class=VoxelVertices)
         
     def __call__(self, oldpaint, imgui, drawing, brush,
-                 altitude: float=-2*math.pi/3, azimuth: float=0, spin: bool=False):
+                 altitude: float=-120, azimuth: float=0, spin: bool=False):
         selection = drawing.selection
         if selection:
             size = selection.size
@@ -236,13 +236,13 @@ class Plugin:
             with offscreen_buffer, self.program, \
                     enabled(gl.GL_DEPTH_TEST), disabled(gl.GL_CULL_FACE):
 
-                azimuth = time() if spin else azimuth
+                azimuth = math.degrees(time()) if spin else azimuth
                 view_matrix = (
                     Matrix4
                     # .new_scale(2/w, 2/h, 1/max(w, h))
                     .new_translate(0, 0, -w)
-                    .rotatex(altitude)
-                    .rotatez(azimuth)  # Rotate over time
+                    .rotatex(math.radians(altitude))
+                    .rotatez(math.radians(azimuth))  # Rotate over time
                 )
                 
                 gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE,

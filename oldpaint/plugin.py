@@ -98,21 +98,22 @@ def render_plugins_ui(window):
         last_run = getattr(plugin, "last_run", 0)
         period = getattr(plugin, "period", None)
         t = time()
-        if callable(plugin) and (period and t > last_run + period or imgui.button("Execute")):
-            plugin.last_run = last_run
+        # TODO I've seen more readable if-statements in my days...
+        if callable(plugin) and period and t > last_run + period or not period and imgui.button("Execute"):
+            plugin.last_run = t
             try:
                 result = plugin(oldpaint, imgui, window.drawing, window.brush, **args)
                 if result:
                     args.update(result)
             except Exception:
+                # We don't want crappy plugins to ruin everything
+                # Still probably probably possible to crash opengl though...
                 print_exc()
 
         imgui.button("Help")
         if imgui.begin_popup_context_item("Help", mouse_button=0):
             if plugin.__doc__:
                 imgui.text(inspect.cleandoc(plugin.__doc__))
-            elif ui.__doc__:
-                imgui.text(inspect.cleandoc(ui.__doc__))
             else:
                 imgui.text("No documentation available.")
             imgui.end_popup()
