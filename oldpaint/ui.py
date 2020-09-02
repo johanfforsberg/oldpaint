@@ -233,7 +233,7 @@ def render_palette(state: UIState, drawing: Drawing):
     for i, c in enumerate(chain.from_iterable(zip(range(0, 16), range(16, 32), range(32, 48), range(48, 64)))):
         index = start_color + c
         if index < len(colors):
-            color = colors[index]
+            color = palette.overlayed_color(index)
             is_foreground = index == fg
             is_background = (index == bg) * 2
             selection = is_foreground | is_background
