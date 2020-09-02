@@ -506,6 +506,9 @@ def _get_brush_preview_size(size):
     return w, h
 
 
+BRUSH_PREVIEW_PALETTE = ((0, 0, 0, 255),
+                         (255, 255, 255, 255))
+
 def render_brushes(state, brushes, get_texture, size=None, compact=False):
 
     clicked = False
@@ -515,17 +518,23 @@ def render_brushes(state, brushes, get_texture, size=None, compact=False):
     for i, brush in enumerate(brushes):
         is_selected = brush == brushes.current
         size1 = size or brush.size
-        texture = get_texture(brush=brush, size=size1)
+        texture = get_texture(brush=brush, size=size1, colors=BRUSH_PREVIEW_PALETTE)
         if texture:
             # w, h = _get_brush_preview_size(brush.size)
             imgui.image(texture.name, *size1,
                         border_color=(1, 1, 1, 1) if is_selected else (.5, .5, .5, 1))
             if imgui.core.is_item_clicked(0):
                 clicked = brush
+            if imgui.is_item_hovered():
+                imgui.begin_tooltip()
+                imgui.text(f"{type(brush).__name__}")
+                imgui.text(f"{brush.size}")
+                imgui.image(texture.name, *texture.size, border_color=(.25, .25, .25, 1))
+                imgui.end_tooltip()
 
-            if i % 3 != 2:
+            if i % 4 != 3:
                 imgui.same_line()
-                
+
     imgui.pop_style_color()
 
     imgui.new_line()
