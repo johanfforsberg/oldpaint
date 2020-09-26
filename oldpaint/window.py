@@ -499,7 +499,8 @@ class OldpaintWindow(pyglet.window.Window):
             vm = (gl.GLfloat*16)(*make_view_matrix(window_size, self.drawing.size, self.zoom, self.offset))
             offscreen_buffer = render_drawing(self.drawing, self.highlighted_layer)
 
-            gl.glViewport(0, 0, *window_size)
+            ww, wh = window_size
+            gl.glViewport(0, 0, int(ww), int(wh))
 
             # Draw a background rectangle
             with self.vao, self.copy_program:
@@ -959,18 +960,18 @@ class OldpaintWindow(pyglet.window.Window):
         """ If the mouse is over the image, draw a cursor crosshair. """
         if self.mouse_position is None:
             return
-        w, h = self.get_pixel_aligned_size()
         x, y = self.mouse_position
         tw, th = self.mouse_texture.size
         gl.glViewport(x - tw, y - th - 1, tw * 2 + 1, th * 2 + 1)
-        with self.vao, self.copy_program:        
+        with self.vao, self.copy_program:
             with self.mouse_texture:
                 gl.glEnable(gl.GL_BLEND)
                 gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)
                 gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, EYE4)
                 gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
                 gl.glBlendFunc(gl.GL_ONE, gl.GL_ZERO)
-        gl.glViewport(0, 0, w, h)            
+        ww, wh = self.get_pixel_aligned_size()
+        gl.glViewport(0, 0, int(ww), int(wh))
 
     @lru_cache(32)
     def get_brush_preview_texture(self, brush, colors=None, size=(8, 8)):
