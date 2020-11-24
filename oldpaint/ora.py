@@ -8,6 +8,9 @@ specific requirements.
 from typing import List, Tuple
 import io
 import json
+import os
+from shutil import copyfile
+from tempfile import NamedTemporaryFile
 from typing import List, Tuple, BinaryIO
 import zipfile
 from xml.etree import ElementTree as ET
@@ -16,7 +19,13 @@ import numpy as np
 import png
 
 
-def save_png(data: np.ndarray, dest: BinaryIO, colors=None):
+def save_png(data, path, colors=None):
+    with NamedTemporaryFile(prefix="oldpaint", delete=False) as f:
+        _save_png(data, f, colors)
+    copyfile(f.name, path)
+    os.remove(f.name)
+
+def _save_png(data: np.ndarray, dest: BinaryIO, colors=None):
     w, h = data.shape
     writer = png.Writer(w, h, bitdepth=8, alpha=False, palette=colors)
     rows = (data[:, i].tobytes() for i in range(data.shape[1]))
@@ -100,13 +109,13 @@ def save_ora(size: Tuple[int, int],
             for j, frame in reversed(list(enumerate(layer.frames))):
                 if frame is not None:
                     with io.BytesIO() as f:
-                        save_png(frame, f, colors=colors)
+                        _save_png(frame, f, colors=colors)
                         f.seek(0)
                         orafile.writestr(f"data/layer{i}_frame{j}.png", f.read())
         if has_empty_frame:
             empty_frame = np.zeros(size, dtype=np.uint8)
             with io.BytesIO() as f:
-                save_png(empty_frame, f, colors=colors)
+                _save_png(empty_frame, f, colors=colors)
                 f.seek(0)
                 orafile.writestr(f"data/empty.png", f.read())
 

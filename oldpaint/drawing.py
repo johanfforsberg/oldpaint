@@ -83,8 +83,19 @@ class Drawing:
         self.zoom = 0
 
         self.path = path
-        self.export_path = None
+        self._export_path = None
         self.uuid = str(uuid4())
+
+    @property
+    def export_path(self):
+        return self._get_export_path(self._export_path, self.path)
+
+    @lru_cache(1)
+    def _get_export_path(self, export_path, path):
+        if export_path:
+            return export_path
+        elif path.endswith(".png"):
+            return path
 
     @property
     def current(self) -> Layer:
@@ -179,8 +190,9 @@ class Drawing:
     def save_png(self, path):
         """Save as a single PNG file. Flattens all visible layers into one image."""
         flattened = self.flatten()
-        with open(path, "wb") as f:
-            save_png(flattened, f, palette=self.palette.colors)
+        # TODO don't overwrite, save a temporary file and rename when successful
+        save_png(flattened, path, colors=self.palette.colors)
+        self._export_path = path
 
     @classmethod
     def from_ora(cls, path):

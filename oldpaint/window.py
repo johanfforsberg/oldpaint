@@ -765,7 +765,7 @@ class OldpaintWindow(pyglet.window.Window):
         *This does not preserve layers or other metadata and should not be used for persisting your work.*
         """
         drawing = drawing or self.drawing
-        if not ask_for_path and drawing.path:
+        if not ask_for_path and drawing.export_path:
             if drawing.export_path.endswith(".png"):
                 drawing.save_png(drawing.export_path)
             else:
@@ -784,7 +784,6 @@ class OldpaintWindow(pyglet.window.Window):
                     if path:
                         if path.endswith(".png"):
                             drawing.save_png(path)
-                            drawing.export_path = path
                             self.add_recent_file(path)
                         else:
                             self._error = f"Sorry, can only export drawing as PNG!"

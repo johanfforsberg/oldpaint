@@ -652,6 +652,7 @@ def render_main_menu(state, window):
                 
             imgui.separator()
 
+            # Save drawing
             clicked_save, selected_save = imgui.menu_item("Save", "Ctrl+s", False, window.drawing)
             if clicked_save:
                 window.save_drawing()
@@ -661,7 +662,8 @@ def render_main_menu(state, window):
                 window.save_drawing(ask_for_path=True)
 
             imgui.separator()
-                
+
+            # Export drawing
             clicked_export, selected_export = imgui.menu_item("Export", "Ctrl+e", False,
                                                               window.drawing and window.drawing.export_path)
             if clicked_export:
