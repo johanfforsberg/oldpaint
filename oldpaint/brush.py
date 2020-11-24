@@ -3,8 +3,9 @@ from math import floor, ceil
 
 import numpy as np
 
-from .draw import draw_ellipse
+from .draw import draw_ellipse, rescale
 from .ora import save_png
+from .util import cache_clear
 
 
 class Brush:
@@ -33,21 +34,29 @@ class Brush:
         w, h = self.size
         return w // 2, h // 2
 
+    @cache_clear(get_draw_data)
     def rotate(self, d):
         data = self.data
         self.data = np.rot90(data, d)
         self.size = self.data.shape[:2]
         self.get_draw_data.cache_clear()
 
+    @cache_clear(get_draw_data)
     def flip(self, vertical=False):
         data = self.data
         self.data = np.flip(data, axis=vertical)
         self.size = self.data.shape[:2]
-        self.get_draw_data.cache_clear()
 
     def save_png(self, path, colors):
-        with open(path, "wb") as f:
-            save_png(self.data, f, colors)
+        save_png(self.data, path, colors)
+
+    @cache_clear(get_draw_data)
+    def resize(self, size):
+        self.data = rescale(self.data, size)
+        self.size = size
+
+    def __hash__(self):
+        return hash(id(self.data))
 
 
 class RectangleBrush(Brush):

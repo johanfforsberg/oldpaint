@@ -6,6 +6,9 @@ cimport cython
 
 from libc.stdlib cimport abs as iabs
 
+import numpy as np
+cimport numpy as np
+
 from .rect cimport Rectangle
 
 
@@ -379,3 +382,20 @@ cpdef draw_fill(unsigned char[:, :] pic, unsigned int[:, :] dest,
             x += 1
 
     return Rectangle((xmin, ymin), (xmax-xmin+1, ymax-ymin+1))
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cpdef np.ndarray[np.uint8_t, ndim=2] rescale(unsigned char[:, :] pic, (int, int) size):
+    "Scale an image to the given size, by 'nearest neighbor' interpolation."
+    cdef int w, h, w0, h0, x, y, i, j
+    cdef np.ndarray[np.uint8_t, ndim=2] result
+    w, h = size
+    w0, h0 = pic.shape[:2]
+    result = np.zeros(size, dtype=np.uint8)
+    for x in range(w):
+        for y in range(h):
+            i = round(w0 * x / w)
+            j = round(h0 * y / h)
+            result[x, y] = pic[i, j]
+    return result
