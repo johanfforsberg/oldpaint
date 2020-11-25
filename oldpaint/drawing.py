@@ -94,7 +94,7 @@ class Drawing:
     def _get_export_path(self, export_path, path):
         if export_path:
             return export_path
-        elif path.endswith(".png"):
+        elif path and path.endswith(".png"):
             return path
 
     @property
@@ -318,8 +318,9 @@ class Drawing:
 
     def set_framerate(self, framerate):
         self.framerate = framerate
-        self.stop_animation()
-        self.start_animation()
+        if self.playing_animation:
+            self.stop_animation()
+            self.start_animation()
 
     def _next_frame_callback(self, dt):
         self.next_frame()
