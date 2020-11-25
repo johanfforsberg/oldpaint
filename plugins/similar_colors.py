@@ -83,7 +83,7 @@ class Plugin:
 
         color = drawing.palette.colors[current_color]
         most_similar_colors = get_similar_colors(color, drawing.palette)
-        most_similar_colors.sort(key=lambda c: c[1])  # order by palette index
+        most_similar_colors.sort(key=lambda c: sum(c[2][:3]))  # order by palette index
         imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, 0, 0, 0)
         imgui.push_style_var(imgui.STYLE_ITEM_SPACING, (0, 0))
         for i in range(3):
