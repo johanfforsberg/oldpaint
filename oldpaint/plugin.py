@@ -8,7 +8,7 @@ import imp
 from itertools import islice
 from logging import getLogger
 from time import time
-from traceback import print_exc
+from traceback import format_exc
 
 import imgui
 import oldpaint
@@ -38,11 +38,18 @@ def init_plugins(window):
                 # Class plugin
                 sig = inspect.signature(plugin.Plugin.__call__)
                 params = dict(islice(sig.parameters.items(), 1, None))
-                # TODO Broken if plugin is active for more than one drawing!
-                # Need one instance per drawing.
                 window.plugins[plugin_name] = plugin.Plugin(), params
         except Exception:
-            print_exc()
+            logger.error("Problem initializing plugin {plugin_name}: {format_exc()}")
+
+
+def activate_plugin(window, drawing, plugin_name, args):
+    active_plugins = window.drawing.active_plugins
+    plugin, params = window.plugins[plugin_name]
+    if inspect.isclass(plugin):
+        active_plugins[plugin_name] = plugin(oldpaint, imgui, drawing, args)
+    else:
+        active_plugins[plugin_name] = args
 
 
 @try_except_log
@@ -99,7 +106,8 @@ def render_plugins_ui(window):
         period = getattr(plugin, "period", None)
         t = time()
         # TODO I've seen more readable if-statements in my days...
-        if callable(plugin) and period and t > last_run + period or not period and imgui.button("Execute"):
+        if callable(plugin) and ((period and t > last_run + period)
+                                 or (not period and imgui.button("Execute"))):
             plugin.last_run = t
             try:
                 result = plugin(oldpaint, imgui, window.drawing, window.brush, **args)
@@ -108,7 +116,7 @@ def render_plugins_ui(window):
             except Exception:
                 # We don't want crappy plugins to ruin everything
                 # Still probably probably possible to crash opengl though...
-                print_exc()
+                logger.error(f"Plugin {name}: {format_exc()}")
 
         imgui.button("Help")
         if imgui.begin_popup_context_item("Help", mouse_button=0):
