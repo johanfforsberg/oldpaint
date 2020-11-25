@@ -23,7 +23,6 @@ from fogl.vertex import SimpleVertices
 
 from .brush import PicBrush, RectangleBrush, EllipseBrush
 from .drawing import Drawing
-from .imgui_pyglet import PygletRenderer
 from .plugin import init_plugins, render_plugins_ui
 from .rect import Rectangle
 from .render import render_drawing
@@ -111,26 +110,12 @@ class OldpaintWindow(pyglet.window.Window):
         #self.background_texture = ImageTexture(*load_png("icons/background.png"))
         
         # UI stuff
-        self.imgui_renderer = PygletRenderer(self)
         self.icons = {
             name: ImageTexture(*load_png(f"icons/{name}.png"))
             for name in ["selection", "ellipse", "floodfill", "line", "spray",
                          "pencil", "picker", "points", "rectangle"]
         }
 
-        io = imgui.get_io()
-        self._font = io.fonts.add_font_from_file_ttf(
-            "ttf/Topaznew.ttf", 16, io.fonts.get_glyph_ranges_latin()
-        )
-        self.imgui_renderer.refresh_font_texture()
-
-        style = imgui.get_style()
-        style.window_border_size = 0
-        style.window_rounding = 0
-        io.config_resize_windows_from_edges = True  # TODO does not seem to work?
-
-        self.ui_state = ui.UIState()
-        
         self.border_vao = VertexArrayObject(vertices_class=SimpleVertices)
         self.border_vertices = self.border_vao.create_vertices(
             [((0, 0, 0),),
@@ -186,10 +171,6 @@ class OldpaintWindow(pyglet.window.Window):
         self.keys = key.KeyStateHandler()
         self.push_handlers(self.keys)
 
-        # TODO Keyboard navigation might be nice, at least for dialogs... not quite this easy though.
-        io.config_flags |= imgui.CONFIG_NAV_ENABLE_KEYBOARD | imgui.CONFIG_NAV_NO_CAPTURE_KEYBOARD
-        io.key_map[imgui.KEY_SPACE] = key.SPACE
-        
     @property
     def overlay(self):
         return self.drawings.current.overlay
@@ -555,7 +536,7 @@ class OldpaintWindow(pyglet.window.Window):
 
         self._draw_mouse_cursor()                    
 
-        self._render_gui()
+        ui.draw_ui(self)
 
         gl.glFinish()  # No double buffering, to minimize latency (does this work?)
 
@@ -617,101 +598,6 @@ class OldpaintWindow(pyglet.window.Window):
         self.autosave_drawing()
 
     # === Helper functions ===
-
-    def _render_gui(self):
-
-        w, h = self.get_size()
-
-        drawing = self.drawing
-
-        imgui.new_frame()
-        with imgui.font(self._font):
-
-            self.ui_state = ui.render_main_menu(self.ui_state, self)
-
-            # Tools & brushes
-
-            if self.drawing:
-
-                imgui.set_next_window_size(115, h - 20)
-                imgui.set_next_window_position(w - 115, 20)
-
-                imgui.begin("Tools", False, flags=(imgui.WINDOW_NO_TITLE_BAR
-                                                   | imgui.WINDOW_NO_RESIZE
-                                                   | imgui.WINDOW_NO_MOVE))
-
-                self.ui_state = ui.render_tools(self.ui_state, self.tools, self.icons)
-                imgui.core.separator()
-
-                self.ui_state, brush = ui.render_brushes(self.ui_state, self.brushes,
-                                                         self.get_brush_preview_texture,
-                                                         compact=True, size=(16, 16))
-                if brush:
-                    self.brushes.select(brush)
-                    self.drawing.brushes.current = None
-
-                imgui.core.separator()
-
-                imgui.begin_child("Palette", height=460)
-                self.ui_state = ui.render_palette(self.ui_state, self.drawing)
-                imgui.end_child()
-
-                if drawing:
-                    self.ui_state = ui.render_layers(self.ui_state, drawing)
-                
-                imgui.end()
-
-                if self.window_visibility["edits"]:
-                    self.ui_state = ui.render_edits(self.ui_state, self.drawing)
-
-                # if self.window_visibility["colors"]:
-                #     self.window_visibility["colors"], open_color_editor = ui.render_palette_popup(self.drawing)
-                #     self.window_visibility["color_editor"] |= open_color_editor
-
-                # nh = 150
-                # imgui.set_next_window_size(w - 135, nh)
-                # imgui.set_next_window_position(0, h - nh)
-
-                # imgui.begin("Layers", False, flags=(imgui.WINDOW_NO_TITLE_BAR
-                #                                     | imgui.WINDOW_NO_RESIZE
-                #                                     | imgui.WINDOW_NO_MOVE))
-                # ui.render_layers(self.drawing)
-                # imgui.end()
-
-                if self.ui_state.animation_settings_open:
-                    self.ui_state = ui.render_animation_settings(self.ui_state, self)
-                    
-                # Exit with unsaved
-                ui.render_unsaved_exit(self)
-
-                if self.selection:
-                    # Display selection rectangle with handles for tweaking
-                    imgui.set_next_window_size(w - 115, h - 20)
-                    imgui.set_next_window_position(0, 20)
-                    self.ui_state = ui.render_selection_rectangle(self.ui_state, self)
-                
-            # Create new drawing
-            self.ui_state = ui.render_new_drawing_popup(self.ui_state, self)
-                
-            if self._error:
-                imgui.open_popup("Error")
-                if imgui.begin_popup_modal("Error")[0]:
-                    imgui.text(self._error)
-                    if imgui.button("Doh!"):
-                        self._error = None
-                        imgui.close_current_popup()
-                    imgui.end_popup()
-
-            render_plugins_ui(self)
-
-            if self.window_visibility["metrics"]:
-                self.window_visibility["metrics"] = imgui.show_metrics_window(closable=True)
-            
-        imgui.render()
-
-        imgui.end_frame()
-
-        self.imgui_renderer.render(imgui.get_draw_data())
 
     def new_drawing(self, default_size=(640, 480)):
         size = self.drawing.size if self.drawing else default_size
@@ -853,8 +739,8 @@ class OldpaintWindow(pyglet.window.Window):
         "Convert window coordinates to image coordinates."
         w, h = self.drawing.size
         ww, wh = self.get_pixel_aligned_size()
-        scale = 2 ** self.zoom
-        ox, oy = self.offset
+        scale = 2 ** self.zoom  # TODO this should be an argument!
+        ox, oy = self.offset  # ... as should this
         ix = (x - (ww / 2 + ox)) / scale + w / 2
         iy = -(y - (wh / 2 + oy)) / scale + h / 2
         return ix, iy
