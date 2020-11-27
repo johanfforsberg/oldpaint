@@ -6,7 +6,6 @@ import logging
 import os
 from queue import Queue
 
-from euclid3 import Matrix4
 import imgui
 import pyglet
 from pyglet import gl
@@ -23,7 +22,7 @@ from fogl.vertex import SimpleVertices
 
 from .brush import PicBrush, RectangleBrush, EllipseBrush
 from .drawing import Drawing
-from .plugin import init_plugins, render_plugins_ui
+from .plugin import init_plugins
 from .rect import Rectangle
 from .render import render_drawing
 from .stroke import make_stroke
@@ -65,7 +64,7 @@ class OldpaintWindow(pyglet.window.Window):
     def __init__(self, recent_files, drawing_specs, **kwargs):
  
         super().__init__(**kwargs, caption="Oldpaint", resizable=True, vsync=False)
-        
+
         self.drawings = Drawings([Drawing.from_spec(s) for s in drawing_specs or []])
 
         self.tools = Selectable2({
@@ -96,7 +95,7 @@ class OldpaintWindow(pyglet.window.Window):
 
         # All the drawing will happen in a thread, managed by this executor
         self.executor = ThreadPoolExecutor(max_workers=1)
-        
+
         self.stroke = None
         self.stroke_tool = None
         self.mouse_event_queue = None
@@ -108,7 +107,7 @@ class OldpaintWindow(pyglet.window.Window):
 
         # Background texture
         #self.background_texture = ImageTexture(*load_png("icons/background.png"))
-        
+
         # UI stuff
         self.icons = {
             name: ImageTexture(*load_png(f"icons/{name}.png"))
@@ -211,7 +210,7 @@ class OldpaintWindow(pyglet.window.Window):
                                      r, g, b, 255,
                                      r, g, b, 255,
                                      round(r*contrast), round(g*contrast), round(b*contrast), 255])
-        
+
     def add_recent_file(self, filename, maxsize=10):
         self.recent_files[filename] = None
         if len(self.recent_files) > maxsize:
@@ -228,7 +227,7 @@ class OldpaintWindow(pyglet.window.Window):
     def selection(self):
         if self.drawing.selection and self.tools.current == SelectionTool:
             return self.drawing.selection
-        
+
     @no_imgui_events
     def on_mouse_press(self, x, y, button, modifiers):
         if not self.drawing or self.drawing.locked or self.selection:
@@ -344,7 +343,7 @@ class OldpaintWindow(pyglet.window.Window):
                 self.tools.select(RectangleTool)
             elif symbol == key.C:
                 self.tools.select(PickerTool)
-                
+
             elif symbol == key.SPACE:
                 self.tools.select(SelectionTool)
 
@@ -356,7 +355,7 @@ class OldpaintWindow(pyglet.window.Window):
             elif symbol == key.ESCAPE:
                 if self.selection:
                     self.tools.restore()
-                    
+
             # View
             elif symbol == key.PLUS and self.mouse_position:
                 self.change_zoom(1, self.mouse_position)
@@ -379,7 +378,7 @@ class OldpaintWindow(pyglet.window.Window):
             # # Drawings
             # elif symbol == key.D and modifiers & key.MOD_SHIFT:
             #     self.new_drawing()
-            
+
             elif symbol == key.TAB and modifiers & key.MOD_ALT:
                 # TODO make this toggle to most-recently-used instead
                 self.overlay.clear()
@@ -390,18 +389,18 @@ class OldpaintWindow(pyglet.window.Window):
                 else:
                     index = symbol - 49
                 if len(self.drawings) > index:
-                    self.drawings.select(self.drawings[index])                
-                
+                    self.drawings.select(self.drawings[index])
+
             # Layers
             elif symbol == key.L:
                 self.drawing.add_layer()
-                
+
             elif symbol == key.V:
                 if modifiers & key.MOD_SHIFT:
                     self.drawing.current.toggle_visibility()
                 else:
                     self.highlighted_layer = self.drawing.layers.current
-                    
+
             elif symbol == key.W:
                 if modifiers & key.MOD_SHIFT:
                     self.drawing.move_layer_up()
@@ -420,7 +419,7 @@ class OldpaintWindow(pyglet.window.Window):
             elif symbol == key.DELETE:
                 self.drawing.clear_layer(color=self.drawing.palette.background)
                 self.get_layer_preview_texture.cache_clear()
-                    
+
             # Animation
             elif symbol == key.D:
                 if modifiers & key.MOD_SHIFT:
@@ -432,7 +431,7 @@ class OldpaintWindow(pyglet.window.Window):
                     self.drawing.first_frame()
                 else:
                     self.drawing.prev_frame()
-                    
+
             elif symbol == key.COMMA:
                 if self.drawing.playing_animation:
                     self.drawing.stop_animation()
@@ -442,17 +441,17 @@ class OldpaintWindow(pyglet.window.Window):
             # Misc
             elif symbol == key.C:
                 self.window_visibility["colors"] = not self.window_visibility["colors"]
-                
+
             elif symbol == key.F4:
                 init_plugins(self)
 
             elif symbol == key.ESCAPE:
                 self.drawing.brushes.current = None
                 self.overlay.clear()
-                
+
     def on_key_release(self, symbol, modifiers):
         self.highlighted_layer = None
-        
+
     def get_pixel_aligned_size(self):
         return self._get_pixel_aligned_size(self.get_size(), self.zoom)
 
@@ -503,7 +502,6 @@ class OldpaintWindow(pyglet.window.Window):
                         gl.glUniform2f(1, w / (gw * 2), h / (gh * 2))
                         gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)
                         gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
-                    
 
                 with offscreen_buffer["color"]:
                     gl.glUniform2f(1, 1, 1)
@@ -511,7 +509,7 @@ class OldpaintWindow(pyglet.window.Window):
                     gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)
                     gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, vm)
                     gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
-                    
+
             with self.line_program:
                 with self.border_vao:
                     self.update_border(self.drawing.current.rect)
@@ -534,7 +532,7 @@ class OldpaintWindow(pyglet.window.Window):
                         gl.glLineWidth(1)
                         gl.glDrawArrays(gl.GL_LINE_LOOP, 0, 4)
 
-        self._draw_mouse_cursor()                    
+        self._draw_mouse_cursor()
 
         ui.draw_ui(self)
 
@@ -592,7 +590,7 @@ class OldpaintWindow(pyglet.window.Window):
                 self.tools.restore()
         else:
             # The stroke was aborted
-            self.overlay.clear()       
+            self.overlay.clear()
         self.mouse_event_queue = None
         self.stroke = None
         self.autosave_drawing()
@@ -803,7 +801,7 @@ class OldpaintWindow(pyglet.window.Window):
         if self.brush_preview_dirty:
             self.overlay.clear(self.brush_preview_dirty, frame=0)
         if self.drawing.locked:
-            return    
+            return
         self.brush_preview_dirty = None
         io = imgui.get_io()
         if io.want_capture_mouse:
@@ -824,7 +822,7 @@ class OldpaintWindow(pyglet.window.Window):
         color = None if isinstance(self.brush, PicBrush) else self.drawing.palette.foreground
         data = brush.get_draw_data(color)
         rect = overlay.blit(data, rect, frame=0)
-        
+
         self.brush_preview_dirty = rect
 
     def _update_cursor(self, x, y):
