@@ -250,6 +250,17 @@ class Drawing:
     def get_autosaves(self):
         return reversed(sorted(get_autosaves(self.path or self.uuid)))
 
+    def get_layer_visible_at_point(self, point, frame=None):
+        frame = frame if frame is not None else self.frame
+        for layer in reversed(self.visible_layers):
+            data = layer.get_data(frame)
+            index = data[point]
+            if index != 0:  # TODO hardcoding color 0 as transparent again :(
+                break
+        else:
+            return None
+        return layer
+
     def crop(self, rect):
         edit = DrawingCropEdit.create(self, rect)
         self._make_edit(edit)
