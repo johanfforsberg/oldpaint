@@ -91,25 +91,25 @@ def draw_ui(window):
                 imgui.set_next_window_size(115, h - 20)
                 imgui.set_next_window_position(w - 115, 20)
 
-                imgui.begin("Tools", False, flags=(imgui.WINDOW_NO_TITLE_BAR
+                #
+                imgui.begin("Right Panel", False, flags=(imgui.WINDOW_NO_TITLE_BAR
                                                    | imgui.WINDOW_NO_RESIZE
                                                    | imgui.WINDOW_NO_MOVE))
 
                 render_tools(window.tools, window.icons)
-
-                render_brushes(window.brushes, window.get_brush_preview_texture, size=(16, 16))
-
+                imgui.separator()
+                render_brushes(window, size=(16, 16))
+                imgui.separator()
                 render_palette(window)
-
                 render_layers(window.drawing)
 
-                if window.selection:
-                    # Display selection rectangle with handles for tweaking
-                    imgui.set_next_window_size(w - 115, h - 20)
-                    imgui.set_next_window_position(0, 20)
-                    render_selection_rectangle(window)
-
                 imgui.end()
+
+            if window.selection:
+                # Display selection rectangle with handles for tweaking
+                imgui.set_next_window_size(w - 115, h - 20)
+                imgui.set_next_window_position(0, 20)
+                render_selection_rectangle(window)
 
             render_unsaved_exit(window)
 
@@ -494,20 +494,23 @@ def _get_brush_preview_size(size):
 BRUSH_PREVIEW_PALETTE = ((0, 0, 0, 255),
                          (255, 255, 255, 255))
 
-def render_brushes(brushes, get_texture, size=None, compact=False):
+def render_brushes(window, size=None, compact=False):
+
+    brushes = window.brushes
 
     imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, 1, 1, 1)
     
     for i, brush in enumerate(brushes):
         is_selected = brush == brushes.current
         size1 = size or brush.size
-        texture = get_texture(brush=brush, size=size1, colors=BRUSH_PREVIEW_PALETTE)
+        texture = window.get_brush_preview_texture(brush=brush, size=size1, colors=BRUSH_PREVIEW_PALETTE)
         if texture:
             # w, h = _get_brush_preview_size(brush.size)
             imgui.image(texture.name, *size1,
                         border_color=(1, 1, 1, 1) if is_selected else (.5, .5, .5, 1))
             if imgui.core.is_item_clicked(0):
                 brushes.select(brush)
+                window.drawing.brushes.current = None
             if imgui.is_item_hovered():
                 imgui.begin_tooltip()
                 imgui.text(f"{type(brush).__name__}")

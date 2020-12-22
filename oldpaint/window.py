@@ -225,7 +225,7 @@ class OldpaintWindow(pyglet.window.Window):
 
     @property
     def selection(self):
-        if self.drawing.selection and self.tools.current == SelectionTool:
+        if self.drawing and self.drawing.selection and self.tools.current == SelectionTool:
             return self.drawing.selection
 
     @no_imgui_events
@@ -484,7 +484,7 @@ class OldpaintWindow(pyglet.window.Window):
 
             # Draw a background rectangle
             with self.vao, self.copy_program:
-                gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))                
+                gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, (gl.GLfloat*16)(*vm))
                 if self.drawing and self.drawing.grid:
                     with self.get_background_texture(self.drawing.palette.colors[0], 0.9):
                         gw, gh = self.drawing.grid_size

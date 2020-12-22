@@ -48,6 +48,7 @@ class Layer:
         # textures must be refreshed, after which it should set the dirty rect to None. From this
         # side, we should never shrink or remove the dirty rect, but growing it is fine.  Each frame
         # has its own dirty rect.
+        # TODO Make sure that we only modify this while having the lock.
         self.dirty = {
             frame: self.rect
             for frame in range(len(self.frames))
@@ -242,13 +243,14 @@ class Layer:
     def get_subimage(self, rect:Rectangle, frame:int=0) -> np.ndarray:
         """
         Return a section of the layer.
-        Note that this is a view, not a copy, so any changes to it are reflected in the original layer.
+        Note that this is a view, not a copy, so any changes to it happen in the original layer.
         """
         with self.lock:
             data = self.frames[frame]
             if data is not None:
                 return data[rect.as_slice()]
             else:
+                # Layer is not yet realized, return empty dummy data
                 return np.zeros(rect.size, dtype=self.dtype)
 
     def crop(self, rect:Rectangle):
