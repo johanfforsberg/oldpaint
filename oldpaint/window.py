@@ -151,7 +151,7 @@ class OldpaintWindow(pyglet.window.Window):
         #     def on_motion(cursor, x, y, pressure, a, b):
         #         self._update_cursor(x, y)
         #         if self.mouse_event_queue:
-        #             self.mouse_event_queue.put(("mouse_drag", (self._to_image_coords(x, y), 0, 0)))
+        #             self.mouse_event_queue.put(("mouse_drag", (self.to_image_coords(x, y), 0, 0)))
 
         @contextmanager
         def blah():
@@ -242,7 +242,7 @@ class OldpaintWindow(pyglet.window.Window):
                 self.brush_preview_dirty = None
 
             self.mouse_event_queue = Queue()
-            x, y = self._to_image_coords(x, y)
+            x, y = self.to_image_coords(x, y)
             initial_point = int(x), int(y)
             self.mouse_event_queue.put(("mouse_down", initial_point, button, modifiers))
             if button == pyglet.window.mouse.LEFT:
@@ -263,7 +263,7 @@ class OldpaintWindow(pyglet.window.Window):
 
     def on_mouse_release(self, x, y, button, modifiers):
         if self.mouse_event_queue:
-            x, y = self._to_image_coords(x, y)
+            x, y = self.to_image_coords(x, y)
             pos = int(x), int(y)
             self.mouse_event_queue.put(("mouse_up", pos, button, modifiers))
 
@@ -296,7 +296,7 @@ class OldpaintWindow(pyglet.window.Window):
         self._update_cursor(x, y)
         if self.stroke:
             # Add to ongoing stroke
-            x, y = self._to_image_coords(x, y)
+            x, y = self.to_image_coords(x, y)
             ipos = int(x), int(y)
             self.mouse_event_queue.put(("mouse_drag", ipos, button, modifiers))
         elif button == pyglet.window.mouse.MIDDLE:
@@ -548,15 +548,15 @@ class OldpaintWindow(pyglet.window.Window):
 
     def change_zoom(self, delta, pos):
         x, y = pos
-        ix, iy = self._to_image_coords(x, y)
+        ix, iy = self.to_image_coords(x, y)
         self.zoom = max(min(self.zoom + delta, MAX_ZOOM), MIN_ZOOM)
-        x2, y2 = self._to_window_coords(ix, iy)
+        x2, y2 = self.to_window_coords(ix, iy)
         self.change_offset(x - x2, y - y2)
 
     def change_offset(self, dx, dy):
         ox, oy = self.offset
         self.offset = ox + dx, oy + dy
-        self._to_image_coords.cache_clear()
+        self.to_image_coords.cache_clear()
 
     # TODO just caching one texture here because it won't be accessed that much
     # and performance probably does not matter.
@@ -733,7 +733,7 @@ class OldpaintWindow(pyglet.window.Window):
         return texture
 
     @lru_cache(1)
-    def _to_image_coords(self, x, y):
+    def to_image_coords(self, x, y):
         "Convert window coordinates to image coordinates."
         w, h = self.drawing.size
         ww, wh = self.get_pixel_aligned_size()
@@ -743,7 +743,7 @@ class OldpaintWindow(pyglet.window.Window):
         iy = -(y - (wh / 2 + oy)) / scale + h / 2
         return ix, iy
 
-    def _to_window_coords(self, x, y):
+    def to_window_coords(self, x, y):
         "Convert image coordinates to window coordinates"
         w, h = self.drawing.size
         ww, wh = self.get_pixel_aligned_size()
@@ -756,7 +756,7 @@ class OldpaintWindow(pyglet.window.Window):
     @lru_cache(1)
     def _over_image(self, x, y):
         if self.drawing:
-            ix, iy = self._to_image_coords(x, y)
+            ix, iy = self.to_image_coords(x, y)
             w, h = self.drawing.size
             return 0 <= ix < w and 0 <= iy < h
 
@@ -808,8 +808,8 @@ class OldpaintWindow(pyglet.window.Window):
             return
         if self.stroke:
             return
-        ix0, iy0 = self._to_image_coords(x0, y0)
-        ix, iy = self._to_image_coords(x, y)
+        ix0, iy0 = self.to_image_coords(x0, y0)
+        ix, iy = self.to_image_coords(x, y)
         overlay = self.overlay
         brush = self.brush
         bw, bh = brush.size

@@ -934,7 +934,7 @@ def render_main_menu(window):
 
                 if window.mouse_position:
                     imgui.set_cursor_screen_pos((w - 100, 0))
-                    x, y = window._to_image_coords(*window.mouse_position)
+                    x, y = window.to_image_coords(*window.mouse_position)
                     if window.stroke_tool:
                         txt = repr(window.stroke_tool)
                         if txt:
@@ -1107,15 +1107,13 @@ def render_selection_rectangle(window):
 
         rectangle = window.drawing.selection
         if rectangle:
-            # if not state.original_selection:
-            #     state = update_state(state, original_selection=rectangle)
             w, h = window.get_pixel_aligned_size()
             x0, y0, x1, y1 = rectangle.box()
 
-            tl_x, tl_y = window._to_window_coords(x0, y0)
-            tr_x, tr_y = window._to_window_coords(x1, y0)
-            bl_x, bl_y = window._to_window_coords(x0, y1)
-            br_x, br_y = window._to_window_coords(x1, y1)
+            tl_x, tl_y = window.to_window_coords(x0, y0)
+            tr_x, tr_y = window.to_window_coords(x1, y0)
+            bl_x, bl_y = window.to_window_coords(x0, y1)
+            br_x, br_y = window.to_window_coords(x1, y1)
             # ...
 
             imgui.set_next_window_bg_alpha(0)
@@ -1135,35 +1133,30 @@ def render_selection_rectangle(window):
                 imgui.set_cursor_screen_pos((int(tl_x - handle_size), int(h - tl_y - handle_size)))
                 imgui.button("##topleft", width=handle_size, height=handle_size)
                 if imgui.is_item_clicked():
-                    # state = update_state(state, original_selection=rectangle, selection_corner_dragged="topleft")
                     original_selection = rectangle
                     selection_corner_dragged = "topleft"
 
                 imgui.set_cursor_screen_pos((int(tr_x), int(h - tr_y - handle_size)))
                 imgui.button("##topright", width=handle_size, height=handle_size)
                 if imgui.is_item_clicked():
-                    # state = update_state(state, original_selection=rectangle, selection_corner_dragged="topright")
                     original_selection = rectangle
                     selection_corner_dragged = "topright"
 
                 imgui.set_cursor_screen_pos((int(bl_x - handle_size), int(h - bl_y)))
                 imgui.button("##bottomleft", width=handle_size, height=handle_size)
                 if imgui.is_item_clicked():
-                    # state = update_state(state, original_selection=rectangle, selection_corner_dragged="bottomleft")
                     original_selection = rectangle
                     selection_corner_dragged = "bottomleft"
 
                 imgui.set_cursor_screen_pos((int(br_x), int(h - br_y)))
                 imgui.button("##bottomright", width=handle_size, height=handle_size)
                 if imgui.is_item_clicked():
-                    # state = update_state(state, original_selection=rectangle, selection_corner_dragged="bottomright")
                     original_selection = rectangle
                     selection_corner_dragged = "bottomright"
 
             imgui.set_cursor_screen_pos((tl_x, h-tl_y))
             imgui.invisible_button("center", width=int(tr_x - tl_x), height=int(tl_y - bl_y))
             if imgui.is_item_clicked():
-                # state = update_state(state, original_selection=rectangle, selection_corner_dragged="center")
                 original_selection = rectangle
                 selection_corner_dragged = "center"
 
@@ -1171,7 +1164,6 @@ def render_selection_rectangle(window):
             ww, wh = imgui.get_window_size()
             if imgui.invisible_button("backdrop", width=ww, height=wh):
                 window.drawing.selection = None
-                # state = update_state(state, original_selection=None, selection_corner_dragged=None)
                 original_selection = None
                 selection_corner_dragged = None
 
@@ -1201,13 +1193,8 @@ def render_selection_rectangle(window):
                     if dx or dy:
                         window.drawing.selection = Rectangle(orig.position,
                                                              (orig.width + round(dx / scale), orig.height + round(dy / scale)))
-
-            # elif state.original_selection:
-            #     state = update_state(state, original_selection=None)
-
             else:
                 # User is doing stateful else, let's allow e.g. zooming and panning.
-                # state = update_state(state, selection_corner_dragged=None)
                 selection_corner_dragged = None
                 imgui.capture_mouse_from_app(False)
 
