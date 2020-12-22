@@ -98,7 +98,7 @@ def draw_ui(window):
 
                 render_tools(window.tools, window.icons)
                 imgui.separator()
-                render_brushes(window, size=(16, 16))
+                render_brushes(window, size=(20, 20))
                 imgui.separator()
                 render_palette(window)
                 render_layers(window.drawing)
@@ -518,7 +518,7 @@ def render_brushes(window, size=None, compact=False):
                 imgui.image(texture.name, *texture.size, border_color=(.25, .25, .25, 1))
                 imgui.end_tooltip()
 
-            if i % 4 != 3:
+            if i % 3 != 2:
                 imgui.same_line()
 
     imgui.pop_style_color()
