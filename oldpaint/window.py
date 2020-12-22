@@ -672,7 +672,7 @@ class OldpaintWindow(pyglet.window.Window):
                         else:
                             self._error = f"Sorry, can only export drawing as PNG!"
                 except OSError as e:
-                    self._error = f"Could not save:\n {e}"
+                    self._error = f"Could not save:\n\n  {e}"
 
             fut.add_done_callback(
                 lambda fut: really_export_drawing(drawing, fut.result()))
@@ -686,13 +686,16 @@ class OldpaintWindow(pyglet.window.Window):
 
         def really_load_drawing(path):
             if path:
-                if path.endswith(".ora"):
-                    drawing = Drawing.from_ora(path)
-                elif path.endswith(".png"):
-                    drawing = Drawing.from_png(path)
-                self.drawings.append(drawing)
-                self.drawings.select(drawing)
-                self.add_recent_file(path)
+                try:
+                    if path.endswith(".ora"):
+                        drawing = Drawing.from_ora(path)
+                    elif path.endswith(".png"):
+                        drawing = Drawing.from_png(path)
+                    self.drawings.append(drawing)
+                    self.drawings.select(drawing)
+                    self.add_recent_file(path)
+                except Exception as e:
+                    self._error = f"Could not load:\n\n  {e}"
 
         if path:
             really_load_drawing(path)
