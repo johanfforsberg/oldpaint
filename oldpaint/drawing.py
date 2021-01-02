@@ -13,7 +13,8 @@ from .config import get_autosave_filename, get_autosaves
 from .edit import (LayerEdit, LayerClearEdit, DrawingCropEdit, LayerFlipEdit,
                    AddFrameEdit, RemoveFrameEdit,
                    MoveFrameForwardEdit, MoveFrameBackwardEdit,
-                   DrawingFlipEdit, PaletteEdit, AddLayerEdit,
+                   DrawingFlipEdit, PaletteEdit, PaletteAdd, PaletteRemove,
+                   AddLayerEdit,
                    RemoveLayerEdit, SwapLayersEdit, MergeLayersEdit,
                    SwapColorsImageEdit, SwapColorsPaletteEdit,
                    MultiEdit)
@@ -429,6 +430,18 @@ class Drawing:
         """ Change any number of colors in the palette at once, as a single undoable edit. """
         diffs = self.palette.make_diff(colors)
         edit = PaletteEdit(diffs)
+        self._make_edit(edit)
+
+    def add_colors(self, colors, index=None):
+        edit = PaletteAdd(colors, index)
+        self._make_edit(edit)
+
+    def remove_colors(self, n, index=None):
+        if index is None:
+            colors = self.palette.colors[-n:]
+        else:
+            colors = self.palette.colors[n:n + index]
+        edit = PaletteRemove(colors, index)
         self._make_edit(edit)
 
     def swap_colors(self, index1, index2, image_only=False):

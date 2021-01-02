@@ -327,6 +327,48 @@ class PaletteEdit(Edit):
 
 
 @dataclass(frozen=True)
+class PaletteAdd(Edit):
+
+    colors: list
+    index: int
+
+    def perform(self, drawing):
+        drawing.palette.add_colors(self.colors, self.index)
+
+    def revert(self, drawing):
+        drawing.palette.remove_colors(len(self.colors), self.index)
+
+    @property
+    def index_str(self):
+        return str(self.index)
+
+    @property
+    def info_str(self):
+        return "Color add"
+
+
+@dataclass(frozen=True)
+class PaletteRemove(Edit):
+
+    colors: list
+    index: int
+
+    def perform(self, drawing):
+        PaletteAdd.revert(self, drawing)
+
+    def revert(self, drawing):
+        PaletteAdd.perform(self, drawing)
+
+    @property
+    def index_str(self):
+        return str(self.index)
+
+    @property
+    def info_str(self):
+        return "Color remove"
+
+
+@dataclass(frozen=True)
 class AddLayerEdit(Edit):
 
     index: int

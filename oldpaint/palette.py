@@ -65,8 +65,12 @@ class Palette:
     def clear_overlay(self):
         if self.overlay:
             self.overlay.clear()
-            self.overlayed_color.cache_clear()
-            self.as_tuple.cache_clear()
+            self._clear_caches()
+
+    def _clear_caches(self):
+        self.overlayed_color.cache_clear()
+        self.as_tuple.cache_clear()
+        self.get_color_as_float.cache_clear()
 
     @lru_cache(maxsize=1)
     def as_tuple(self):
@@ -162,3 +166,25 @@ class Palette:
             for i, new_color in colors
             if new_color != self.colors[i]
         ]
+
+    def add_colors(self, colors, index=None):
+        if index is None:
+            self.colors.extend(colors)
+        else:
+            self.colors = [*self.colors[:index], *colors, * self.colors[index:]]
+            if self.foreground > index:
+                self.foreground += len(colors)
+        self.size = len(self.colors)
+        self._clear_caches()
+
+    def remove_colors(self, n, index=None):
+        if index is None:
+            self.colors = self.colors[:-n]
+            if self.foreground >= len(self.colors):
+                self.foreground = len(self.colors) - 1
+        else:
+            self.colors = [*self.colors[:index], *self.colors[index+n:]]
+            if self.foreground > index:
+                self.foreground -= n
+        self.size = len(self.colors)
+        self._clear_caches()

@@ -735,6 +735,18 @@ def render_main_menu(window):
                         window.drawings.select(d)
                 imgui.end_menu()
 
+            if imgui.begin_menu("Palette", bool(drawing)):
+                if imgui.menu_item("Add color", None, False, True)[0]:
+                    drawing.add_colors([(0, 0, 0, 255)])
+                if imgui.menu_item("Insert color", None, False, False)[0]:
+                    # TODO Inserting colors also requires shifting all higher colors in the image
+                    drawing.add_colors([(0, 0, 0, 255)], drawing.palette.foreground)
+                if imgui.menu_item("Remove color", None, False, False)[0]:
+                    # TODO Removing colors is a bit more complicated; what to do with pixels using
+                    # that color in the image? Clear them? Only allow removing unused colors?
+                    drawing.remove_colors(1, drawing.palette.foreground)
+                imgui.end_menu()
+
             if imgui.begin_menu("Layer", bool(drawing)):
 
                 layer = drawing.layers.current
