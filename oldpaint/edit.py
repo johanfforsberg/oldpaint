@@ -293,6 +293,10 @@ class DrawingFlipEdit(Edit):
     revert = perform  # Mirroring is it's own inverse!
 
     @property
+    def index_str(self):
+        return f""
+
+    @property
     def info_str(self):
         return f"Flip " + ("horizontal" if self.horizontal else "vertical")
 

@@ -172,6 +172,13 @@ class RectangleTool(Tool):
                                            color=self.color + 255*2**24)
 
     def finish(self, overlay, point, buttons, modifiers):
+        p0 = self.points[0]
+        r = from_points([p0, point])
+        brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
+        rect = overlay.draw_rectangle(r.position, r.size, brush=brush, offset=self.brush.center,
+                                      fill=modifiers & window.key.MOD_SHIFT, color=self.color + 255*2**24)
+        if rect:
+            self.rect = rect.unite(self.rect)
         self.points.append(point)
         
     def __repr__(self):
