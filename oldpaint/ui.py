@@ -101,7 +101,7 @@ def draw_ui(window):
                 render_brushes(window, size=(20, 20))
                 imgui.separator()
                 render_palette(window)
-                render_layers(window.drawing)
+                render_layers(window)
 
                 imgui.end()
 
@@ -419,7 +419,8 @@ def render_palette(window):
         yield True
     
 
-def render_layers(drawing: Drawing):
+@stateful
+def render_layers(window):
     
     # imgui.columns(2, "Layers")
     # imgui.set_column_offset(1, 100)
@@ -432,49 +433,69 @@ def render_layers(drawing: Drawing):
     # if imgui.button("Up"):
     #     drawing.move_layer_up()
 
-    # imgui.next_column()         
+    # imgui.next_column()
 
-    imgui.begin_child("Layers", border=False, height=0)
-    selected = None
-    n = len(drawing.layers)
-    hovered = None
-    imgui.columns(2, 'layerlist_header')
-    imgui.text("#")
-    imgui.set_column_offset(1, 40)
-    imgui.next_column()
-    imgui.text("Show")
-    imgui.next_column()
-    imgui.separator()
-    imgui.columns(1)
+    drawing = window.drawing
 
-    imgui.begin_child("Layers list", border=False, height=0)
-    imgui.columns(2, 'layerlist_header')
-    for i, layer in zip(range(n - 1, -1, -1), reversed(drawing.layers)):
-        _, selected = imgui.selectable(str(i), layer == drawing.current,
-                                       imgui.SELECTABLE_SPAN_ALL_COLUMNS)
-        if selected:
-            drawing.layers.current = layer
-        if imgui.is_item_hovered():
-            hovered = layer
+    mouseover = False
+
+    while True:
+
+        imgui.begin_child("Layers", border=False, height=0)
+        selected = None
+        n = len(drawing.layers)
+        hovered = None
+        imgui.columns(2, 'layerlist_header')
+        imgui.text("#")
         imgui.set_column_offset(1, 40)
         imgui.next_column()
-
-        imgui.set_item_allow_overlap()  # Let the checkbox overlap
-        clicked, _ = imgui.checkbox(f"##checkbox{i}", layer.visible)
-        if clicked:
-            layer.visible = not layer.visible
+        imgui.text("Show")
         imgui.next_column()
+        imgui.separator()
+        imgui.columns(1)
 
-        # if texture:
-        #     imgui.image(texture.name, 100, 100*texture.aspect,
-        #                 border_color=(1, 1, 1, 1) if is_current else (0.5, 0.5, 0.5, 1))
-        #     if imgui.core.is_item_clicked(0) and not is_current:
-        #         logger.info("selected %r", layer)
-        #         selected = layer
+        imgui.begin_child("Layers list", border=False, height=0)
+        imgui.columns(2, 'layerlist_header')
+        for i, layer in zip(range(n - 1, -1, -1), reversed(drawing.layers)):
+            _, selected = imgui.selectable(str(i), layer == drawing.current,
+                                           imgui.SELECTABLE_SPAN_ALL_COLUMNS)
+            if selected:
+                drawing.layers.current = layer
+            if imgui.is_item_hovered():
+                hovered = layer
 
-    imgui.columns(1)
-    imgui.end_child()
-    imgui.end_child()
+            imgui.set_column_offset(1, 40)
+            imgui.next_column()
+
+            imgui.set_item_allow_overlap()  # Let the checkbox overlap
+            clicked, _ = imgui.checkbox(f"##checkbox{i}", layer.visible)
+            if clicked:
+                layer.visible = not layer.visible
+            imgui.next_column()
+
+            # if texture:
+            #     imgui.image(texture.name, 100, 100*texture.aspect,
+            #                 border_color=(1, 1, 1, 1) if is_current else (0.5, 0.5, 0.5, 1))
+            #     if imgui.core.is_item_clicked(0) and not is_current:
+            #         logger.info("selected %r", layer)
+            #         selected = layer
+
+        if hovered:
+            print("hovered", hovered)
+            window.highlighted_layer = hovered
+            mouseover = True
+        elif mouseover:
+            window.highlighted_layer = None
+            mouseover = False
+        else:
+            print("nähä")
+            mouseover = False
+
+        imgui.columns(1)
+        imgui.end_child()
+        imgui.end_child()
+
+        yield True
 
 
 @lru_cache(16)
