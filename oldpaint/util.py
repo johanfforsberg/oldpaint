@@ -1,5 +1,6 @@
 from functools import lru_cache, wraps
 import logging
+from copy import copy
 from time import time
 from tkinter import Tk, filedialog
 from traceback import format_exc
@@ -52,6 +53,7 @@ class Selectable:
     def __init__(self, items=None):
         self.items = items or []
         self.current = proxy(items[0]) if items else None
+        self.mro = copy(self.items)
 
     def __iter__(self):
         return iter(self.items)
@@ -71,10 +73,13 @@ class Selectable:
     def index(self, item=None):
         return self.items.index(item or self.current)
 
-    def select(self, item):
+    def select(self, item, update_mro=True):
         assert item in self.items, f"No such item {item}!"
-        self.current = proxy(item)
+        self.current = item
         self.switching = True
+        if update_mro:
+            index = self.mro.index(item)
+            self.mro.insert(0, self.mro.pop(index))
 
     def select_index(self, index):
         assert index in range(len(self)), f"Index {index} is out of range!"
@@ -83,9 +88,11 @@ class Selectable:
     def set_item(self, item, index=None):
         current_index = self.get_current_index()
         if index is None or index == current_index:
-            self.items[current_index] = self.current = item
+            self.items[current_index] = item
+            self.select(item)
         else:
             self.items[index] = item
+        self.mro.append(item)
 
     def get_current_index(self):
         if self.current is None:
@@ -101,11 +108,12 @@ class Selectable:
             self.items.insert(index, item)
         else:
             self.items.append(item)
-        self.current = item
+        self.select(item)
 
     def append(self, item):
         self.items.append(item)
         self.current = proxy(item)
+        self.mro.append(proxy(item))
 
     def remove(self, item=None):
         item = item or self.current
@@ -121,18 +129,24 @@ class Selectable:
         if not cyclic and index == len(self) - 1:
             return
         index = (self.get_current_index() + 1) % len(self.items)
-        self.current = proxy(self.items[index])
+        self.select(self.items[index])
 
     def cycle_backward(self, cyclic=False):
         index = self.get_current_index()
         if not cyclic and index == 0:
             return
         index = (index - 1) % len(self.items)
-        self.current = proxy(self.items[index])
+        self.select(self.items[index])
 
     def swap(self, a, b=None):
         b = self.get_current_index() if b is None else b
         self.items[a], self.items[b] = self.items[b], self.items[a]
+
+    def select_most_recent(self, update_mro=True):
+        if len(self.mro) > 1:
+            index = (self.mro.index(self.current) + 1) % len(self.mro)
+            print(index)
+            self.select(self.mro[index], update_mro)
 
 
 class Selectable2:

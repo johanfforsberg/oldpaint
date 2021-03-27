@@ -510,6 +510,12 @@ class Drawing:
         maker.finish()
         self._make_edit(MultiEdit(maker.edits))
 
+    def get_point(self, x, y):
+        if self.grid:
+            gx, gy = self.grid_size
+            return round(x / gx) * gx, round(y / gy) * gy
+        return x, y
+
     def __repr__(self):
         return f"Drawing({self.path or self.uuid} size={self.size}, layers={self.layers}, current={self.layers.index()})"
 

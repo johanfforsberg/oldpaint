@@ -712,7 +712,7 @@ def render_main_menu(window):
                 # selected = imgui.menu_item("Show selection", "", window.show_selection, drawing)[1]
                 # window.show_selection = selected
 
-                grid = imgui.menu_item("Show grid", "", drawing and drawing.grid, drawing)[1]
+                grid = imgui.menu_item("Use grid", "", drawing and drawing.grid, drawing)[1]
                 if drawing:
                     drawing.grid = grid
                 if imgui.begin_menu("Grid size", drawing and drawing.grid):

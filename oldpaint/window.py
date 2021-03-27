@@ -170,6 +170,8 @@ class OldpaintWindow(pyglet.window.Window):
         self.keys = key.KeyStateHandler()
         self.push_handlers(self.keys)
 
+        self._mru_cycling = False  # Whether Alt+Tabbing through drawings
+
     @property
     def overlay(self):
         return self.drawings.current.overlay
@@ -382,7 +384,8 @@ class OldpaintWindow(pyglet.window.Window):
             elif symbol == key.TAB and modifiers & key.MOD_ALT:
                 # TODO make this toggle to most-recently-used instead
                 self.overlay.clear()
-                self.drawings.cycle_forward(cyclic=True)
+                self._mru_cycling = True
+                self.drawings.select_most_recent(update_mro=False)
             elif symbol in range(48, 58):
                 if symbol == 48:
                     index = 9
@@ -451,6 +454,9 @@ class OldpaintWindow(pyglet.window.Window):
 
     def on_key_release(self, symbol, modifiers):
         self.highlighted_layer = None
+        if symbol == key.LALT and self._mru_cycling:
+            self._mru_cycling = False
+            self.drawings.select(self.drawings.current)
 
     def get_pixel_aligned_size(self):
         return self._get_pixel_aligned_size(self.get_size(), self.zoom)
