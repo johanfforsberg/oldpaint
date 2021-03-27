@@ -299,7 +299,7 @@ class Layer:
         self.version += 1
 
     def __repr__(self):
-        return f"Layer(id={id(self)}, size={self.size}, pic={self.pic})"
+        return f"Layer(id={id(self)}, size={self.size})"
     
     def __hash__(self):
         "For caching purposes, a Layer is considered changed when it's underlying data has changed."

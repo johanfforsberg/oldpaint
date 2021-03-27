@@ -488,7 +488,6 @@ def render_layers(window):
             window.highlighted_layer = None
             mouseover = False
         else:
-            print("nähä")
             mouseover = False
 
         imgui.columns(1)
