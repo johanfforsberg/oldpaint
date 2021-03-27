@@ -21,9 +21,9 @@ void main(void) {
   if (over_pixel.a > 0) {
     index = over_pixel.r;
     vec4 color_ = palette[index];
-    if (color_.a == 0)
-      discard;
-    color = vec4(color_.rgb, global_alpha);
+    // if (color_.a == 0)
+    //   discard;
+    color = vec4(color_.rgb, color_.a);
   } else {
     index = pixel.r;
     vec4 color_ = palette[index];
