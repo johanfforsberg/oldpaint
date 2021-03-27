@@ -245,6 +245,7 @@ class OldpaintWindow(pyglet.window.Window):
 
             self.mouse_event_queue = Queue()
             x, y = self.to_image_coords(x, y)
+            x, y = self.drawing.get_point(x, y)
             initial_point = int(x), int(y)
             self.mouse_event_queue.put(("mouse_down", initial_point, button, modifiers))
             if button == pyglet.window.mouse.LEFT:
@@ -266,6 +267,7 @@ class OldpaintWindow(pyglet.window.Window):
     def on_mouse_release(self, x, y, button, modifiers):
         if self.mouse_event_queue:
             x, y = self.to_image_coords(x, y)
+            x, y = self.drawing.get_point(x, y)
             pos = int(x), int(y)
             self.mouse_event_queue.put(("mouse_up", pos, button, modifiers))
 
@@ -299,6 +301,7 @@ class OldpaintWindow(pyglet.window.Window):
         if self.stroke:
             # Add to ongoing stroke
             x, y = self.to_image_coords(x, y)
+            x, y = self.drawing.get_point(x, y)
             ipos = int(x), int(y)
             self.mouse_event_queue.put(("mouse_drag", ipos, button, modifiers))
         elif button == pyglet.window.mouse.MIDDLE:
@@ -393,6 +396,8 @@ class OldpaintWindow(pyglet.window.Window):
                     index = symbol - 49
                 if len(self.drawings) > index:
                     self.drawings.select(self.drawings[index])
+            elif symbol == key.G:
+                self.drawing.grid = not self.drawing.grid
 
             # Layers
             elif symbol == key.L:
@@ -819,6 +824,7 @@ class OldpaintWindow(pyglet.window.Window):
             return
         ix0, iy0 = self.to_image_coords(x0, y0)
         ix, iy = self.to_image_coords(x, y)
+        ix, iy = self.drawing.get_point(ix, iy)
         overlay = self.overlay
         brush = self.brush
         bw, bh = brush.size
