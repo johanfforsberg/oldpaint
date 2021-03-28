@@ -435,11 +435,11 @@ def render_layers(window):
 
     # imgui.next_column()
 
-    drawing = window.drawing
-
     mouseover = False
 
     while True:
+
+        drawing = window.drawing
 
         imgui.begin_child("Layers", border=False, height=0)
         selected = None
@@ -481,7 +481,6 @@ def render_layers(window):
             #         selected = layer
 
         if hovered:
-            print("hovered", hovered)
             window.highlighted_layer = hovered
             mouseover = True
         elif mouseover:
@@ -699,6 +698,9 @@ def render_main_menu(window):
             if imgui.begin_menu("Drawing", True):
                 new_drawing_open = imgui.menu_item("New", None, new_drawing_open, True)[0]
 
+                if imgui.menu_item("Clone", None, False, drawing)[0]:
+                    window.clone_drawing()
+
                 if drawing and drawing.unsaved:
                     if imgui.begin_menu("Close unsaved...", window.recent_files):
                         clicked, _ = imgui.menu_item("Really? You can't undo this.", None, False, True)
@@ -706,6 +708,7 @@ def render_main_menu(window):
                             window.close_drawing(unsaved=True)
                         imgui.menu_item("No way!", None, False, True)
                         imgui.end_menu()
+
                 else:
                     if imgui.menu_item("Close", None, False, drawing)[0]:
                         window.close_drawing()

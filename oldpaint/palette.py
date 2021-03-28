@@ -1,3 +1,4 @@
+from copy import copy
 from functools import lru_cache
 from itertools import islice
 import json
@@ -188,3 +189,6 @@ class Palette:
                 self.foreground -= n
         self.size = len(self.colors)
         self._clear_caches()
+
+    def clone(self):
+        return Palette(copy(self.colors))

@@ -729,6 +729,9 @@ class OldpaintWindow(pyglet.window.Window):
         self.drawing.stop_animation()
         self.drawings.remove(self.drawing)
 
+    def clone_drawing(self):
+        self.drawings.append(self.drawing.clone())
+
     def _quit(self):
         unsaved = [d for d in self.drawings if d.unsaved]
         if unsaved:

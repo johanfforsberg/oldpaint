@@ -173,6 +173,11 @@ class Drawing:
         palette = Palette(colors, transparency=0, size=len(colors))
         return cls(size=layer.size, layers=[layer], palette=palette, path=path)
 
+    def clone(self) -> "Drawing":
+        layers = [layer.clone() for layer in self.layers]
+        palette = self.palette.clone()
+        return Drawing(self.size, layers, palette=palette)
+
     def flatten(self, frame=None):
         """Return a single flattened version of the drawing data."""
         frame = frame if frame is not None else self.frame

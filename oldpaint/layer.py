@@ -253,7 +253,7 @@ class Layer:
                 # Layer is not yet realized, return empty dummy data
                 return np.zeros(rect.size, dtype=self.dtype)
 
-    def crop(self, rect:Rectangle):
+    def crop(self, rect:Rectangle) -> "Layer":
         return Layer([self.get_subimage(rect, i)
                       for i in range(len(self.frames))])
     
