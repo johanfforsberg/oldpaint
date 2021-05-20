@@ -137,8 +137,13 @@ class LineTool(Tool):
     tool = ToolName.line
     ephemeral = True
 
+    def start(self, overlay, point, buttons, modifiers):
+        super().start(overlay, point, buttons, modifiers)
+        self.points.append(point)
+
     def draw(self, overlay, point, buttons, modifiers):
         p0 = tuple(self.points[0][:2])
+        self.points[1] = point
         p1 = point
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
         self.rect = overlay.draw_line(p0, p1, brush=brush, offset=self.brush.center)
@@ -148,7 +153,7 @@ class LineTool(Tool):
         rect = overlay.draw_line(point, point, brush=brush, offset=self.brush.center)
         if rect:
             self.rect = rect.unite(self.rect)
-        self.points.append(point)
+        self.points[1] = point
             
     def __repr__(self):
         x0, y0 = self.points[0]
@@ -163,8 +168,13 @@ class RectangleTool(Tool):
     tool = ToolName.rectangle
     ephemeral = True
 
+    def start(self, overlay, point, buttons, modifiers):
+        super().start(overlay, point, buttons, modifiers)
+        self.points.append(point)
+
     def draw(self, overlay, point, buttons, modifiers):
         p0 = self.points[0]
+        self.points[1] = point
         r = from_points([p0, point])
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
         self.rect = overlay.draw_rectangle(r.position, r.size, brush=brush,
@@ -179,7 +189,7 @@ class RectangleTool(Tool):
                                       fill=modifiers & window.key.MOD_SHIFT, color=self.color + 255*2**24)
         if rect:
             self.rect = rect.unite(self.rect)
-        self.points.append(point)
+        self.points[1] = point
         
     def __repr__(self):
         x0, y0 = self.points[0]
@@ -194,9 +204,14 @@ class EllipseTool(Tool):
     tool = ToolName.ellipse
     ephemeral = True
 
+    def start(self, overlay, point, buttons, modifiers):
+        super().start(overlay, point, buttons, modifiers)
+        self.points.append(point)
+
     @try_except_log
     def draw(self, overlay, point, buttons, modifiers):
         x0, y0 = self.points[0]
+        self.points[1] = point
         x, y = point
         size = (int(abs(x - x0)), int(abs(y - y0)))
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
@@ -205,12 +220,12 @@ class EllipseTool(Tool):
                                          fill=modifiers & window.key.MOD_SHIFT)
 
     def finish(self, overlay, point, buttons, modifiers):
-        self.points.append(point)
+        self.points[1] = point
 
     def __repr__(self):
         x0, y0 = self.points[0]
         x1, y1 = self.points[-1]
-        return f"{abs(x1-x0)}, {abs(y1-y0)}"
+        return f"{abs(x1-x0) * 2 + 1}, {abs(y1-y0) * 2 + 1}"
 
 
 class FillTool(Tool):
