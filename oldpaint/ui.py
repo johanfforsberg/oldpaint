@@ -618,7 +618,7 @@ def render_tool_menu(state, tools, icons):
 @stateful
 def render_main_menu(window):
 
-    new_drawing_open = False
+    new_drawing_size = (320, 256)
     animation_settings_open = False
     show_edit_history = False
     show_metrics = False
@@ -696,7 +696,22 @@ def render_main_menu(window):
                 imgui.end_menu()
 
             if imgui.begin_menu("Drawing", True):
-                new_drawing_open = imgui.menu_item("New", None, new_drawing_open, True)[0]
+
+                if imgui.begin_menu("New", True):
+                    _, new_drawing_size = imgui.drag_int2("Size", *new_drawing_size,
+                                                          min_value=1, max_value=2048)
+
+                    clicked, current = imgui.combo("##preset shapes", 0, list(PREDEFINED_SIZES.keys()))
+                    if clicked and current:
+                        new_drawing_size = list(PREDEFINED_SIZES.values())[current]
+
+                    if imgui.button("OK"):
+                        window.create_drawing(new_drawing_size)
+                    imgui.same_line()
+                    if imgui.button("Cancel"):
+                        imgui.close_current_popup()
+
+                    imgui.end_menu()
 
                 if imgui.menu_item("Clone", None, False, drawing)[0]:
                     window.clone_drawing()
@@ -985,8 +1000,8 @@ def render_main_menu(window):
 
             imgui.end_main_menu_bar()
 
-            if new_drawing_open:
-                new_drawing_open = render_new_drawing_popup(window)
+            # if new_drawing_open:
+            #     new_drawing_open = render_new_drawing_popup(window)
 
             if animation_settings_open:
                 animation_settings_open = render_animation_settings(window)
@@ -1074,62 +1089,16 @@ def render_animation_settings(window):
 
 # TODO Allow configuration
 PREDEFINED_SIZES = {
-    "Presets": None,
+    "Size presets": None,
     **{f"{w}, {h}": (w, h)
-       for (w, h) in [
-               (320, 256),
-               (640, 512),
-               (800, 600),
-               
-               (16, 16),
-               (32, 32),
-               (64, 64),
-       ]}
+       for (w, h) in [(320, 256),
+                      (640, 512),
+                      (800, 600),
+
+                      (16, 16),
+                      (32, 32),
+                      (64, 64)]}
 }
-
-
-@stateful
-def render_new_drawing_popup(window):
-
-    "Settings for creating a new drawing."
-
-    drawing = window.drawing
-    size = drawing.size if drawing else (640, 480)
-
-    done = False
-    while not done:
-
-        if size:
-            imgui.open_popup("New drawing")
-            w, h = window.get_size()
-            imgui.set_next_window_size(300, 140)
-            imgui.set_next_window_position(w // 2 - 100, h // 2 - 60)
-
-        if imgui.begin_popup_modal("New drawing")[0]:
-            imgui.text("Creating a new drawing.")
-            imgui.separator()
-
-            changed, new_size = imgui.drag_int2("Shape", *size,
-                                                min_value=1, max_value=2048)
-            if changed:
-                size = new_size
-
-            clicked, current = imgui.combo("##preset shapes", 0, list(PREDEFINED_SIZES.keys()))
-            if clicked:
-                if current:
-                    size = list(PREDEFINED_SIZES.values())[current]
-
-            if imgui.button("OK"):
-                window.create_drawing(size)
-                imgui.close_current_popup()
-                done = True
-            imgui.same_line()
-            if imgui.button("Cancel"):
-                imgui.close_current_popup()
-                done = True
-            imgui.end_popup()
-
-        yield True
 
 
 @stateful

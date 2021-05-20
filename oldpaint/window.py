@@ -610,7 +610,7 @@ class OldpaintWindow(pyglet.window.Window):
 
     def new_drawing(self, default_size=(640, 480)):
         size = self.drawing.size if self.drawing else default_size
-        self.ui_state = ui.update_state(self.ui_state, new_drawing_size=size)
+        # self.ui_state = ui.update_state(self.ui_state, new_drawing_size=size)
 
     def create_drawing(self, size):
         drawing = Drawing(size=size)
