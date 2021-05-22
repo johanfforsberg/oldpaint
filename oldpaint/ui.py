@@ -882,6 +882,26 @@ def render_main_menu(window):
 
                 imgui.end_menu()
 
+            if imgui.begin_menu("Tool", drawing):
+                for tool in window.tools:
+                    if imgui.menu_item(tool.tool.name, None, tool == window.tools.current)[0]:
+                        window.tools.select(tool)
+                imgui.separator()
+
+                if imgui.begin_menu("Configure..."):
+                    tool = window.tools.current
+                    imgui.text(tool.tool.name)
+                    for name, (type_, slc), value in tool.get_config_params():
+                        if type_ is int:
+                            changed, value = imgui.slider_int(name, value, slc.start, slc.stop)
+                        elif type_ is float:
+                            changed, value = imgui.slider_float(name, value, slc.start, slc.stop)
+                        if changed:
+                            setattr(tool, name, value)
+                    imgui.end_menu()
+
+                imgui.end_menu()
+
             if imgui.begin_menu("Brush", drawing):
 
                 if imgui.menu_item("Create from selection", None, False, drawing.selection)[0]:

@@ -5,7 +5,7 @@ from typing import Tuple, List
 import numpy as np
 
 from .rect import Rectangle
-from .draw import draw_line, draw_rectangle, draw_ellipse, draw_fill, blit, paste
+from .draw import draw_line, draw_rectangle, draw_ellipse, draw_fill, paste
 from .ora import load_png, save_png
 from .util import DefaultList
 
@@ -118,7 +118,7 @@ class Layer:
         return cls(pic), info["palette"]
 
     def draw_line(self, p0: Tuple[int, int], p1: Tuple[int, int], brush: np.ndarray,
-                  offset: Tuple[int, int], set_dirty:bool=True, frame:int=0, **kwargs):
+                  offset: Tuple[int, int], set_dirty:bool=True, frame:int=0, step: int=1, **kwargs):
         ox, oy = offset
         x0, y0 = p0
         x1, y1 = p1
@@ -126,7 +126,7 @@ class Layer:
         p1 = (x1 - ox, y1 - oy)
         data = self.get_data(frame)
         with self.lock:
-            rect = draw_line(data, brush, p0, p1)
+            rect = draw_line(data, brush, p0, p1, step)
             if rect and set_dirty:
                 self.set_dirty(rect, frame)
             self.version += 1

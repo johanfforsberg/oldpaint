@@ -1,4 +1,5 @@
 import abc
+from functools import lru_cache
 from random import gauss
 
 from pyglet import window
@@ -50,6 +51,16 @@ class Tool(metaclass=abc.ABCMeta):
     def finish(self, overlay, point, buttons, modifiers):
         "Runs once right before the stroke is finished."
 
+    @classmethod
+    def get_config_params(cls):
+        members = cls.__dict__.items()
+        config_params = [m for m in members
+                         if not hasattr(Tool, m[0])
+                         and not callable(m[1])
+                         and not m[0].startswith("_")]
+        return [(name, cls.__annotations__[name], value)
+                for name, value in config_params]
+
     def __repr__(self):
         "If this returns a non-empty string it will be displayed while the tool is used."
         return ""
@@ -82,11 +93,16 @@ class PencilTool(Tool):
 
 class PointsTool(Tool):
 
-    "A series of dots along the mouse movement."
+    "A series of spaced points along the mouse movement."
+
+    # TODO not very accurate, as it depends a lot on how fast the mouse
+    # moves and the rate of events.
 
     tool = ToolName.points
     ephemeral = False
-    step = 5
+
+    # Config
+    step: (int, slice(1, 100)) = 5  # More line a minimum step
 
     def draw(self, overlay, point, buttons, modifiers):
         if self.points[-1] == point:
@@ -99,35 +115,43 @@ class PointsTool(Tool):
                 self.rect = rect.unite(self.rect)
 
     def finish(self, overlay, point, buttons, modifiers):
-        # Make sure we draw a point even if the mouse was never moved
-        brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-        rect = overlay.draw_line(point, point, brush, offset=self.brush.center)
-        if rect:
-            self.rect = rect.unite(self.rect)
+        # Make sure we draw a point if the mouse was never moved
+        if len(self.points) == 1:
+            brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
+            rect = overlay.draw_line(point, point, brush, offset=self.brush.center)
+            if rect:
+                self.rect = rect.unite(self.rect)
 
 
 class SprayTool(Tool):
 
     tool = ToolName.spray
     ephemeral = False
-    size = 10
-    intensity = 1.0
-    period = 0.002
+    period = 0.0001
+
+    size: (int, slice(1, 100)) = 10
+    intensity: (float, slice(0, 1)) = 1.0
+
+    @lru_cache(1)
+    def _get_n_skip(self, intensity):
+        return int((1/intensity) ** 2)
 
     def start(self, overlay, point, buttons, modifiers):
         super().start(overlay, point, buttons, modifiers)
         self.draw(overlay, point, buttons, modifiers)
 
     def draw(self, overlay, point, buttons, modifiers):
+        # TODO this draws one point at a time, really slow.
         self.points.append(point)
-        x, y = point
-        xg = gauss(x, self.size)
-        yg = gauss(y, self.size)
-        p = (xg, yg)
-        brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-        rect = overlay.draw_line(p, p, brush=brush, offset=self.brush.center)
-        if rect:
-            self.rect = rect.unite(self.rect)
+        if len(self.points) % self._get_n_skip(self.intensity) == 0:
+            x, y = point
+            xg = gauss(x, self.size)
+            yg = gauss(y, self.size)
+            p = (xg, yg)
+            brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
+            rect = overlay.draw_line(p, p, brush=brush, offset=self.brush.center)
+            if rect:
+                self.rect = rect.unite(self.rect)
 
 
 class LineTool(Tool):
@@ -137,24 +161,27 @@ class LineTool(Tool):
     tool = ToolName.line
     ephemeral = True
 
+    step: (int, slice(1, 100)) = 1
+
     def start(self, overlay, point, buttons, modifiers):
         super().start(overlay, point, buttons, modifiers)
-        self.points.append(point)
+        self.points.append(None)
 
     def draw(self, overlay, point, buttons, modifiers):
         p0 = tuple(self.points[0][:2])
         self.points[1] = point
         p1 = point
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-        self.rect = overlay.draw_line(p0, p1, brush=brush, offset=self.brush.center)
+        self.rect = overlay.draw_line(p0, p1, brush=brush, offset=self.brush.center, step=self.step)
 
     def finish(self, overlay, point, buttons, modifiers):
-        brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-        rect = overlay.draw_line(point, point, brush=brush, offset=self.brush.center)
-        if rect:
-            self.rect = rect.unite(self.rect)
-        self.points[1] = point
-            
+        if self.points[1] is None:
+            brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
+            rect = overlay.draw_line(point, point, brush=brush, offset=self.brush.center, step=self.step)
+            self.points[1] = point
+            if rect:
+                self.rect = rect.unite(self.rect)
+
     def __repr__(self):
         x0, y0 = self.points[0]
         x1, y1 = self.points[-1]

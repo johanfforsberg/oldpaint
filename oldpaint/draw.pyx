@@ -134,6 +134,7 @@ cpdef draw_line(unsigned int[:, :] pic, unsigned int[:, :] brush,
             if e2 <= dx:
                 err += dx
                 y += sy
+            i += 1
 
     cdef int x00 = max(0, min(x0, x1))
     cdef int y00 = max(0, min(y0, y1))
