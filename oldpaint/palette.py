@@ -84,6 +84,9 @@ class Palette:
         # return islice(self.get_rgba(), 0, self.size)
         return islice(self.colors, 0, self.size)
 
+    def __len__(self):
+        return len(self.colors)
+
     def set_color(self, index, r, g, b, a):
         if isinstance(r, int):
             self.colors[index] = r, g, b, a

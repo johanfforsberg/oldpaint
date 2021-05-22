@@ -775,7 +775,7 @@ def render_main_menu(window):
                 imgui.end_menu()
 
             if imgui.begin_menu("Palette", bool(drawing)):
-                if imgui.menu_item("Add color", None, False, True)[0]:
+                if imgui.menu_item("Add color", None, False, len(drawing.palette) < 256)[0]:
                     drawing.add_colors([(0, 0, 0, 255)])
                 if imgui.menu_item("Insert color", None, False, False)[0]:
                     # TODO Inserting colors also requires shifting all higher colors in the image

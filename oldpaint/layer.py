@@ -195,6 +195,18 @@ class Layer:
         self.flip(frame, axis=1)
         return self.rect
 
+    def recolor(self, index1:int, index2:int, frame:int=None):
+        # TODO untried
+        frames = [self.get_data(frame)] if frame is not None else self.frames
+        for i, data in enumerate(frames):
+            if data is not None:
+                with self.lock:
+                    color1_pixels = data == index1
+                    data[color1_pixels] = index2
+                    self.set_dirty(self.rect, i)  # TODO minimize rect
+                    self.version += 1
+                return self.rect
+
     def swap_colors(self, index1:int, index2:int, frame:int=None):
         frames = [self.get_data(frame)] if frame is not None else self.frames
         for i, data in enumerate(frames):
@@ -204,7 +216,7 @@ class Layer:
                     color2_pixels = data == index2
                     data[color1_pixels] = index2
                     data[color2_pixels] = index1
-                    self.set_dirty(self.rect, i)
+                    self.set_dirty(self.rect, i)  # TODO minimize rect
                     self.version += 1
                 return self.rect
 
