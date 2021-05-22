@@ -20,7 +20,7 @@ from fogl.util import try_except_log
 from fogl.vao import VertexArrayObject
 from fogl.vertex import SimpleVertices
 
-from .brush import PicBrush, RectangleBrush, EllipseBrush
+from .brush import PicBrush, RectangleBrush, EllipseBrush, CircleBrush, SquareBrush
 from .drawing import Drawing
 from .plugin import init_plugins
 from .rect import Rectangle
@@ -77,11 +77,12 @@ class OldpaintWindow(pyglet.window.Window):
             ]
         })
         self.brushes = Selectable([
-            RectangleBrush((1, 1)),
-            RectangleBrush((2, 2)),
-            RectangleBrush((3, 3)),
-            EllipseBrush((8, 8)),
-            EllipseBrush((20, 35)),
+            RectangleBrush(1, 1),
+            RectangleBrush(2, 2),
+            RectangleBrush(3, 3),
+            CircleBrush(8),
+            EllipseBrush(20, 35),
+            SquareBrush(20),
         ])
         self.highlighted_layer = None
         # self.show_selection = False

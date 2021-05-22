@@ -73,12 +73,18 @@ class Selectable:
     def index(self, item=None):
         return self.items.index(item or self.current)
 
+    def get_current(self):
+        return self.items[self.index()]
+
     def select(self, item, update_mro=True):
         assert item in self.items, f"No such item {item}!"
         self.current = item
         self.switching = True
         if update_mro:
-            index = self.mro.index(item)
+            try:
+                index = self.mro.index(item)
+            except ValueError:
+                return
             self.mro.insert(0, self.mro.pop(index))
 
     def select_index(self, index):
@@ -88,10 +94,14 @@ class Selectable:
     def set_item(self, item, index=None):
         current_index = self.get_current_index()
         if index is None or index == current_index:
+            old_item = self.items[current_index]
             self.items[current_index] = item
+            self.mro.remove(old_item)
             self.select(item)
         else:
+            old_item = self.items[index]
             self.items[index] = item
+            self.mro.remove(old_item)
         self.mro.append(item)
 
     def get_current_index(self):

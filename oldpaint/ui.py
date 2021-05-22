@@ -16,6 +16,7 @@ import imgui
 import pyglet
 from pyglet.window import key
 
+from .brush import BUILTIN_BRUSH_TYPES
 from .drawing import Drawing
 from .imgui_pyglet import PygletRenderer
 from .plugin import render_plugins_ui
@@ -890,19 +891,48 @@ def render_main_menu(window):
 
                 if imgui.begin_menu("Configure..."):
                     tool = window.tools.current
-                    imgui.text(tool.tool.name)
-                    for name, (type_, slc), value in tool.get_config_params():
-                        if type_ is int:
-                            changed, value = imgui.slider_int(name, value, slc.start, slc.stop)
-                        elif type_ is float:
-                            changed, value = imgui.slider_float(name, value, slc.start, slc.stop)
-                        if changed:
-                            setattr(tool, name, value)
+                    params = tool.get_config_params()
+                    if params:
+                        imgui.text(tool.tool.name)
+                        for name, (type_, slc), value in params:
+                            if type_ is int:
+                                changed, value = imgui.slider_int(name, value, slc.start, slc.stop)
+                            elif type_ is float:
+                                changed, value = imgui.slider_float(name, value, slc.start, slc.stop)
+                            if changed:
+                                setattr(tool, name, value)
+                    else:
+                        imgui.text(f"{tool.tool.name} has no options!")
                     imgui.end_menu()
 
                 imgui.end_menu()
 
             if imgui.begin_menu("Brush", drawing):
+
+                if imgui.begin_menu("Configure default...", window.brushes):
+                    changed, new_index = imgui.combo("brush type", window.brushes.index(),
+                                                     [b.name for b in BUILTIN_BRUSH_TYPES])
+                    if changed:
+                        new_type = BUILTIN_BRUSH_TYPES[new_index]
+                        window.brushes.set_item(new_type())
+
+                    brush = window.brushes.get_current()
+                    any_changed = False
+                    args = {}
+                    for name, param in brush.get_params().items():
+                        if name == "self":
+                            continue
+                        if param.annotation is int:
+                            changed, value = imgui.slider_int(name, getattr(brush, name), param.default, 100)
+                            if changed:
+                                args[name] = value
+                                any_changed = True
+                            else:
+                                args[name] = getattr(brush, name)
+                    if any_changed:
+                        window.brushes.set_item(type(brush)(**args))
+
+                    imgui.end_menu()
 
                 if imgui.menu_item("Create from selection", None, False, drawing.selection)[0]:
                     drawing.make_brush()

@@ -1,5 +1,5 @@
 from functools import lru_cache
-from math import floor, ceil
+import inspect
 
 import numpy as np
 
@@ -55,30 +55,69 @@ class Brush:
         self.data = rescale(self.data, size)
         self.size = size
 
+    def get_params(self):
+        signature = inspect.signature(self.__init__)
+        return signature.parameters
+
     def __hash__(self):
         return hash(id(self.data))
 
 
 class RectangleBrush(Brush):
 
-    def __init__(self, size):
-        data = np.ones(size, dtype=np.uint32)
+    name = "rectangle"
+
+    def __init__(self, width: int = 1, height: int = 1):
+        self.width = width
+        self.height = height
+        data = np.ones((width, height), dtype=np.uint32)
         super().__init__(data=data)
+
+
+class SquareBrush(RectangleBrush):
+
+    name = "square"
+
+    def __init__(self, side: int = 1):
+        self.side = side
+        return super().__init__(side, side)
 
 
 class EllipseBrush(Brush):
 
-    def __init__(self, size):
-        data = np.zeros(size, dtype=np.uint32)
+    name = "ellipse"
+
+    def __init__(self, r1: int = 1, r2: int = 1):
+        self.r1 = r1
+        self.r2 = r2
+        d1 = 2 * r1
+        d2 = 2 * r2
+        data = np.zeros((d1, d2), dtype=np.uint32)
         brush = np.array([[1]], dtype=np.uint32)
-        w, h = size
         draw_ellipse(data, brush,
-                     center=(ceil(w//2), ceil(h//2)),
-                     size=(ceil(w/2-1), ceil(h/2-1)),
+                     center=(r1, r2),
+                     size=(r1-1, r2-1),
                      color=1, fill=True)
         super().__init__(data=data)
 
-        
+
+class CircleBrush(EllipseBrush):
+
+    name = "circle"
+
+    def __init__(self, radius: int = 1):
+        self.radius = radius
+        super().__init__(radius, radius)
+
+
+BUILTIN_BRUSH_TYPES = [
+    RectangleBrush,
+    SquareBrush,
+    EllipseBrush,
+    CircleBrush,
+]
+
+
 class PicBrush(Brush):
 
     @lru_cache(2)  
