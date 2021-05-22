@@ -83,6 +83,13 @@ def get_autosaves(drawing_path):
     return cache_dir.glob("*.ora")
 
 
+def get_palettes():
+    palette_dir = CONFIG_HOME / "palettes"
+    if palette_dir.exists():
+        return palette_dir.glob("*.json")
+    return []
+
+
 PLUGIN_DIR = Path(__file__).parent.parent / "plugins"
 USER_PLUGIN_DIR = CONFIG_HOME / "plugins"
 USER_PLUGIN_DIR.mkdir(parents=True, exist_ok=True)

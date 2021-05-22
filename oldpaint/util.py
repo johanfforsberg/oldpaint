@@ -263,7 +263,7 @@ def cache_clear(cached_func):
 
 @lru_cache(1)
 def make_view_matrix(window_size, image_size, zoom, offset):
-    
+
     """Calculate a view matrix that places the image on the screen, at scale."""
 
     ww, wh = window_size

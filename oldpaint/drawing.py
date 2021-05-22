@@ -20,7 +20,7 @@ from .edit import (LayerEdit, LayerClearEdit, DrawingCropEdit, LayerFlipEdit,
                    MultiEdit)
 from .layer import Layer, TemporaryLayer
 from .ora import load_ora, save_ora, load_png, save_png
-from .palette import Palette
+from .palette import Palette, PALETTES_DIR
 from .rect import Rectangle
 
 from .util import Selectable, try_except_log
@@ -56,7 +56,7 @@ class Drawing:
             self.layers = Selectable(layers)
         else:
             self.layers = Selectable([Layer(size=self.size)])
-        self.palette = palette if palette else Palette(transparency=0)
+        self.palette = palette if palette else Palette.from_file(PALETTES_DIR / "vga_palette.json", transparency=0)
 
         # Animation related things
         self.frame = 0

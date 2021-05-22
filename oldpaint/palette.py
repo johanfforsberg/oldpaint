@@ -2,15 +2,34 @@ from copy import copy
 from functools import lru_cache
 from itertools import islice
 import json
+from pathlib import Path
+
+from .config import get_palettes
 
 
-with open("palettes/vga_palette.json") as f:
-    vga_palette = json.load(f)
+PALETTES_DIR = Path("palettes")
 
 
-DEFAULT_COLORS = [(r, g, b, 255 * (i != 0))
-                  for i, (r, g, b)
-                  in enumerate(vga_palette)]
+@lru_cache(1)
+def get_builtin_palettes():
+    return list(PALETTES_DIR.glob("*.json"))
+
+
+@lru_cache(1)
+def get_custom_palettes():
+    return list(get_palettes())
+
+
+def load_colors(path):
+    with open(path) as f:
+        colors = json.load(f)
+        rgba_colors = []
+        for i, color in enumerate(colors):
+            if len(color) == 4:
+                rgba_colors.append(tuple(color))
+            else:
+                rgba_colors.append((*color, 255 * (i != 0)))
+        return rgba_colors
 
 
 class Palette:
@@ -21,6 +40,7 @@ class Palette:
     def __init__(self, colors=None, transparency=None, size=256):
         # self.colors = (list(zip(*[map(int, colors)] * 3)) if colors
         self.size = size
+
         if colors:
             color0 = colors[0]
             if len(color0) == 3:
@@ -28,13 +48,20 @@ class Palette:
             else:
                 self.colors = colors + [(0, 0, 0, 255)] * (self.size - len(colors))
         else:
-            self.colors = DEFAULT_COLORS + [(0, 0, 0, 255)] * (self.size - len(DEFAULT_COLORS))
+            default_colors = load_colors(get_builtin_palettes()[0])
+            self.colors = default_colors + [(0, 0, 0, 255)] * (self.size - len(default_colors))
+
         assert len(self.colors) == self.size, f"Bad number of colors: {len(self.colors)}"
         # self.transparency = transparency
         self._foreground = 1
         self._background = 0
 
         self.overlay = {}
+
+    @classmethod
+    def from_file(cls, path: Path, **kwargs):
+        colors = load_colors(path)
+        return cls(colors, **kwargs)
 
     @property
     def foreground(self):
@@ -193,5 +220,10 @@ class Palette:
         self.size = len(self.colors)
         self._clear_caches()
 
+    def save_json(self, path):
+        with open(path, "w") as f:
+            json.dump(self.colors, f)
+
     def clone(self):
         return Palette(copy(self.colors))
+
