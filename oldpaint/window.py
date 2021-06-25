@@ -458,9 +458,17 @@ class OldpaintWindow(pyglet.window.Window):
                 self.drawing.brushes.current = None
                 self.overlay.clear()
 
+            elif symbol == key.LCTRL and not modifiers:
+                self.overlay.clear()
+                self.tools.select(PickerTool)
+
     def on_key_release(self, symbol, modifiers):
         self.highlighted_layer = None
-        if symbol == key.LALT and self._mru_cycling:
+
+        if symbol == key.LCTRL and modifiers & key.MOD_CTRL:
+            self.tools.restore()
+
+        elif symbol == key.LALT and self._mru_cycling:
             self._mru_cycling = False
             self.drawings.select(self.drawings.current)
 
