@@ -16,13 +16,14 @@ import imgui
 import pyglet
 from pyglet.window import key
 
-from .brush import BUILTIN_BRUSH_TYPES
-from .drawing import Drawing
-from .imgui_pyglet import PygletRenderer
-from .palette import get_builtin_palettes, get_custom_palettes, Palette
-from .plugin import render_plugins_ui
-from .rect import Rectangle
-from .util import show_save_dialog, throttle
+from .file_browser import render_file_browser
+from ..brush import BUILTIN_BRUSH_TYPES
+from ..drawing import Drawing
+from ..imgui_pyglet import PygletRenderer
+from ..palette import get_builtin_palettes, get_custom_palettes, Palette
+from ..plugin import render_plugins_ui
+from ..rect import Rectangle
+from ..util import show_save_dialog, throttle
 
 
 logger = logging.getLogger(__name__)
@@ -116,6 +117,8 @@ def draw_ui(window):
             render_unsaved_exit(window)
 
             render_plugins_ui(window)
+
+            render_file_browser(window)
 
             if window._error:
                 imgui.open_popup("Error")
@@ -1007,7 +1010,8 @@ def render_main_menu(window):
                         imgui.begin_tooltip()
                         texture = window.get_brush_preview_texture(brush,
                                                                    colors=drawing.palette.as_tuple())
-                        imgui.image(texture.name, *texture.size, border_color=(.25, .25, .25, 1))
+                        w, h = texture.size
+                        imgui.image(texture.name, w*2, h*2, border_color=(.25, .25, .25, 1))
                         imgui.end_tooltip()
 
                 imgui.end_menu()
