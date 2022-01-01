@@ -458,9 +458,17 @@ class OldpaintWindow(pyglet.window.Window):
                 self.drawing.brushes.current = None
                 self.overlay.clear()
 
+            elif symbol == key.LCTRL and not modifiers:
+                self.overlay.clear()
+                self.tools.select(PickerTool)
+
     def on_key_release(self, symbol, modifiers):
         self.highlighted_layer = None
-        if symbol == key.LALT and self._mru_cycling:
+
+        if symbol == key.LCTRL and modifiers & key.MOD_CTRL:
+            self.tools.restore()
+
+        elif symbol == key.LALT and self._mru_cycling:
             self._mru_cycling = False
             self.drawings.select(self.drawings.current)
 
@@ -613,8 +621,8 @@ class OldpaintWindow(pyglet.window.Window):
         size = self.drawing.size if self.drawing else default_size
         # self.ui_state = ui.update_state(self.ui_state, new_drawing_size=size)
 
-    def create_drawing(self, size):
-        drawing = Drawing(size=size)
+    def create_drawing(self, size, palette):
+        drawing = Drawing(size=size, palette=palette)
         self.drawings.append(drawing)
 
     @try_except_log
@@ -732,6 +740,32 @@ class OldpaintWindow(pyglet.window.Window):
 
     def clone_drawing(self):
         self.drawings.append(self.drawing.clone())
+
+    def export_palette(self):
+        palette = self.drawing.palette
+
+        # last_dir = self.get_latest_dir()
+        # The point here is to not block the UI redraws while showing the
+        # dialog. May be a horrible idea but it seems to work...
+        fut = self.executor.submit(show_save_dialog,
+                                   title="Select file",
+                                   # initialdir=last_dir,
+                                   filetypes=(("JSON files", "*.json"),))
+
+        def really_export_palette(palette, path):
+            try:
+                if path:
+                    if path.endswith(".json"):
+                        palette.save_json(path)
+                        #self.add_recent_file(path)
+                    else:
+                        self._error = f"Sorry, can only export palette as JSON!"
+            except OSError as e:
+                self._error = f"Could not save:\n\n  {e}"
+
+        fut.add_done_callback(
+            lambda fut: really_export_palette(palette, fut.result()))
+
 
     def _quit(self):
         unsaved = [d for d in self.drawings if d.unsaved]

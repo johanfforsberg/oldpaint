@@ -220,7 +220,7 @@ class RectangleTool(Tool):
         
     def __repr__(self):
         x0, y0 = self.points[0]
-        x1, y1 = self.points[-1]
+        x1, y1 = self.points[1]
         return f"{abs(x1 - x0) + 1}, {abs(y1 - y0) + 1}"
 
 
@@ -297,7 +297,7 @@ class SelectionTool(Tool):
 
 class PickerTool(Tool):
 
-    "Set the current color to the one under the mouse when clicked."
+    "Set the current color or layer to the one under the mouse when clicked."
 
     tool = ToolName.picker
     brush_preview = False
@@ -306,15 +306,20 @@ class PickerTool(Tool):
         super().__init__(drawing, brush, color, initial)
         self.color = None
 
-    def finish(self, overlay, point, buttons, modifiers):
+    def _pick(self, overlay, point, buttons, modifiers):
         # Find the pixel that is visible at the given point.
-        layer = self.drawing.get_layer_visible_at_point(point)
-        if layer:
-            if modifiers & window.key.MOD_SHIFT:
-                self.drawing.layers.select(layer)
-            else:
-                index = layer.get_data()[point]
-                if buttons == window.mouse.LEFT:
-                    self.drawing.palette.foreground = index
-                elif buttons == window.mouse.RIGHT:
-                    self.drawing.palette.background = index
+        layer = self.drawing.get_layer_visible_at_point(point) or self.drawing.layers[0]
+
+        if modifiers & window.key.MOD_SHIFT:
+            # Select the layer
+            self.drawing.layers.select(layer)
+        else:
+            # Select the color
+            index = layer.get_data()[point]
+            if buttons == window.mouse.LEFT:
+                self.drawing.palette.foreground = index
+            elif buttons == window.mouse.RIGHT:
+                self.drawing.palette.background = index
+
+    start = _pick
+    draw = _pick

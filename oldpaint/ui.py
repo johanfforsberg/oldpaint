@@ -19,6 +19,7 @@ from pyglet.window import key
 from .brush import BUILTIN_BRUSH_TYPES
 from .drawing import Drawing
 from .imgui_pyglet import PygletRenderer
+from .palette import get_builtin_palettes, get_custom_palettes, Palette
 from .plugin import render_plugins_ui
 from .rect import Rectangle
 from .util import show_save_dialog, throttle
@@ -623,6 +624,7 @@ def render_main_menu(window):
     animation_settings_open = False
     show_edit_history = False
     show_metrics = False
+    new_drawing_palette = 0
 
     while True:
 
@@ -706,8 +708,15 @@ def render_main_menu(window):
                     if clicked and current:
                         new_drawing_size = list(PREDEFINED_SIZES.values())[current]
 
+                    builtin_palettes = get_builtin_palettes()
+                    custom_palettes = get_custom_palettes()
+                    palettes = builtin_palettes + custom_palettes
+                    palette_names = [p.stem for p in palettes]
+                    clicked, new_drawing_palette = imgui.combo("Palette", new_drawing_palette, palette_names)
+
                     if imgui.button("OK"):
-                        window.create_drawing(new_drawing_size)
+                        palette = Palette.from_file(palettes[new_drawing_palette])
+                        window.create_drawing(new_drawing_size, palette)
                     imgui.same_line()
                     if imgui.button("Cancel"):
                         imgui.close_current_popup()
@@ -784,6 +793,9 @@ def render_main_menu(window):
                     # TODO Removing colors is a bit more complicated; what to do with pixels using
                     # that color in the image? Clear them? Only allow removing unused colors?
                     drawing.remove_colors(1, drawing.palette.foreground)
+                imgui.separator()
+                if imgui.menu_item("Export as JSON", None, False, drawing)[0]:
+                    window.export_palette()
                 imgui.end_menu()
 
             if imgui.begin_menu("Layer", bool(drawing)):

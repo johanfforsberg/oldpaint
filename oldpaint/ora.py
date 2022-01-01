@@ -25,6 +25,7 @@ def save_png(data, path, colors=None):
     copyfile(f.name, path)
     os.remove(f.name)
 
+
 def _save_png(data: np.ndarray, dest: BinaryIO, colors=None):
     w, h = data.shape
     writer = png.Writer(w, h, bitdepth=8, alpha=False, palette=colors)
@@ -196,7 +197,7 @@ def load_ora(path: str) -> Tuple[List[np.ndarray], dict, dict]:
 def load_ora_thumbnail(path: str) -> Tuple[Tuple[int, int], np.ndarray, dict]:
     with zipfile.ZipFile(path, mode="r") as orafile:
         with orafile.open("Thumbnails/thumbnail.png") as tf:
-            reader = png.Reader(f)
-            w, h, image_data, info = reader.read(f)
+            reader = png.Reader(tf)
+            w, h, image_data, info = reader.read(tf)
     return (w, h), image_data, info
             

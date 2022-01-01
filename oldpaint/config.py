@@ -41,6 +41,7 @@ def load_config():
 
 
 def save_config(window_size=None, recent_files=None):
+    logging.info("saving config")
     config_file = configparser.ConfigParser()
     config_file.read(CONFIG_FILE)
     if window_size:
@@ -81,6 +82,13 @@ def get_autosave_filename(drawing_path, keep=3):
 def get_autosaves(drawing_path):
     cache_dir = get_drawing_cache_dir(drawing_path)
     return cache_dir.glob("*.ora")
+
+
+def get_palettes():
+    palette_dir = CONFIG_HOME / "palettes"
+    if palette_dir.exists():
+        return palette_dir.glob("*.json")
+    return []
 
 
 PLUGIN_DIR = Path(__file__).parent.parent / "plugins"
