@@ -41,6 +41,7 @@ def load_config():
 
 
 def save_config(window_size=None, recent_files=None):
+    logging.info("saving config")
     config_file = configparser.ConfigParser()
     config_file.read(CONFIG_FILE)
     if window_size:

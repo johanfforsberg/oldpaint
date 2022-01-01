@@ -220,7 +220,7 @@ class RectangleTool(Tool):
         
     def __repr__(self):
         x0, y0 = self.points[0]
-        x1, y1 = self.points[-1]
+        x1, y1 = self.points[1]
         return f"{abs(x1 - x0) + 1}, {abs(y1 - y0) + 1}"
 
 
