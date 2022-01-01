@@ -72,7 +72,7 @@ def draw_ui(window):
     )
     renderer.refresh_font_texture()
 
-    io.config_resize_windows_from_edges = True  # TODO does not seem to work?
+    # io.config_resize_windows_from_edges = True  # TODO does not seem to work?
 
     style = imgui.get_style()
     style.window_border_size = 0
@@ -704,9 +704,9 @@ def render_main_menu(window):
                     _, new_drawing_size = imgui.drag_int2("Size", *new_drawing_size,
                                                           min_value=1, max_value=2048)
 
-                    clicked, current = imgui.combo("##preset shapes", 0, list(PREDEFINED_SIZES.keys()))
+                    clicked, current = imgui.combo("##preset shapes", 0, list(Drawing.PREDEFINED_SIZES.keys()))
                     if clicked and current:
-                        new_drawing_size = list(PREDEFINED_SIZES.values())[current]
+                        new_drawing_size = list(Drawing.PREDEFINED_SIZES.values())[current]
 
                     builtin_palettes = get_builtin_palettes()
                     custom_palettes = get_custom_palettes()
@@ -1147,20 +1147,6 @@ def render_animation_settings(window):
         imgui.end()
 
         yield True
-
-
-# TODO Allow configuration
-PREDEFINED_SIZES = {
-    "Size presets": None,
-    **{f"{w}, {h}": (w, h)
-       for (w, h) in [(320, 256),
-                      (640, 512),
-                      (800, 600),
-
-                      (16, 16),
-                      (32, 32),
-                      (64, 64)]}
-}
 
 
 @stateful

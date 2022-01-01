@@ -199,16 +199,17 @@ cpdef draw_quad(unsigned int[:, :] pic,
                 (float, float) p0, (float, float) p1, (float, float) p2, (float, float) p3,
                 unsigned int color):
 
-    cdef int min_x, max_x, min_y, max_y;
+    cdef int min_x, max_x, min_y, max_y, cols, rows;
     cdef float x0, y0, x1, y1, x2, y2, x3, y3
     x0, y0 = p0
     x1, y1 = p1
     x2, y2 = p2
     x3, y3 = p3
-    min_x = floor(min(x0, min(x1, min(x2, x3))))
-    max_x = ceil(max(x0, max(x1, max(x2, x3))))
-    min_y = floor(min(y0, min(y1, min(y2, y3))))
-    max_y = ceil(max(y0, max(y1, max(y2, y3))))
+    cols, rows = pic.shape[:2]
+    min_x = int(floor(max(0, min(x0, min(x1, min(x2, x3))))))
+    max_x = int(ceil(min(cols - 1, max(x0, max(x1, max(x2, x3))))))
+    min_y = int(floor(max(0, min(y0, min(y1, min(y2, y3))))))
+    max_y = int(ceil(min(rows - 1, max(y0, max(y1, max(y2, y3))))))
 
     cdef int x
     cdef int y = min_y
@@ -230,7 +231,8 @@ cpdef draw_quad(unsigned int[:, :] pic,
             x += 1
         y += 1
 
-    return Rectangle((min_x, min_y), (max_x - min_x, max_y - min_y))
+    cdef Rectangle pic_rect = Rectangle((0, 0), (cols, rows))
+    return pic_rect.intersect(Rectangle((min_x, min_y), (max_x - min_x, max_y - min_y)))
 
 
 @cython.boundscheck(False)

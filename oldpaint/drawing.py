@@ -51,13 +51,15 @@ class Drawing:
     PREDEFINED_SIZES = {
         "Size presets": None,
         **{f"{w}, {h}": (w, h)
-           for (w, h) in [(320, 256),
-                          (640, 512),
-                          (800, 600),
-
-                          (16, 16),
-                          (32, 32),
-                          (64, 64)]}
+           for (w, h) in [
+                   (16, 16),
+                   (32, 32),
+                   (64, 64),
+                   (320, 256),
+                   (640, 512),
+                   (800, 600),
+                   (1024, 800),
+           ]}
     }
     
     def __init__(self, size, layers=None, palette=None, path=None, selection=None, framerate=10,
