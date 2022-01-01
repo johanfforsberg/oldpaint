@@ -1,3 +1,4 @@
+#cython: language_level=3
 """
 Implementations of primitive drawing operations on numpy arrays.
 """
@@ -11,6 +12,9 @@ cimport numpy as np
 
 from .rect cimport Rectangle
 
+cdef extern from "math.h":
+    double floor(double x)
+    double ceil(double x)
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -187,6 +191,46 @@ cdef void cdraw_line(unsigned int[:, :] pic, unsigned int[:, :] brush,
     cdef int y00 = max(0, min(y0, y1))
     cdef int x11 = min(w, max(x0, x1) + bw)
     cdef int y11 = min(h, max(y0, y1) + bh)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cpdef draw_quad(unsigned int[:, :] pic,
+                (float, float) p0, (float, float) p1, (float, float) p2, (float, float) p3,
+                unsigned int color):
+
+    cdef int min_x, max_x, min_y, max_y;
+    cdef float x0, y0, x1, y1, x2, y2, x3, y3
+    x0, y0 = p0
+    x1, y1 = p1
+    x2, y2 = p2
+    x3, y3 = p3
+    min_x = floor(min(x0, min(x1, min(x2, x3))))
+    max_x = ceil(max(x0, max(x1, max(x2, x3))))
+    min_y = floor(min(y0, min(y1, min(y2, y3))))
+    max_y = ceil(max(y0, max(y1, max(y2, y3))))
+
+    cdef int x
+    cdef int y = min_y
+    cdef bint inside
+    while y <= max_y:
+        x = min_x
+        while x <= max_x:
+            inside = False
+            if ((y0 > y) != (y3 > y)) and (x < ((x3 - x0) * (y - y0) / (y3 - y0) + x0)):
+                inside = not inside
+            if ((y1 > y) != (y0 > y)) and (x < ((x0 - x1) * (y - y1) / (y0 - y1) + x1)):
+                inside = not inside
+            if ((y2 > y) != (y1 > y)) and (x < ((x1 - x2) * (y - y2) / (y1 - y2) + x2)):
+                inside = not inside
+            if ((y3 > y) != (y2 > y)) and (x < ((x2 - x3) * (y - y3) / (y2 - y3) + x3)):
+                inside = not inside
+            if inside:
+                pic[x, y] = color
+            x += 1
+        y += 1
+
+    return Rectangle((min_x, min_y), (max_x - min_x, max_y - min_y))
 
 
 @cython.boundscheck(False)

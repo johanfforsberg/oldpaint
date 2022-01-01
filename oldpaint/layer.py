@@ -5,7 +5,7 @@ from typing import Tuple, List
 import numpy as np
 
 from .rect import Rectangle
-from .draw import draw_line, draw_rectangle, draw_ellipse, draw_fill, paste
+from .draw import draw_line, draw_quad, draw_rectangle, draw_ellipse, draw_fill, paste
 from .ora import load_png, save_png
 from .util import DefaultList
 
@@ -127,6 +127,17 @@ class Layer:
         data = self.get_data(frame)
         with self.lock:
             rect = draw_line(data, brush, p0, p1, step)
+            if rect and set_dirty:
+                self.set_dirty(rect, frame)
+            self.version += 1
+        return rect
+
+    def draw_quad(self, p0: Tuple[int, int], p1: Tuple[int, int],
+                  p2: Tuple[int, int], p3: Tuple[int, int], color: int,
+                  set_dirty: bool=True, frame:int = 0):
+        data = self.get_data(frame)
+        with self.lock:
+            rect = draw_quad(data, p0, p1, p2, p3, color)
             if rect and set_dirty:
                 self.set_dirty(rect, frame)
             self.version += 1
