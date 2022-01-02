@@ -1047,8 +1047,8 @@ def render_main_menu(window):
                 if window.mouse_position:
                     imgui.set_cursor_screen_pos((w - 100, 0))
                     x, y = window.to_image_coords(*window.mouse_position)
-                    if window.stroke_tool:
-                        txt = repr(window.stroke_tool)
+                    if window.stroke:
+                        txt = repr(window.stroke.tool)
                         if txt:
                             imgui.text(txt)
                         else:

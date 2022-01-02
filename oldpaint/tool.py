@@ -43,7 +43,7 @@ class Tool(metaclass=abc.ABCMeta):
         "Run once at the beginning of the stroke."
         self.points.append(point)
 
-    def draw(self, overlay, point, buttons, modifiers):
+    def draw(self, overlay, point, buttons, modifiers, pressure):
         "Runs once per mouse move event."
         # layer: overlay layer (that can safely be drawn to),
         # point: the latest mouse coord,
@@ -95,7 +95,6 @@ class PencilTool(Tool):
 class InkTool(Tool):
 
     tool = ToolName.ink
-    brush_preview = False
 
     def start(self, overlay, point, buttons, modifiers):
         "Run once at the beginning of the stroke."
