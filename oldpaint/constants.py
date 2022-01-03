@@ -11,3 +11,4 @@ class ToolName(Enum):
     floodfill = 7
     selection = 8
     picker = 9
+    ink = 10

@@ -22,7 +22,9 @@ draw_program = Program(VertexShader("glsl/palette_vert.glsl"),
 
 def render_drawing(drawing, highlighted_layer=None):
 
-    "This function has the job of rendering a drawing to a framebuffer."
+    """
+    This function has the job of rendering a drawing to a framebuffer.
+    """
 
     offscreen_buffer = _get_offscreen_buffer(drawing.size)
 

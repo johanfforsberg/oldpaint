@@ -1,15 +1,15 @@
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from functools import lru_cache
+from functools import lru_cache, reduce
 import logging
 import os
-from queue import Queue
+import operator
 
 import imgui
 import pyglet
 from pyglet import gl
-from pyglet.window import key
+from pyglet.window import key, mouse
 # from IPython import start_ipython
 
 from fogl.framebuffer import FrameBuffer
@@ -25,8 +25,9 @@ from .drawing import Drawing
 from .plugin import init_plugins
 from .rect import Rectangle
 from .render import render_drawing
-from .stroke import make_stroke
-from .tool import (PencilTool, PointsTool, SprayTool,
+from .stroke import Stroke
+from .tablet import TabletStateHandler
+from .tool import (PencilTool, InkTool, PointsTool, SprayTool,
                    LineTool, RectangleTool, EllipseTool,
                    SelectionTool, PickerTool, FillTool)
 from .util import (Selectable, Selectable2, make_view_matrix, show_load_dialog, show_save_dialog,
@@ -49,9 +50,13 @@ EYE4 = (gl.GLfloat*16)(1, 0, 0, 0,
 def no_imgui_events(f):
     "Decorator for event callbacks that should ignore events on imgui windows."
     def inner(*args):
-        io = imgui.get_io()
-        if not (io.want_capture_mouse or io.want_capture_keyboard):
-            f(*args)
+        try:
+            io = imgui.get_io()
+            if not (io.want_capture_mouse or io.want_capture_keyboard):
+                f(*args)
+        except imgui.ImGuiError:
+            # TODO sometimes happens on startup, guess it's a race conditions somehow
+            pass
     return inner
 
 
@@ -70,7 +75,7 @@ class OldpaintWindow(pyglet.window.Window):
         self.tools = Selectable2({
             tool: tool
             for tool in [
-                PencilTool, PointsTool, SprayTool,
+                PencilTool, InkTool, PointsTool, SprayTool,
                 LineTool, RectangleTool, EllipseTool,
                 FillTool,
                 SelectionTool, PickerTool
@@ -97,9 +102,8 @@ class OldpaintWindow(pyglet.window.Window):
         # All the drawing will happen in a thread, managed by this executor
         self.executor = ThreadPoolExecutor(max_workers=1)
 
+        # Current stroke, if any
         self.stroke = None
-        self.stroke_tool = None
-        self.mouse_event_queue = None
 
         # Mouse cursor setup
         self.mouse_texture = ImageTexture(*load_png("icons/cursor.png"))
@@ -113,7 +117,7 @@ class OldpaintWindow(pyglet.window.Window):
         self.icons = {
             name: ImageTexture(*load_png(f"icons/{name}.png"))
             for name in ["selection", "ellipse", "floodfill", "line", "spray",
-                         "pencil", "picker", "points", "rectangle"]
+                         "pencil", "picker", "points", "rectangle", "ink"]
         }
 
         self.border_vao = VertexArrayObject(vertices_class=SimpleVertices)
@@ -142,35 +146,27 @@ class OldpaintWindow(pyglet.window.Window):
             "metrics": False
         }
 
-        # TODO This is the basics for using tablet pressure info
-        # tablets = pyglet.input.get_tablets()
-        # if tablets:
-        #     self.tablet = tablets[0]
-        #     self.canvas = self.tablet.open(self)
-
-        #     @self.canvas.event
-        #     def on_motion(cursor, x, y, pressure, a, b):
-        #         self._update_cursor(x, y)
-        #         if self.mouse_event_queue:
-        #             self.mouse_event_queue.put(("mouse_drag", (self.to_image_coords(x, y), 0, 0)))
-
-        @contextmanager
-        def blah():
-            yield self.overlay
-            rect = self.overlay.dirty
-            self.drawing.update(self.overlay, rect)
-            self.overlay.clear(rect, frame=0)
-
         # TODO this works, but figure out a way to exit automatically when the application closes.
+        # @contextmanager
+        # def blah():
+        #     yield self.overlay
+        #     rect = self.overlay.dirty
+        #     self.drawing.update(self.overlay, rect)
+        #     self.overlay.clear(rect, frame=0)
         # Thread(target=start_ipython,
         #        kwargs=dict(colors="neutral", user_ns={"drawing": self.drawing, "blah": blah})).start()
 
         self.plugins = {}
         init_plugins(self)
 
+        # ways to directly access current keys and mouse buttons
         self.keys = key.KeyStateHandler()
         self.push_handlers(self.keys)
-
+        self.mousebuttons = mouse.MouseStateHandler()
+        self.push_handlers(self.mousebuttons)
+        # Setup pressure sensitive drawing tablet (if available)
+        self.tablet = TabletStateHandler(self)
+        
         self._mru_cycling = False  # Whether Alt+Tabbing through drawings
 
     @property
@@ -209,10 +205,12 @@ class OldpaintWindow(pyglet.window.Window):
     @lru_cache(1)
     def get_background_texture(self, color, contrast=1):
         r, g, b, _ = color
-        return ImageTexture((2, 2), [round(r*contrast), round(g*contrast), round(b*contrast), 255,
-                                     r, g, b, 255,
-                                     r, g, b, 255,
-                                     round(r*contrast), round(g*contrast), round(b*contrast), 255])
+        return ImageTexture((2, 2), [
+            round(r*contrast), round(g*contrast), round(b*contrast), 255,
+            r, g, b, 255,
+            r, g, b, 255,
+            round(r*contrast), round(g*contrast), round(b*contrast), 255
+        ])
 
     def add_recent_file(self, filename, maxsize=10):
         self.recent_files[filename] = None
@@ -232,46 +230,45 @@ class OldpaintWindow(pyglet.window.Window):
             return self.drawing.selection
 
     @no_imgui_events
-    def on_mouse_press(self, x, y, button, modifiers):
+    def on_mouse_press(self, x, y, buttons, modifiers):
         if not self.drawing or self.drawing.locked or self.selection:
             return
-        if self.mouse_event_queue:
+        if self.stroke:
             return
-        if button in (pyglet.window.mouse.LEFT,
-                      pyglet.window.mouse.RIGHT):
-
+        left = buttons & mouse.LEFT
+        right = buttons & mouse.RIGHT
+        tablet = self.tablet.active
+        if (tablet and left) or ((not tablet) and (left or right)):
             if self.brush_preview_dirty:
                 self.overlay.clear(self.brush_preview_dirty, frame=0)
                 self.brush_preview_dirty = None
 
-            self.mouse_event_queue = Queue()
             x, y = self.to_image_coords(x, y)
             x, y = self.drawing.get_point(x, y)
-            initial_point = int(x), int(y)
-            self.mouse_event_queue.put(("mouse_down", initial_point, button, modifiers))
-            if button == pyglet.window.mouse.LEFT:
+            if self.mousebuttons[mouse.RIGHT]:
+                # Erasing always uses background color
+                color = brush_color = self.drawing.palette.background
+            else:
                 color = self.drawing.palette.foreground
                 if isinstance(self.brush, PicBrush):
                     # Use original brush colors when drawing with a custom brush
                     brush_color = None
                 else:
                     brush_color = self.drawing.palette.foreground
-            else:
-                # Erasing always uses background color
-                color = brush_color = self.drawing.palette.background
             tool = self.tools.current(self.drawing, self.brush, color, brush_color)
-            self.stroke = self.executor.submit(make_stroke, self.overlay, self.mouse_event_queue, tool)
-            self.stroke.add_done_callback(lambda s: self.executor.submit(self._finish_stroke, s))
-            self.stroke_tool = tool
+            self.stroke = Stroke(self.overlay, tool)
+            fut = self.executor.submit(self.stroke)
+            fut.add_done_callback(lambda s: self.executor.submit(self._finish_stroke, s))
+            self.stroke.queue_event("mouse_down", (x, y), buttons, modifiers)
             self.autosave_drawing.cancel()  # No autosave while drawing
 
-    def on_mouse_release(self, x, y, button, modifiers):
-        if self.mouse_event_queue:
+    @try_except_log
+    def on_mouse_release(self, x, y, buttons, modifiers):
+        if self.stroke:
             x, y = self.to_image_coords(x, y)
             x, y = self.drawing.get_point(x, y)
-            pos = int(x), int(y)
-            self.mouse_event_queue.put(("mouse_up", pos, button, modifiers))
-
+            self.stroke.queue_event("mouse_up", (x, y), buttons, modifiers)
+            
     @no_imgui_events
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
         if self.keys[key.LSHIFT]:
@@ -293,7 +290,7 @@ class OldpaintWindow(pyglet.window.Window):
             self._draw_brush_preview(x - dx, y - dy, x, y)
 
     @no_imgui_events
-    def on_mouse_drag(self, x, y, dx, dy, button, modifiers):
+    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         "Callback for mouse movement with buttons held"
         if (x, y) == self.mouse_position:
             # The mouse hasn't actually moved; do nothing
@@ -303,9 +300,13 @@ class OldpaintWindow(pyglet.window.Window):
             # Add to ongoing stroke
             x, y = self.to_image_coords(x, y)
             x, y = self.drawing.get_point(x, y)
-            ipos = int(x), int(y)
-            self.mouse_event_queue.put(("mouse_drag", ipos, button, modifiers))
-        elif button == pyglet.window.mouse.MIDDLE:
+            ipos = x, y
+            if self.tablet.active:
+                pressure = self.tablet["pressure"]
+            else:
+                pressure = 1
+            self.stroke.queue_event("mouse_drag", ipos, buttons, modifiers, pressure)
+        elif buttons & mouse.MIDDLE:
             # Pan image
             self.change_offset(dx, dy)
 
@@ -322,7 +323,7 @@ class OldpaintWindow(pyglet.window.Window):
 
         if self.stroke:
             if symbol == key.ESCAPE:
-                self.mouse_event_queue.put(("abort",))
+                self.stroke.queue_event("abort")
             return
 
         if self.drawing:
@@ -410,16 +411,16 @@ class OldpaintWindow(pyglet.window.Window):
                 else:
                     self.highlighted_layer = self.drawing.layers.current
 
-            elif symbol == key.W:
+            elif symbol == key.W or symbol == key.PAGEUP:
                 if modifiers & key.MOD_SHIFT:
                     self.drawing.move_layer_up()
                 else:
                     self.drawing.next_layer()
                     self.highlighted_layer = self.drawing.layers.current
-            elif symbol == key.S:
+            elif symbol == key.S or symbol == key.PAGEDOWN:
                 if modifiers & key.MOD_SHIFT:
                     self.drawing.move_layer_down()
-                elif modifiers & key.MOD_CTRL:
+                elif symbol == key.S and modifiers & key.MOD_CTRL:
                     self.drawing and self.save_drawing()
                 else:
                     self.drawing.prev_layer()
@@ -542,17 +543,19 @@ class OldpaintWindow(pyglet.window.Window):
                     gl.glDrawArrays(gl.GL_LINE_LOOP, 0, 4)
 
                 # Selection rectangle
-                tool = self.stroke_tool
-                selection = ((tool and tool.show_rect and tool.rect) or self.selection)
-                if selection:
-                    self.set_selection(selection)
-                    with self.selection_vao:
-                        gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, vm)
-                        gl.glUniform3f(1, 1., 1., 0.)
-                        gl.glLineWidth(1)
-                        gl.glDrawArrays(gl.GL_LINE_LOOP, 0, 4)
+                if self.stroke:
+                    tool = self.stroke.tool
+                    selection = ((tool and tool.show_rect and tool.rect) or self.selection)
+                    if selection:
+                        self.set_selection(selection)
+                        with self.selection_vao:
+                            gl.glUniformMatrix4fv(0, 1, gl.GL_FALSE, vm)
+                            gl.glUniform3f(1, 1., 1., 0.)
+                            gl.glLineWidth(1)
+                            gl.glDrawArrays(gl.GL_LINE_LOOP, 0, 4)
 
-        self._draw_mouse_cursor()
+        if not self.tablet.active:
+            self._draw_mouse_cursor()
 
         ui.draw_ui(self)
 
@@ -594,12 +597,11 @@ class OldpaintWindow(pyglet.window.Window):
         return texture
 
     @cache_clear(get_layer_preview_texture)
-    def _finish_stroke(self, stroke):
+    def _finish_stroke(self, fut):
         "Callback that gets run every time a stroke is finished."
-        # Since this is a callback, stroke is a Future and is guaranteed to be finished.
-        self.stroke_tool = None
-        tool = stroke.result()
-        if tool:
+        finished = fut.result()
+        if finished:
+            tool = self.stroke.tool
             if tool.rect:
                 # If no rect is set, the tool is presumed to not have changed anything.
                 self.drawing.change_layer(self.overlay, tool.rect, tool.tool)
@@ -611,7 +613,6 @@ class OldpaintWindow(pyglet.window.Window):
         else:
             # The stroke was aborted
             self.overlay.clear()
-        self.mouse_event_queue = None
         self.stroke = None
         self.autosave_drawing()
 

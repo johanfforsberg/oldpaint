@@ -15,6 +15,8 @@ class Tool(metaclass=abc.ABCMeta):
     """
     Tools are various ways of mouse interaction.
     They can draw to the image, but also inspect it or change other aspects.
+    Usually they only draw to the overlay, at the end of the stroke the
+    tool's rect will be copied to the current layer.
     """
 
     tool = None  # Name of the tool (should correspond to an icon)
@@ -41,7 +43,7 @@ class Tool(metaclass=abc.ABCMeta):
         "Run once at the beginning of the stroke."
         self.points.append(point)
 
-    def draw(self, overlay, point, buttons, modifiers):
+    def draw(self, overlay, point, buttons, modifiers, pressure):
         "Runs once per mouse move event."
         # layer: overlay layer (that can safely be drawn to),
         # point: the latest mouse coord,
@@ -71,9 +73,8 @@ class PencilTool(Tool):
     "One continuous line along the mouse movement"
 
     tool = ToolName.pencil
-    ephemeral = False
 
-    def draw(self, overlay, point, buttons, modifiers):
+    def draw(self, overlay, point, buttons, modifiers, pressure):
         if self.points[-1] == point:
             return
         p0 = tuple(self.points[-1])
@@ -91,6 +92,53 @@ class PencilTool(Tool):
             self.rect = rect.unite(self.rect)
 
 
+class InkTool(Tool):
+
+    tool = ToolName.ink
+
+    def start(self, overlay, point, buttons, modifiers):
+        "Run once at the beginning of the stroke."
+        self.points.append(point)
+        self._last_width = None
+        self._last_p = None
+        # TODO these should be settings somehow
+        self._max_width = 5  # Actually half the max width
+        self._min_width = 0.5
+        self._pressure_exponent = 2
+
+    def draw(self, overlay, point, buttons, modifiers, pressure):
+        if self.points[-1] == point:
+            return
+        x0, y0 = tuple(self.points[-1])
+        x1, y1 = point
+        dx = x1 - x0
+        dy = y1 - y0
+        d = (dx**2 + dy**2)**0.5
+        dxn = dx / d
+        dyn = dy / d
+        w0 = self._last_width or self._min_width
+        # We put some minimum width here, to prevent subpixel lines which looks
+        # kind of broken. Maybe that's desirable in some cases?
+        w1 = max(self._min_width, pressure**self._pressure_exponent * self._max_width)
+        self._last_width = w1
+        if self._last_p:
+            # We cheat here by using the last end point as new starting point
+            # This will make the connections look weird if there are very fast
+            # turns with high pressure. But so far I have not seen any problem
+            # in practice. We'll see.
+            p1, p0 = self._last_p
+        else:
+            p0 = (x0 - dyn * w0, y0 + dxn * w0)
+            p1 = (x0 + dyn * w0, y0 - dxn * w0)
+        p2 = (x1 + dyn * w1, y1 - dxn * w1)
+        p3 = (x1 - dyn * w1, y1 + dxn * w1)
+        self._last_p = p2, p3
+        rect = overlay.draw_quad(p0, p1, p2, p3, self.brush_color + 255*2**24)
+        if rect:
+            self.rect = rect.unite(self.rect)
+        self.points.append(point)
+
+
 class PointsTool(Tool):
 
     "A series of spaced points along the mouse movement."
@@ -104,7 +152,7 @@ class PointsTool(Tool):
     # Config
     step: (int, slice(1, 100)) = 5  # More line a minimum step
 
-    def draw(self, overlay, point, buttons, modifiers):
+    def draw(self, overlay, point, buttons, modifiers, pressure):
         if self.points[-1] == point:
             return
         self.points.append(point)
@@ -127,7 +175,7 @@ class SprayTool(Tool):
 
     tool = ToolName.spray
     ephemeral = False
-    period = 0.0001
+    period = 0.001
 
     size: (int, slice(1, 100)) = 10
     intensity: (float, slice(0, 1)) = 1.0
@@ -138,20 +186,21 @@ class SprayTool(Tool):
 
     def start(self, overlay, point, buttons, modifiers):
         super().start(overlay, point, buttons, modifiers)
-        self.draw(overlay, point, buttons, modifiers)
+        self.draw(overlay, point, buttons, modifiers, 0)
 
-    def draw(self, overlay, point, buttons, modifiers):
-        # TODO this draws one point at a time, really slow.
+    def draw(self, overlay, point, buttons, modifiers, pressure):
         self.points.append(point)
         if len(self.points) % self._get_n_skip(self.intensity) == 0:
-            x, y = point
-            xg = gauss(x, self.size)
-            yg = gauss(y, self.size)
-            p = (xg, yg)
-            brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-            rect = overlay.draw_line(p, p, brush=brush, offset=self.brush.center)
-            if rect:
-                self.rect = rect.unite(self.rect)
+            for _ in range(int(pressure * 10)):
+                # TODO draws one point at a time, really slow.
+                x, y = point
+                xg = gauss(x, self.size)
+                yg = gauss(y, self.size)
+                p = (xg, yg)
+                brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
+                rect = overlay.draw_line(p, p, brush=brush, offset=self.brush.center)
+                if rect:
+                    self.rect = rect.unite(self.rect)
 
 
 class LineTool(Tool):
@@ -167,7 +216,7 @@ class LineTool(Tool):
         super().start(overlay, point, buttons, modifiers)
         self.points.append(None)
 
-    def draw(self, overlay, point, buttons, modifiers):
+    def draw(self, overlay, point, buttons, modifiers, pressure):
         p0 = tuple(self.points[0][:2])
         self.points[1] = point
         p1 = point
@@ -199,7 +248,7 @@ class RectangleTool(Tool):
         super().start(overlay, point, buttons, modifiers)
         self.points.append(point)
 
-    def draw(self, overlay, point, buttons, modifiers):
+    def draw(self, overlay, point, buttons, modifiers, pressure):
         p0 = self.points[0]
         self.points[1] = point
         r = from_points([p0, point])
@@ -209,6 +258,8 @@ class RectangleTool(Tool):
                                            color=self.color + 255*2**24)
 
     def finish(self, overlay, point, buttons, modifiers):
+        if len(self.points) > 1:
+            return
         p0 = self.points[0]
         r = from_points([p0, point])
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
@@ -220,7 +271,7 @@ class RectangleTool(Tool):
         
     def __repr__(self):
         x0, y0 = self.points[0]
-        x1, y1 = self.points[-1]
+        x1, y1 = self.points[1]
         return f"{abs(x1 - x0) + 1}, {abs(y1 - y0) + 1}"
 
 
@@ -236,7 +287,7 @@ class EllipseTool(Tool):
         self.points.append(point)
 
     @try_except_log
-    def draw(self, overlay, point, buttons, modifiers):
+    def draw(self, overlay, point, buttons, modifiers, pressure):
         x0, y0 = self.points[0]
         self.points[1] = point
         x, y = point
@@ -281,7 +332,7 @@ class SelectionTool(Tool):
     def start(self, overlay, point, buttons, modifiers):
         super().start(overlay, point, buttons, modifiers)
     
-    def draw(self, overlay, point, buttons, modifiers):
+    def draw(self, overlay, point, buttons, modifiers, pressure):
         self.rect = overlay.rect.intersect(from_points([self.points[0], point]))
 
     def finish(self, overlay, point, buttons, modifiers):
@@ -306,20 +357,22 @@ class PickerTool(Tool):
         super().__init__(drawing, brush, color, initial)
         self.color = None
 
-    def _pick(self, overlay, point, buttons, modifiers):
+    def _pick(self, overlay, point, buttons, modifiers, *args):
         # Find the pixel that is visible at the given point.
-        layer = self.drawing.get_layer_visible_at_point(point) or self.drawing.layers[0]
+        x, y = point
+        pos = int(x), int(y)
+        layer = self.drawing.get_layer_visible_at_point(pos) or self.drawing.layers[0]
 
         if modifiers & window.key.MOD_SHIFT:
             # Select the layer
             self.drawing.layers.select(layer)
         else:
             # Select the color
-            index = layer.get_data()[point]
+            index = layer.get_data()[pos]
             if buttons == window.mouse.LEFT:
                 self.drawing.palette.foreground = index
             elif buttons == window.mouse.RIGHT:
                 self.drawing.palette.background = index
 
-    start = _pick
+    # start = _pick
     draw = _pick

@@ -46,6 +46,21 @@ class Drawing:
     use the corresponding methods in this class instead. Otherwise you will
     mess up the undo history beyond repair.
     """
+
+    # TODO Allow configuration
+    PREDEFINED_SIZES = {
+        "Size presets": None,
+        **{f"{w}, {h}": (w, h)
+           for (w, h) in [
+                   (16, 16),
+                   (32, 32),
+                   (64, 64),
+                   (320, 256),
+                   (640, 512),
+                   (800, 600),
+                   (1024, 800),
+           ]}
+    }
     
     def __init__(self, size, layers=None, palette=None, path=None, selection=None, framerate=10,
                  active_plugins=None, **kwargs):
@@ -173,26 +188,6 @@ class Drawing:
         palette = Palette(colors, transparency=0, size=len(colors))
         return cls(size=layer.size, layers=[layer], palette=palette, path=path)
 
-    def clone(self) -> "Drawing":
-        layers = [layer.clone() for layer in self.layers]
-        palette = self.palette.clone()
-        return Drawing(self.size, layers, palette=palette)
-
-    def flatten(self, frame=None):
-        """Return a single flattened version of the drawing data."""
-        frame = frame if frame is not None else self.frame
-        if self.layers[0].visible:
-            combined = self.layers[0].get_data(frame).copy()
-        else:
-            combined = np.zeros(self.size, dtype=self.layers[0].dtype)
-        for layer in self.layers[1:]:
-            if layer.visible:
-                data = layer.get_data(self.frame)
-                mask = data.astype(np.bool)
-                # TODO Should be doable without copying
-                combined = np.where(mask, data, combined)
-        return combined
-    
     def save_png(self, path):
         """Save as a single PNG file. Flattens all visible layers into one image."""
         flattened = self.flatten()
@@ -266,6 +261,26 @@ class Drawing:
         else:
             return None
         return layer
+
+    def clone(self) -> "Drawing":
+        layers = [layer.clone() for layer in self.layers]
+        palette = self.palette.clone()
+        return Drawing(self.size, layers, palette=palette)
+
+    def flatten(self, frame=None):
+        """Return a single flattened version of the drawing data."""
+        frame = frame if frame is not None else self.frame
+        if self.layers[0].visible:
+            combined = self.layers[0].get_data(frame).copy()
+        else:
+            combined = np.zeros(self.size, dtype=self.layers[0].dtype)
+        for layer in self.layers[1:]:
+            if layer.visible:
+                data = layer.get_data(self.frame)
+                mask = data.astype(np.bool)
+                # TODO Should be doable without copying
+                combined = np.where(mask, data, combined)
+        return combined
 
     def crop(self, rect):
         edit = DrawingCropEdit.create(self, rect)
