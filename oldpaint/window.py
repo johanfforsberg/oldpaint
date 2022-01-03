@@ -411,16 +411,16 @@ class OldpaintWindow(pyglet.window.Window):
                 else:
                     self.highlighted_layer = self.drawing.layers.current
 
-            elif symbol == key.W:
+            elif symbol == key.W or symbol == key.PAGEUP:
                 if modifiers & key.MOD_SHIFT:
                     self.drawing.move_layer_up()
                 else:
                     self.drawing.next_layer()
                     self.highlighted_layer = self.drawing.layers.current
-            elif symbol == key.S:
+            elif symbol == key.S or symbol == key.PAGEDOWN:
                 if modifiers & key.MOD_SHIFT:
                     self.drawing.move_layer_down()
-                elif modifiers & key.MOD_CTRL:
+                elif symbol == key.S and modifiers & key.MOD_CTRL:
                     self.drawing and self.save_drawing()
                 else:
                     self.drawing.prev_layer()
