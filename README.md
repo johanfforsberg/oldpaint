@@ -55,7 +55,7 @@ In the best case, you have everything needed, including python 3.7 or later, com
     $ make build
     $ make run
     
-It will take a few seconds to start up the first time, since it uses cython to compile some parts to machine code. After that a window should appear and you can start drawing.
+It will take a few seconds to start up the first time, since it uses cython to compile some parts to machine code at import, and caches it for future runs. After that a window should appear and you can start drawing.
 
 If any step fails, you're probably missing some required stuff. On Ubuntu, something like the following should help.
     
