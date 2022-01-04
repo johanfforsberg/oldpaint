@@ -19,6 +19,7 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 import pickle
 from dataclasses import dataclass
 import struct
+from typing import TYPE_CHECKING
 import zlib
 
 import numpy as np
@@ -26,6 +27,9 @@ import numpy as np
 from .constants import ToolName
 from .layer import Layer
 from .rect import Rectangle
+if TYPE_CHECKING:
+    # Prevent a circular import
+    from .drawing import Drawing
 
 
 class Edit(metaclass=ABCMeta):
@@ -48,11 +52,11 @@ class Edit(metaclass=ABCMeta):
         return cls(index=index, rect=Rectangle(*rect), data=data), z.unused_data
 
     @abstractmethod
-    def perform(drawing: Drawing):
+    def perform(self, drawing: Drawing):
         pass
 
     @abstractmethod
-    def revert(drawing: Drawing):
+    def revert(self, drawing: Drawing):
         pass
     
     @abstractproperty

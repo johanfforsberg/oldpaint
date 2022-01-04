@@ -5,7 +5,6 @@ e.g. Krita. Don't expect the opposite to be true in general though, as we have v
 specific requirements.
 """
 
-from typing import List, Tuple
 import io
 import json
 import os
