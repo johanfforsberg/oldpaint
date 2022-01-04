@@ -169,6 +169,8 @@ class OldpaintWindow(pyglet.window.Window):
         
         self._mru_cycling = False  # Whether Alt+Tabbing through drawings
 
+        self.ui = ui.UI(self)
+
     @property
     def overlay(self):
         return self.drawings.current.overlay
@@ -557,7 +559,7 @@ class OldpaintWindow(pyglet.window.Window):
         if not self.tablet.active:
             self._draw_mouse_cursor()
 
-        ui.draw_ui(self)
+        self.ui.render(self)
 
         gl.glFinish()  # No double buffering, to minimize latency (does this work?)
 

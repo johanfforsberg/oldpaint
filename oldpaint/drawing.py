@@ -61,7 +61,7 @@ class Drawing:
                    (1024, 800),
            ]}
     }
-    
+
     def __init__(self, size, layers=None, palette=None, path=None, selection=None, framerate=10,
                  active_plugins=None, **kwargs):
         if kwargs:
@@ -75,7 +75,6 @@ class Drawing:
 
         # Animation related things
         self.frame = 0
-        self.n_frames = max(1, *(len(l.frames) for l in self.layers))
         self.framerate = framerate
         self.playing_animation = False
         
@@ -290,7 +289,15 @@ class Drawing:
     @property
     def is_animated(self):
         return self.n_frames > 1
-        
+
+    @property
+    def n_frames(self):
+        return self._n_frames()
+
+    @lru_cache(1)
+    def _n_frames(self):
+        return max(1, *(len(l.frames) for l in self.layers))
+
     def add_frame(self, frame=None, copy=False):
         frame = frame if frame is not None else self.frame + 1
         if copy:
@@ -307,6 +314,7 @@ class Drawing:
         self._make_edit(edit)
          
         self.frame = frame
+        self._n_frames.cache_clear()
  
     def remove_frame(self, frame=None):
         frame = frame if frame is not None else self.frame
@@ -315,6 +323,7 @@ class Drawing:
             for i, layer in enumerate(self.layers)
         ])
         self._make_edit(edit)
+        self._n_frames.cache_clear()
 
     def move_frame_forward(self, layer=None, frame=None):
         layer = layer if layer is not None else self.layers.index()

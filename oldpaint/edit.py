@@ -452,14 +452,12 @@ class AddFrameEdit(Edit):
         layer.add_frame(self.frame, data)
         if self.frame <= drawing.frame:
             drawing.frame += 1
-        drawing.n_frames += 1
 
     def revert(self, drawing):
         layer = drawing.layers[self.index]
         layer.remove_frame(self.frame)
         if self.frame <= drawing.frame:
             drawing.frame -= 1
-        drawing.n_frames -= 1
 
     @property
     def index_str(self):

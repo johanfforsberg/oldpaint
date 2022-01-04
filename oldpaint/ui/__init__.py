@@ -24,37 +24,40 @@ from ..util import show_save_dialog, throttle, stateful
 
 from .file_browser import render_file_browser
 from .colors import render_palette
-from .menu import render_main_menu
+from .menu import MainMenu
 
 
 logger = logging.getLogger(__name__)
 
 
-@stateful
-def draw_ui(window):
+class UI:
 
-    renderer = PygletRenderer(window)
-    io = imgui.get_io()
-    font = io.fonts.add_font_from_file_ttf(
-        "ttf/Topaznew.ttf", 16, io.fonts.get_glyph_ranges_latin()
-    )
-    renderer.refresh_font_texture()
+    def __init__(self, window):
 
-    # io.config_resize_windows_from_edges = True  # TODO does not seem to work?
+        self.renderer = PygletRenderer(window)
+        io = imgui.get_io()
+        self.font = io.fonts.add_font_from_file_ttf(
+            "ttf/Topaznew.ttf", 16, io.fonts.get_glyph_ranges_latin()
+        )
+        self.renderer.refresh_font_texture()
 
-    style = imgui.get_style()
-    style.window_border_size = 0
-    style.window_rounding = 0
+        # io.config_resize_windows_from_edges = True  # TODO does not seem to work?
 
-    # TODO Keyboard navigation might be nice, at least for dialogs... not quite this easy though.
-    io.config_flags |= imgui.CONFIG_NAV_ENABLE_KEYBOARD | imgui.CONFIG_NAV_NO_CAPTURE_KEYBOARD
-    io.key_map[imgui.KEY_SPACE] = key.SPACE
+        style = imgui.get_style()
+        style.window_border_size = 0
+        style.window_rounding = 0
 
-    while True:
+        # TODO Keyboard navigation might be nice, at least for dialogs... not quite this easy though.
+        io.config_flags |= imgui.CONFIG_NAV_ENABLE_KEYBOARD | imgui.CONFIG_NAV_NO_CAPTURE_KEYBOARD
+        io.key_map[imgui.KEY_SPACE] = key.SPACE
+
+        self.main_menu = MainMenu()
+
+    def render(self, window):
         imgui.new_frame()
-        with imgui.font(font):
+        with imgui.font(self.font):
 
-            popup = render_main_menu(window)
+            popup = self.main_menu.render(window)
             if popup:
                 imgui.set_next_window_size(600, 500)
                 imgui.open_popup(popup)
@@ -112,9 +115,7 @@ def draw_ui(window):
 
         imgui.render()
         imgui.end_frame()
-        renderer.render(imgui.get_draw_data())
-
-        yield
+        self.renderer.render(imgui.get_draw_data())
 
 
 def render_tools(tools, icons):

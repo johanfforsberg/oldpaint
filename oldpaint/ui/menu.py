@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import imgui
 import os
 from time import time
@@ -8,33 +9,37 @@ from ..palette import get_builtin_palettes, get_custom_palettes, Palette
 from ..util import stateful
 
 
-@stateful
-def render_main_menu(window):
+@contextmanager
+def ending(started, end_function):
+    yield started
+    if started:
+        end_function()
 
-    print("rebder_main_mebny")
 
-    new_drawing_size = (320, 256)
-    animation_settings_open = False
-    show_edit_history = False
-    show_metrics = False
-    new_drawing_palette = 0
+class MainMenu:
 
-    while True:
+    def __init__(self):
+
+        self.new_drawing_size = (320, 256)
+        self.animation_settings_open = False
+        self.show_edit_history = False
+        self.show_metrics = False
+        self.new_drawing_palette = 0
+
+    def render(self, window):
 
         w, h = window.get_size()
         drawing = window.drawing  # if window.drawing and not window.drawing.playing_animation else False
-        # animation_settings_open = state.animation_settings_open
+        # self.animation_settings_open = state.self.animation_settings_open
+
+        popup = None
 
         if imgui.begin_main_menu_bar():
             if imgui.begin_menu("File", True):
-
                 clicked_load, selected_load = imgui.menu_item("Load", "o", False, True)
                 if clicked_load:
                     # window.load_drawing()
-                    imgui.end_menu()
-                    imgui.end_main_menu_bar()
-                    yield "load-drawing"
-                    continue
+                    popup = "load-drawing"
 
                 if imgui.begin_menu("Load recent...", window.recent_files):
                     for path in reversed(window.recent_files):
@@ -57,9 +62,9 @@ def render_main_menu(window):
                             age_str = f"{age // 60} minutes"
                         else:
                             age_str = "seconds"
-                        clicked, _ = imgui.menu_item(f"{save.name} ({age_str} ago)", None, False, True)
-                        if clicked:
-                            drawing.load_ora(save)
+                            clicked, _ = imgui.menu_item(f"{save.name} ({age_str} ago)", None, False, True)
+                            if clicked:
+                                drawing.load_ora(save)
                     imgui.end_menu()
 
                 imgui.separator()
@@ -72,10 +77,7 @@ def render_main_menu(window):
                 clicked_save_as, selected_save = imgui.menu_item("Save as", None, False, window.drawing)
                 if clicked_save_as:
                     # window.save_drawing(ask_for_path=True)
-                    imgui.end_menu()
-                    imgui.end_main_menu_bar()
-                    yield "save-drawing"
-                    continue
+                    popup = "save-drawing"
 
                 imgui.separator()
 
@@ -102,22 +104,22 @@ def render_main_menu(window):
             if imgui.begin_menu("Drawing", True):
 
                 if imgui.begin_menu("New", True):
-                    _, new_drawing_size = imgui.drag_int2("Size", *new_drawing_size,
-                                                          min_value=1, max_value=2048)
+                    _, self.new_drawing_size = imgui.drag_int2("Size", *self.new_drawing_size,
+                                                               min_value=1, max_value=2048)
 
                     clicked, current = imgui.combo("##preset shapes", 0, list(Drawing.PREDEFINED_SIZES.keys()))
                     if clicked and current:
-                        new_drawing_size = list(Drawing.PREDEFINED_SIZES.values())[current]
+                        self.new_drawing_size = list(Drawing.PREDEFINED_SIZES.values())[current]
 
                     builtin_palettes = get_builtin_palettes()
                     custom_palettes = get_custom_palettes()
                     palettes = builtin_palettes + custom_palettes
                     palette_names = [p.stem for p in palettes]
-                    clicked, new_drawing_palette = imgui.combo("Palette", new_drawing_palette, palette_names)
+                    clicked, self.new_drawing_palette = imgui.combo("Palette", self.new_drawing_palette, palette_names)
 
                     if imgui.button("OK"):
-                        palette = Palette.from_file(palettes[new_drawing_palette])
-                        window.create_drawing(new_drawing_size, palette)
+                        palette = Palette.from_file(palettes[self.new_drawing_palette])
+                        window.create_drawing(self.new_drawing_size, palette)
                     imgui.same_line()
                     if imgui.button("Cancel"):
                         imgui.close_current_popup()
@@ -132,8 +134,8 @@ def render_main_menu(window):
                         clicked, _ = imgui.menu_item("Really? You can't undo this.", None, False, True)
                         if clicked:
                             window.close_drawing(unsaved=True)
-                        imgui.menu_item("No way!", None, False, True)
-                        imgui.end_menu()
+                            imgui.menu_item("No way!", None, False, True)
+                            imgui.end_menu()
 
                 else:
                     if imgui.menu_item("Close", None, False, drawing)[0]:
@@ -169,14 +171,14 @@ def render_main_menu(window):
                     wc, (gw, gh) = imgui.drag_int2("W, H", gw, gh)
                     if gw > 0 and gh > 0:
                         drawing.grid_size = (gw, gh)
-                    imgui.end_menu()
+                        imgui.end_menu()
 
                 only_show_current_layer = imgui.menu_item("Only show current layer", "",
                                                           drawing and drawing.only_show_current_layer,
                                                           drawing)[1]
                 if window.drawing:
                     window.drawing.only_show_current_layer = only_show_current_layer
-                imgui.separator()
+                    imgui.separator()
 
                 for i, d in enumerate(window.drawings.items):
                     if imgui.menu_item(f"{i+1}: {d.filename} {d.size}",
@@ -194,7 +196,7 @@ def render_main_menu(window):
                     # TODO Removing colors is a bit more complicated; what to do with pixels using
                     # that color in the image? Clear them? Only allow removing unused colors?
                     drawing.remove_colors(1, drawing.palette.foreground)
-                imgui.separator()
+                    imgui.separator()
                 if imgui.menu_item("Export as JSON", None, False, drawing)[0]:
                     window.export_palette()
                 imgui.end_menu()
@@ -251,8 +253,8 @@ def render_main_menu(window):
                         else:
                             pw = int(max_size * aspect)
                             ph = max_size
-                        imgui.image(texture.name, pw, ph, border_color=(.25, .25, .25, 1))
-                        imgui.end_tooltip()
+                            imgui.image(texture.name, pw, ph, border_color=(.25, .25, .25, 1))
+                            imgui.end_tooltip()
 
                 window.highlighted_layer = hovered_layer
 
@@ -292,9 +294,12 @@ def render_main_menu(window):
 
                 imgui.separator()
 
-                clicked, state = imgui.menu_item("Settings", None, animation_settings_open, True)
-                if clicked:
-                    animation_settings_open = state
+                # clicked, state = imgui.menu_item("Settings", None, self.animation_settings_open, True)
+                # if clicked:
+                #     # self.animation_settings_open = state
+                if imgui.begin_menu("Settings...", True):
+                    render_animation_settings(window)
+                    imgui.end_menu()
 
                 imgui.end_menu()
 
@@ -302,7 +307,7 @@ def render_main_menu(window):
                 for tool in window.tools:
                     if imgui.menu_item(tool.tool.name, None, tool == window.tools.current)[0]:
                         window.tools.select(tool)
-                imgui.separator()
+                        imgui.separator()
 
                 if imgui.begin_menu("Configure..."):
                     tool = window.tools.current
@@ -318,7 +323,7 @@ def render_main_menu(window):
                                 setattr(tool, name, value)
                     else:
                         imgui.text(f"{tool.tool.name} has no options!")
-                    imgui.end_menu()
+                        imgui.end_menu()
 
                 imgui.end_menu()
 
@@ -336,8 +341,8 @@ def render_main_menu(window):
                     args = {}
                     for name, param in brush.get_params().items():
                         if name == "self":
-                            continue
-                        if param.annotation is int:
+                            pass
+                        elif param.annotation is int:
                             changed, value = imgui.slider_int(name, getattr(brush, name), param.default, 100)
                             if changed:
                                 args[name] = value
@@ -371,16 +376,14 @@ def render_main_menu(window):
                     window.get_brush_preview_texture.cache_clear()
 
                 elif imgui.menu_item("Resize", None, False, drawing.brushes.current)[0]:
-                    window.brush.resize((20, 30))
+                    w, h = window.brush.size
+                    window.brush.resize((w//2.5, h//2.5))
                     window.get_brush_preview_texture.cache_clear()
 
                 imgui.separator()
 
                 if imgui.menu_item("Save current", None, False, drawing.brushes.current)[0]:
-                    imgui.end_menu()
-                    imgui.end_main_menu_bar()
-                    yield "save-brush"
-                    continue
+                    popup = "save-brush"
 
                 elif imgui.menu_item("Remove", None, False, drawing.brushes.current)[0]:
                     window.drawing.brushes.remove()
@@ -408,8 +411,8 @@ def render_main_menu(window):
                 imgui.end_menu()
 
             if imgui.begin_menu("Info", drawing):
-                _, show_edit_history = imgui.menu_item("Edit history", None, show_edit_history, True)
-                _, show_metrics = imgui.menu_item("ImGui Metrics", None, show_metrics, True)
+                _, self.show_edit_history = imgui.menu_item("Edit history", None, self.show_edit_history, True)
+                _, self.show_metrics = imgui.menu_item("ImGui Metrics", None, self.show_metrics, True)
                 imgui.end_menu()
 
             if imgui.begin_menu("Plugins", drawing):
@@ -421,7 +424,7 @@ def render_main_menu(window):
                         active_plugins[name] = {}
                     elif not selected and is_active:
                         del active_plugins[name]
-                imgui.separator()
+                        imgui.separator()
                 if imgui.menu_item("Clear", None, False, True)[0]:
                     active_plugins.clear()
                 imgui.end_menu()
@@ -442,106 +445,87 @@ def render_main_menu(window):
                 if window.mouse_position:
                     imgui.set_cursor_screen_pos((w - 100, 0))
                     x, y = window.to_image_coords(*window.mouse_position)
-                    if window.stroke_tool:
-                        txt = repr(window.stroke_tool)
+                    if window.stroke:
+                        txt = repr(window.stroke.tool)
                         if txt:
                             imgui.text(txt)
                         else:
                             imgui.text(f"{int(x)}, {int(y)}")
                     else:
                         imgui.text(f"{int(x)}, {int(y)}")
-                    # imgui.set_cursor_screen_pos((w - 30, 0))
-                    # color_index = window.drawing.layers.current.pic.get_pixel(x, y)
-                    # r, g, b, _ = window.drawing.palette.colors[color_index]
-                    # imgui.color_button("current_color", r/255, g/255, b/255, 0, 10, 20, 20)
+                        # imgui.set_cursor_screen_pos((w - 30, 0))
+                        # color_index = window.drawing.layers.current.pic.get_pixel(x, y)
+                        # r, g, b, _ = window.drawing.palette.colors[color_index]
+                        # imgui.color_button("current_color", r/255, g/255, b/255, 0, 10, 20, 20)
 
             imgui.end_main_menu_bar()
 
-            # if new_drawing_open:
-            #     new_drawing_open = render_new_drawing_popup(window)
+        # if new_drawing_open:
+        #     new_drawing_open = render_new_drawing_popup(window)
 
-            if animation_settings_open:
-                animation_settings_open = render_animation_settings(window)
+        if self.show_edit_history:
+            self.show_edit_history = render_edits(window.drawing)
 
-            if show_edit_history:
-                show_edit_history = render_edits(window.drawing)
-
-            yield
-
-    # if animation_settings_open != state.animation_settings_open:
-    #     return update_state(state, animation_settings_open=animation_settings_open)
+        return popup
+    # if self.animation_settings_open != state.self.animation_settings_open:
+    #     return update_state(state, self.animation_settings_open=self.animation_settings_open)
     # return state
 
 
-@stateful
 def render_animation_settings(window):
 
-    opened = True
+    drawing = window.drawing
 
-    while opened:
+    imgui.push_item_width(60)
+    changed, framerate = imgui.drag_int("Framerate", drawing.framerate,
+                                        min_value=1, max_value=30)
+    if changed:
+        drawing.set_framerate(framerate)
 
-        drawing = window.drawing
+    imgui.push_item_width(60)
+    changed, time_per_frame = imgui.drag_float("Time per frame", 1 / drawing.framerate,
+                                               min_value=0.0333, max_value=1)
+    if changed:
+        drawing.set_framerate(round(1 / time_per_frame))
 
-        _, opened = imgui.begin("Animation settings", closable=True)
+    # Layers & frames
 
-        imgui.push_item_width(60)
-        changed, framerate = imgui.drag_int("Framerate", drawing.framerate,
-                                            min_value=1, max_value=30)
-        if changed:
-            drawing.set_framerate(framerate)
+    imgui.columns(drawing.n_frames + 1)
 
-        imgui.push_item_width(60)
-        changed, time_per_frame = imgui.drag_float("Time per frame", 1 / drawing.framerate,
-                                                   min_value=0.0333, max_value=1)
-        if changed:
-            drawing.set_framerate(round(1 / time_per_frame))
+    imgui.text("L/F")
+    imgui.next_column()
 
-        # Layers & frames
+    draw_list = imgui.get_window_draw_list()
 
-        imgui.begin_child("layers_frames", border=True)
+    for i in range(drawing.n_frames):
+        if i == drawing.frame:
+            x, y = imgui.get_cursor_screen_pos()
+            draw_list.add_rect_filled(x-10, y-3, x + 30, y + 20, imgui.get_color_u32_rgba(.1, .1, .1, 1))
+        imgui.set_column_offset(i+1, 40 + i*30)
+        imgui.text(str(i))
 
-        imgui.columns(drawing.n_frames + 1)
+        if imgui.core.is_item_clicked(0):
+            drawing.frame = i
 
-        imgui.text("L/F")
         imgui.next_column()
 
-        draw_list = imgui.get_window_draw_list()
+    imgui.separator()
 
-        for i in range(drawing.n_frames):
-            if i == drawing.frame:
+    for i, layer in reversed(list(enumerate(drawing.layers))):
+        imgui.text(str(i))
+        imgui.next_column()
+        for j in range(drawing.n_frames):
+            if j == drawing.frame:
                 x, y = imgui.get_cursor_screen_pos()
-                draw_list.add_rect_filled(x-10, y-3, x + 30, y + 20, imgui.get_color_u32_rgba(.1, .1, .1, 1))
-            imgui.set_column_offset(i+1, 40 + i*30)
-            imgui.text(str(i))
+                draw_list.add_rect_filled(x-10, y-3, x + 30, y + 20,
+                                          imgui.get_color_u32_rgba(.2, .2, .2, 1))
+            if layer.frames[j] is not None:
+                imgui.text("*")
 
-            if imgui.core.is_item_clicked(0):
-                drawing.frame = i
+                if imgui.core.is_item_clicked(0):
+                    drawing.frame = i
 
             imgui.next_column()
-
-        imgui.separator()
-
-        for i, layer in reversed(list(enumerate(drawing.layers))):
-            imgui.text(str(i))
-            imgui.next_column()
-            for j in range(drawing.n_frames):
-                if j == drawing.frame:
-                    x, y = imgui.get_cursor_screen_pos()
-                    draw_list.add_rect_filled(x-10, y-3, x + 30, y + 20,
-                                              imgui.get_color_u32_rgba(.2, .2, .2, 1))
-                if layer.frames[j] is not None:
-                    imgui.text("*")
-
-                    if imgui.core.is_item_clicked(0):
-                        drawing.frame = i
-
-                imgui.next_column()
-
-        imgui.end_child()
-
-        imgui.end()
-
-        yield True
 
 
 def render_edits(drawing):
