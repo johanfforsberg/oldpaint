@@ -374,5 +374,5 @@ class PickerTool(Tool):
             elif buttons == window.mouse.RIGHT:
                 self.drawing.palette.background = index
 
-    # start = _pick
+    start = _pick
     draw = _pick
