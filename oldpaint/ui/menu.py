@@ -135,7 +135,7 @@ class MainMenu:
                         if clicked:
                             window.close_drawing(unsaved=True)
                             imgui.menu_item("No way!", None, False, True)
-                            imgui.end_menu()
+                        imgui.end_menu()
 
                 else:
                     if imgui.menu_item("Close", None, False, drawing)[0]:
@@ -171,7 +171,7 @@ class MainMenu:
                     wc, (gw, gh) = imgui.drag_int2("W, H", gw, gh)
                     if gw > 0 and gh > 0:
                         drawing.grid_size = (gw, gh)
-                        imgui.end_menu()
+                    imgui.end_menu()
 
                 only_show_current_layer = imgui.menu_item("Only show current layer", "",
                                                           drawing and drawing.only_show_current_layer,
@@ -323,7 +323,7 @@ class MainMenu:
                                 setattr(tool, name, value)
                     else:
                         imgui.text(f"{tool.tool.name} has no options!")
-                        imgui.end_menu()
+                    imgui.end_menu()
 
                 imgui.end_menu()
 
