@@ -65,7 +65,7 @@ def make_rgba_image(data: np.ndarray,
 
 
 def save_ora(size: Tuple[int, int],
-             layers: List["Layer"],
+             layers: List[Tuple[np.ndarray, bool]],
              colors: List[Tuple[int, int, int, int]],
              merged: np.ndarray,
              path: str,
@@ -80,9 +80,9 @@ def save_ora(size: Tuple[int, int],
     image_el = ET.Element("image", version="0.0.3", w=str(w), h=str(h))
     stack_el = ET.SubElement(image_el, "stack")
     has_empty_frame = False
-    for i, layer in reversed(list(enumerate(layers))):
-        visibility = "visible" if layer.visible else "hidden"
-        if len(layer.frames) == 1:
+    for i, (frames, visibility) in reversed(list(enumerate(layers))):
+        # visibility = "visible" if layer.visible else "hidden"
+        if len(frames) == 1:
             # Non-animated layer
             ET.SubElement(stack_el, "layer", name=f"layer{i}_frame{0}",
                           src=f"data/layer{i}_frame{0}.png")        
@@ -90,7 +90,7 @@ def save_ora(size: Tuple[int, int],
             # Animated layer
             layer_el = ET.SubElement(stack_el, "stack", name=f"layer{i}",
                                      visibility=visibility)
-            for j, frame in reversed(list(enumerate(layer.frames))):
+            for j, frame in reversed(list(enumerate(frames))):
                 if frame is not None:
                     ET.SubElement(layer_el, "layer", name=f"layer{i}_frame{j}",
                                   src=f"data/layer{i}_frame{j}.png")
@@ -105,8 +105,8 @@ def save_ora(size: Tuple[int, int],
     with zipfile.ZipFile(path, mode="w", compression=zipfile.ZIP_DEFLATED) as orafile:
         orafile.writestr("mimetype", "image/openraster", compress_type=zipfile.ZIP_STORED)
         orafile.writestr("stack.xml", stack_xml)
-        for i, layer in reversed(list(enumerate(layers))):
-            for j, frame in reversed(list(enumerate(layer.frames))):
+        for i, (frames, _) in reversed(list(enumerate(layers))):
+            for j, frame in reversed(list(enumerate(frames))):
                 if frame is not None:
                     with io.BytesIO() as f:
                         _save_png(frame, f, colors=colors)

@@ -62,9 +62,9 @@ class MainMenu:
                             age_str = f"{age // 60} minutes"
                         else:
                             age_str = "seconds"
-                            clicked, _ = imgui.menu_item(f"{save.name} ({age_str} ago)", None, False, True)
-                            if clicked:
-                                drawing.load_ora(save)
+                        clicked, _ = imgui.menu_item(f"{save.name} ({age_str} ago)", None, False, True)
+                        if clicked:
+                            drawing.load_ora(save)
                     imgui.end_menu()
 
                 imgui.separator()

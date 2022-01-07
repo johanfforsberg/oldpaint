@@ -1,10 +1,11 @@
 from collections import OrderedDict
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from contextlib import contextmanager
 from functools import lru_cache, reduce
 import logging
 import os
 import operator
+import time
 
 import imgui
 import pyglet
@@ -66,7 +67,7 @@ class Drawings(Selectable):
 
 class OldpaintWindow(pyglet.window.Window):
 
-    def __init__(self, recent_files, drawing_specs, **kwargs):
+    def __init__(self, recent_files, drawing_specs, autosave_period=60, **kwargs):
  
         super().__init__(**kwargs, caption="Oldpaint", resizable=True, vsync=False)
 
@@ -92,6 +93,8 @@ class OldpaintWindow(pyglet.window.Window):
         self.highlighted_layer = None
         # self.show_selection = False
 
+        self.autosave_drawing = debounce(cooldown=autosave_period, wait=3)(self._autosave_drawing)
+
         # Some gl setup
         self.copy_program = Program(VertexShader("glsl/copy_vert.glsl"),
                                     FragmentShader("glsl/copy_frag.glsl"))
@@ -101,6 +104,7 @@ class OldpaintWindow(pyglet.window.Window):
 
         # All the drawing will happen in a thread, managed by this executor
         self.executor = ThreadPoolExecutor(max_workers=1)
+        self.autosave_executor = ProcessPoolExecutor(max_workers=1)
 
         # Current stroke, if any
         self.stroke = None
@@ -393,6 +397,7 @@ class OldpaintWindow(pyglet.window.Window):
                 self.overlay.clear()
                 self._mru_cycling = True
                 self.drawings.select_most_recent(update_mro=False)
+                self.overlay.clear()
             elif symbol in range(48, 58):
                 if symbol == 48:
                     index = 9
@@ -461,7 +466,8 @@ class OldpaintWindow(pyglet.window.Window):
                 self.drawing.brushes.current = None
                 self.overlay.clear()
 
-            elif symbol == key.LCTRL and not modifiers:
+            elif symbol == key.LCTRL:
+                print("ctrl")
                 self.overlay.clear()
                 self.tools.select(PickerTool)
 
@@ -702,11 +708,20 @@ class OldpaintWindow(pyglet.window.Window):
 
             fut.add_done_callback(
                 lambda fut: really_export_drawing(drawing, fut.result()))
-    
-    @debounce(cooldown=60, wait=3)
-    def autosave_drawing(self):
-        fut = self.executor.submit(self.drawing.autosave)
-        fut.add_done_callback(lambda path: logger.info(f"Autosaved to '{path.result()}'"))
+
+    def _autosave_drawing(self):
+        t0 = time.time()
+        func, args, kwargs = self.drawing.get_autosave_args()
+        filename = args[-1]  # TODO...
+        fut = self.autosave_executor.submit(func, *args, **kwargs)
+
+        def done(f):
+            if f.done():
+                logger.info(f"Autosaved to '{filename}', took {time.time()-t0:.2} s.")
+            else:
+                logger.error(f"Failed to autosave to '{filename}'; {f.exception()}")
+
+        fut.add_done_callback(done)
 
     def load_drawing(self, path=None):
 

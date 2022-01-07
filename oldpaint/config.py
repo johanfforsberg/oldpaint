@@ -63,7 +63,9 @@ def get_drawing_cache_dir(drawing_path):
     return path
 
 
-def get_autosave_filename(drawing_path, keep=3):
+def get_autosave_filename(drawing_path, keep=10):
+    # TODO perhaps find some more clever method of keeping some older autosaves
+    # without storing too many?
     cache_dir = get_drawing_cache_dir(drawing_path)
     files = list(get_autosaves(drawing_path))
     file_nos = sorted(int(fn.name.split(".")[0]) for fn in files[-keep:])

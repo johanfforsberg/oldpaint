@@ -37,6 +37,7 @@ class OldpaintEventLoop(pyglet.app.EventLoop):
 def run():
     parser = ArgumentParser()
     parser.add_argument("drawing", type=parse_drawing_spec, nargs="*")
+    parser.add_argument("-a", "--autosave-period", type=int, default=60)
 
     args = parser.parse_args()
 
@@ -47,7 +48,8 @@ def run():
     width, height = config["window_size"]
 
     window = OldpaintWindow(width=width, height=height, recent_files=config["recent_files"],
-                            config=gl_config, drawing_specs=args.drawing)
+                            config=gl_config, drawing_specs=args.drawing,
+                            autosave_period=args.autosave_period)
 
     pyglet.app.event_loop = OldpaintEventLoop()
     pyglet.app.run(0.02)

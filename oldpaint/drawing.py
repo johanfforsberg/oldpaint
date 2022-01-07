@@ -237,15 +237,19 @@ class Drawing:
         """
         tmp_path = path + ".tmp"
         selection = self.selection.as_dict() if self.selection else None
-        save_ora(self.size, self.layers, self.palette, self.flatten(frame=0), tmp_path,
+        layers = [(layer.frames, layer.visibility) for layer in self.layers]
+        save_ora(self.size, layers, self.palette, self.flatten(frame=0), tmp_path,
                  selection=selection, framerate=self.framerate, active_plugins=self.active_plugins)
         shutil.move(tmp_path, path)
 
-    def autosave(self):
+    def get_autosave_args(self):
         path = self.path or self.uuid
         auto_filename = get_autosave_filename(path)
-        self.save_ora(str(auto_filename), auto=True)
-        return auto_filename
+        selection = self.selection.as_dict() if self.selection else None
+        layers = [(layer.frames, layer.visible) for layer in self.layers]
+        return (save_ora,
+                (self.size, layers, self.palette, self.flatten(frame=0), auto_filename),
+                dict(selection=selection, framerate=self.framerate, active_plugins=self.active_plugins))
 
     def get_autosaves(self):
         return reversed(sorted(get_autosaves(self.path or self.uuid)))
