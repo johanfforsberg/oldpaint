@@ -564,6 +564,7 @@ class EditMaker():
     def __init__(self, drawing: Drawing):
         self.drawing = drawing
         self._rect = None
+        self.ops = []
         self.edits = []
 
     def _push_layer_edit(self, rect):
@@ -573,27 +574,35 @@ class EditMaker():
             self._rect = rect
 
     def _cleanup(self):
-        if self._rect:
-            layer = self.drawing.current
-            overlay = self.drawing.overlay
-            edit = LayerEdit.create(self.drawing, layer, overlay, self._rect, 0)
-            edit.perform(self.drawing)
-            self.edits.append(edit)
-            overlay.clear()
-            self._rect = None
+        for op, args in self.ops:
+            rect = op(*args)
+            if rect:
+                edit = LayerEdit.create(self.drawing, layer, self.drawing.overlay, self.drawing.frame, rect)
+        
+        if self.edits:
+            # layer = self.drawing.current
+            # overlay = self.drawing.overlay
+            # edit = MultiEdit(self.edits)
+            # edit = LayerEdit.create(self.drawing, layer, overlay, self.drawing.frame, self._rect, 0)
+            # self.drawing._make_edit(edit)
+            self.drawing.overlay.clear()
+            # self._rect = None
 
     def finish(self):
         self._cleanup()
 
     def draw_rectangle(self, position, size, brush, color=None, fill=False):
-        rect = self.drawing.overlay.draw_rectangle(position, size, brush.get_pic(color), brush.center,
-                                                   color=color, fill=fill)
-        self._push_layer_edit(rect)
+        self.ops.append((self.drawing.overlay.draw_rectangle,
+                         (position, size, brush.get_draw_data(color),
+                          brush.center, color, fill)))
+        # layer = self.drawing.current        
+        # 
+        # self.edits.append(edit)
+        # self.drawing.overlay.clear()        
 
     def flip_layer_horizontal(self):
-        self._cleanup()
-        edit = LayerFlipEdit(self.drawing.layers.index(), horizontal=True)
-        edit.perform(self.drawing)
-        self.edits.append(edit)
+        # edit = LayerFlipEdit(self.drawing.layers.index(), horizontal=True)
+        # self.edits.append(edit)
+        self.ops.append((self.drawing.flip_layer_horizontal, ()))
 
     # ...TODO...

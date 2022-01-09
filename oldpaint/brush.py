@@ -62,6 +62,9 @@ class Brush:
     def __hash__(self):
         return hash(id(self.data))
 
+    def __repr__(self):
+        return f"{self.size}"
+
 
 class RectangleBrush(Brush):
 

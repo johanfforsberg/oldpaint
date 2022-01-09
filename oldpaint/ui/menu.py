@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import inspect
 import imgui
 import os
 from time import time
@@ -6,6 +7,7 @@ from time import time
 from ..brush import BUILTIN_BRUSH_TYPES
 from ..drawing import Drawing
 from ..palette import get_builtin_palettes, get_custom_palettes, Palette
+from ..plugin import activate_plugin
 from ..util import stateful
 
 
@@ -417,14 +419,14 @@ class MainMenu:
 
             if imgui.begin_menu("Plugins", drawing):
                 active_plugins = window.drawing.active_plugins
-                for name, plugin in window.plugins.items():
+                for name in window.plugins.keys():
                     is_active = name in active_plugins
                     clicked, selected = imgui.menu_item(name, None, is_active, True)
                     if clicked and selected:
-                        active_plugins[name] = {}
+                        activate_plugin(window, drawing, name, {})
                     elif not selected and is_active:
                         del active_plugins[name]
-                        imgui.separator()
+                imgui.separator()
                 if imgui.menu_item("Clear", None, False, True)[0]:
                     active_plugins.clear()
                 imgui.end_menu()
