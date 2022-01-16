@@ -318,12 +318,12 @@ class PaletteEdit(Edit):
     def perform(self, drawing):
         for i, dr, dg, db, da in self.diffs:
             r0, g0, b0, a0 = drawing.palette.colors[i]
-            drawing.palette[i] = r0 + dr, g0 + dg, b0 + db, a0 + da
+            drawing.palette.set_color(i, r0 + dr, g0 + dg, b0 + db, a0 + da)
 
     def revert(self, drawing):
         for i, dr, dg, db, da in self.diffs:
             r0, g0, b0, a0 = drawing.palette.colors[i]
-            drawing.palette[i] = r0 - dr, g0 - dg, b0 - db, a0 - da
+            drawing.palette.set_color(i, r0 - dr, g0 - dg, b0 - db, a0 - da)
 
     @property
     def index_str(self):
@@ -597,7 +597,8 @@ class SwapColorsEdit(Edit):
 
     def perform(self, drawing):
         palette = drawing.palette
-        palette[self.index1], palette[self.index2] = palette[self.index2], palette[self.index1]
+        #palette[self.index1], palette[self.index2] = palette[self.index2], palette[self.index1]
+        palette.swap_colors(self.index1, self.index2)
 
     revert = perform
 

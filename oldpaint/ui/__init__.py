@@ -23,7 +23,7 @@ from ..rect import Rectangle
 from ..util import show_save_dialog, throttle, stateful
 
 from .file_browser import render_file_browser
-from .colors import render_palette
+from .colors import PaletteColors
 from .menu import MainMenu
 
 
@@ -52,6 +52,7 @@ class UI:
         io.key_map[imgui.KEY_SPACE] = key.SPACE
 
         self.main_menu = MainMenu()
+        self.palette_colors = PaletteColors()
 
     def render(self, window):
         imgui.new_frame()
@@ -89,7 +90,7 @@ class UI:
                 imgui.separator()
                 render_brushes(window, size=(20, 20))
                 imgui.separator()
-                render_palette(window)
+                self.palette_colors.render(window)
                 render_layers(window)
 
                 imgui.end()

@@ -104,17 +104,22 @@ def render_color_editor(orig, color):
     return False, False, (r, g, b, a)
 
 
-@stateful
-def render_palette(window):
+class PaletteColors:
 
-    # global color_editor_open  # Need a persistent way to keep track of the popup being closed...
-    # global current_color_page
+    def __init__(self, size=(24, 24)):
+        self.size = size
+        self.color_editor_open = False
+        self.current_color_page = 0
+        self.spread_start = None
+        self.spread_end = None
 
-    color_editor_open = False
-    current_color_page = 0
+    def render(self, window, pages=4):
 
-    while True:
+        # global color_editor_open  # Need a persistent way to keep track of the popup being closed...
+        # global current_color_page
 
+        page_size = 256 // pages
+        
         imgui.begin_child("Palette", height=460)
 
         drawing = window.drawing
@@ -123,6 +128,7 @@ def render_palette(window):
         bg = palette.background
         fg_color = palette.foreground_color
         bg_color = palette.background_color
+        color_width, color_height = self.size
 
         imgui.begin_child("Palette", border=False, height=460)
         # Edit foreground color
@@ -131,7 +137,7 @@ def render_palette(window):
             w, h = io.display_size
             imgui.open_popup("Edit foreground color")
             imgui.set_next_window_position(w - 115 - 120, 200)
-            color_editor_open = True
+            self.color_editor_open = True
         if imgui.begin_popup("Edit foreground color", flags=(imgui.WINDOW_NO_MOVE |
                                                              imgui.WINDOW_NO_SCROLL_WITH_MOUSE)):
             done, cancelled, new_color = render_color_editor(palette.colors[fg], fg_color)
@@ -139,62 +145,73 @@ def render_palette(window):
                 # Color was changed and then OK was clicked; make change and close
                 drawing.change_colors((fg, new_color))
                 palette.clear_overlay()
-                color_editor_open = False
+                self.color_editor_open = False
             elif cancelled:
                 # Cancel was clicked; disregard any changes and close
                 palette.clear_overlay()
-                color_editor_open = False
+                self.color_editor_open = False
             else:
                 # Keep editing color
                 palette.set_overlay(fg, new_color)
 
             imgui.end_popup()
-        elif color_editor_open:
+        elif self.color_editor_open:
             # The popup was closed by clicking outside, keeping the change (same as OK)
             drawing.change_colors((fg, fg_color))
             palette.clear_overlay()
-            color_editor_open = False
+            self.color_editor_open = False
 
         imgui.same_line()
 
         imgui.color_button(f"Background (#{bg})", *as_float(bg_color), 0, 30, 30)
 
-        max_pages = max(0, len(palette.colors) // 64 - 1)
-        imgui.push_item_width(100)
-        _, current_color_page = imgui.slider_int("Page", current_color_page, min_value=0, max_value=max_pages)
-        start_color = 64 * current_color_page
+        if pages > 1:
+            max_pages = max(0, len(palette.colors) // page_size - 1)
+            imgui.push_item_width(100)
+            _, self.current_color_page = imgui.slider_int("Page", self.current_color_page, min_value=0, max_value=max_pages)
+            start_color = page_size * self.current_color_page
+        else:
+            start_color = 0
 
         imgui.begin_child("Colors", border=False)
         imgui.push_style_var(imgui.STYLE_ITEM_SPACING, (0, 0))  # Make layout tighter
-        width = int(imgui.get_window_content_region_width()) // 20
+        width = int(imgui.get_window_content_region_width()) // color_width
 
         imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, 0, 0, 0)
 
         colors = palette.colors
 
         # Order the colors by column instead of by row (which is the order we draw them)
-        for i, c in enumerate(chain.from_iterable(zip(range(0, 16), range(16, 32), range(32, 48), range(48, 64)))):
+        ranges = (range(i * 16,  (i + 1) * 16) for i in range(16 // pages))
+        for i, c in enumerate(chain.from_iterable(zip(*ranges))):
             index = start_color + c
             if index < len(colors):
                 color = palette.overlayed_color(index)
+                color = as_float(color)
+
                 is_foreground = index == fg
                 is_background = (index == bg) * 2
                 selection = is_foreground | is_background
-                color = as_float(color)
+                # spreading = self.spread_start is not None and self.spread_end is not None
+                # is_spread_start = self.spread_start is not None
 
                 if color[3] == 0 or selection:
                     x, y = imgui.get_cursor_screen_pos()
 
-                if imgui.color_button(f"color {index}", *color[:3], 1, 0, 25, 25):
-                    # io = imgui.get_io()
-                    # if io.key_shift:
-                    #     if "spread_start" in temp_vars:
-                    #         temp_vars["spread_end"] = i
-                    #     else:
-                    #         temp_vars["spread_start"] = i
-                    # else:
-                    fg = index
+                if imgui.color_button(f"color {index}", *color[:3], 1, 0, color_width, color_height):
+                    io = imgui.get_io()
+                    if io.key_shift:
+                        if self.spread_start is not None:
+                            self.spread_end = index
+                        else:
+                            self.spread_start = index
+                    else:
+                        fg = index
 
+                # Right button sets background
+                if imgui.core.is_item_clicked(2):
+                    bg = index                        
+                    
                 draw_list = imgui.get_window_draw_list()
                 if color[3] == 0:
                     # Mark transparent color
@@ -209,11 +226,7 @@ def render_palette(window):
                     # Mark background color
                     draw_list.add_rect_filled(x+15, y+2, x+23, y+10, imgui.get_color_u32_rgba(0, 0, 0, 1))
                     draw_list.add_rect(x+15, y+2, x+23, y+10, imgui.get_color_u32_rgba(1, 1, 1, 1))
-
-                if imgui.core.is_item_clicked(2):
-                    # Right button sets background
-                    bg = index
-
+                    
                 # Drag and drop (currently does not accomplish anything though)
                 if imgui.begin_drag_drop_source():
                     imgui.set_drag_drop_payload('start_index', c.to_bytes(1, sys.byteorder))
@@ -240,21 +253,21 @@ def render_palette(window):
 
         imgui.end_child()
 
-        if imgui.is_item_hovered():
-            io = imgui.get_io()
-            delta = int(io.mouse_wheel)
-            current_color_page = min(max(current_color_page - delta, 0), max_pages)
+        if pages > 1:
+            if imgui.is_item_hovered():
+                io = imgui.get_io()
+                delta = int(io.mouse_wheel)
+                self.current_color_page = min(max(self.current_color_page - delta, 0), max_pages)
 
         palette.foreground = fg
         palette.background = bg
 
-        # if "spread_start" in temp_vars and "spread_end" in temp_vars:
-        #     spread_start = temp_vars.pop("spread_start")
-        #     spread_end = temp_vars.pop("spread_end")
-        #     from_index = min(spread_start, spread_end)
-        #     to_index = max(spread_start, spread_end)
-        #     spread_colors = palette.spread(from_index, to_index)
-        #     drawing.change_colors(from_index + 1, spread_colors)
+        if self.spread_start is not None and self.spread_end is not None:
+            from_index = min(self.spread_start, self.spread_end)
+            to_index = max(self.spread_start, self.spread_end)
+            spread_colors = palette.spread(from_index, to_index)
+            drawing.change_colors(*zip(range(from_index + 1, to_index), spread_colors))
+            self.spread_start = self.spread_end = None
 
         # if any([color_editor_open != state.color_editor_open,
         #         current_color_page != state.current_color_page]):
@@ -263,5 +276,3 @@ def render_palette(window):
         #     #                     current_color_page=current_color_page)
 
         imgui.end_child()
-
-        yield True

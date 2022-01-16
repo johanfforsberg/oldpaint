@@ -43,10 +43,9 @@ class Palette:
 
         if colors:
             color0 = colors[0]
-            if len(color0) == 3:
-                self.colors = [c + (255,) for c in colors] + [(0, 0, 0, 255)] * (self.size - len(colors))
-            else:
-                self.colors = colors + [(0, 0, 0, 255)] * (self.size - len(colors))
+            self.colors = ([color0]
+                           + [(*c[:3], 255) for c in colors[1:]]
+                           + [(0, 0, 0, 255)] * (self.size - len(colors)))
         else:
             default_colors = load_colors(get_builtin_palettes()[0])
             self.colors = default_colors + [(0, 0, 0, 255)] * (self.size - len(default_colors))
@@ -176,7 +175,7 @@ class Palette:
         db = (b2 - b1) / n_steps
 
         return [
-            (round(r1 + dr * i), round(g1 + dg * i), round(b1 + db * i), 1)
+            (round(r1 + dr * i), round(g1 + dg * i), round(b1 + db * i), 255)
             for i in range(1, n_steps)
         ]
 
