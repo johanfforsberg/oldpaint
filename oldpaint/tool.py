@@ -39,18 +39,18 @@ class Tool(metaclass=abc.ABCMeta):
     # They all run on a thread separate from the main UI thread. Make sure
     # to not do anything to the drawing without acquiring the proper locks.
 
-    def start(self, overlay, point, buttons, modifiers):
+    def start(self, layer, point, buttons, modifiers):
         "Run once at the beginning of the stroke."
         self.points.append(point)
 
-    def draw(self, overlay, point, buttons, modifiers, pressure):
+    def draw(self, layer, point, buttons, modifiers, pressure):
         "Runs once per mouse move event."
-        # layer: overlay layer (that can safely be drawn to),
+        # layer: layer layer (that can safely be drawn to),
         # point: the latest mouse coord,
         # buttons: mouse buttons currently held
         # modifiers: keyboard modifiers held
 
-    def finish(self, overlay, point, buttons, modifiers):
+    def finish(self, layer, point, buttons, modifiers):
         "Runs once right before the stroke is finished."
 
     @classmethod
@@ -74,20 +74,22 @@ class PencilTool(Tool):
 
     tool = ToolName.pencil
 
-    def draw(self, overlay, point, buttons, modifiers, pressure):
+    def draw(self, layer, point, buttons, modifiers, pressure):
         if self.points[-1] == point:
             return
         p0 = tuple(self.points[-1])
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-        rect = overlay.draw_line(p0, point, brush, self.brush.center)
+        rect = layer.draw_line(p0, point, brush, self.brush.center,
+                                 frame=self.drawing.frame)
         if rect:
             self.rect = rect.unite(self.rect)
         self.points.append(point)
 
-    def finish(self, overlay, point, buttons, modifiers):
+    def finish(self, layer, point, buttons, modifiers):
         # Make sure we draw a point even if the mouse was never moved
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-        rect = overlay.draw_line(self.points[-1], point, brush, self.brush.center)
+        rect = layer.draw_line(self.points[-1], point, brush, self.brush.center,
+                                 frame=self.drawing.frame)
         if rect:
             self.rect = rect.unite(self.rect)
 
@@ -96,7 +98,7 @@ class InkTool(Tool):
 
     tool = ToolName.ink
 
-    def start(self, overlay, point, buttons, modifiers):
+    def start(self, layer, point, buttons, modifiers):
         "Run once at the beginning of the stroke."
         self.points.append(point)
         self._last_width = None
@@ -106,7 +108,7 @@ class InkTool(Tool):
         self._min_width = 0.5
         self._pressure_exponent = 2
 
-    def draw(self, overlay, point, buttons, modifiers, pressure):
+    def draw(self, layer, point, buttons, modifiers, pressure):
         if self.points[-1] == point:
             return
         x0, y0 = tuple(self.points[-1])
@@ -133,7 +135,7 @@ class InkTool(Tool):
         p2 = (x1 + dyn * w1, y1 - dxn * w1)
         p3 = (x1 - dyn * w1, y1 + dxn * w1)
         self._last_p = p2, p3
-        rect = overlay.draw_quad(p0, p1, p2, p3, self.brush_color)
+        rect = layer.draw_quad(p0, p1, p2, p3, self.brush_color, frame=self.drawing.frame)
         if rect:
             self.rect = rect.unite(self.rect)
         self.points.append(point)
@@ -152,21 +154,23 @@ class PointsTool(Tool):
     # Config
     step: (int, slice(1, 100)) = 5  # More line a minimum step
 
-    def draw(self, overlay, point, buttons, modifiers, pressure):
+    def draw(self, layer, point, buttons, modifiers, pressure):
         if self.points[-1] == point:
             return
         self.points.append(point)
         if len(self.points) % self.step == 0:
             brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-            rect = overlay.draw_line(point, point, brush, offset=self.brush.center)
+            rect = layer.draw_line(point, point, brush, offset=self.brush.center,
+                                     frame=self.drawing.frame)
             if rect:
                 self.rect = rect.unite(self.rect)
 
-    def finish(self, overlay, point, buttons, modifiers):
+    def finish(self, layer, point, buttons, modifiers):
         # Make sure we draw a point if the mouse was never moved
         if len(self.points) == 1:
             brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-            rect = overlay.draw_line(point, point, brush, offset=self.brush.center)
+            rect = layer.draw_line(point, point, brush, offset=self.brush.center,
+                                     frame=self.drawing.frame)
             if rect:
                 self.rect = rect.unite(self.rect)
 
@@ -184,11 +188,11 @@ class SprayTool(Tool):
     def _get_n_skip(self, intensity):
         return int((1/intensity) ** 2)
 
-    def start(self, overlay, point, buttons, modifiers):
-        super().start(overlay, point, buttons, modifiers)
-        self.draw(overlay, point, buttons, modifiers, 0)
+    def start(self, layer, point, buttons, modifiers):
+        super().start(layer, point, buttons, modifiers)
+        self.draw(layer, point, buttons, modifiers, 0)
 
-    def draw(self, overlay, point, buttons, modifiers, pressure):
+    def draw(self, layer, point, buttons, modifiers, pressure):
         self.points.append(point)
         if len(self.points) % self._get_n_skip(self.intensity) == 0:
             for _ in range(int(pressure * 10)):
@@ -198,7 +202,8 @@ class SprayTool(Tool):
                 yg = gauss(y, self.size)
                 p = (xg, yg)
                 brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-                rect = overlay.draw_line(p, p, brush=brush, offset=self.brush.center)
+                rect = layer.draw_line(p, p, brush=brush, offset=self.brush.center,
+                                         frame=self.drawing.frame)
                 if rect:
                     self.rect = rect.unite(self.rect)
 
@@ -212,21 +217,23 @@ class LineTool(Tool):
 
     step: (int, slice(1, 100)) = 1
 
-    def start(self, overlay, point, buttons, modifiers):
-        super().start(overlay, point, buttons, modifiers)
+    def start(self, layer, point, buttons, modifiers):
+        super().start(layer, point, buttons, modifiers)
         self.points.append(None)
 
-    def draw(self, overlay, point, buttons, modifiers, pressure):
+    def draw(self, layer, point, buttons, modifiers, pressure):
         p0 = tuple(self.points[0][:2])
         self.points[1] = point
         p1 = point
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-        self.rect = overlay.draw_line(p0, p1, brush=brush, offset=self.brush.center, step=self.step)
+        self.rect = layer.draw_line(p0, p1, brush=brush, offset=self.brush.center,
+                                      step=self.step, frame=self.drawing.frame)
 
-    def finish(self, overlay, point, buttons, modifiers):
+    def finish(self, layer, point, buttons, modifiers):
         if self.points[1] is None:
             brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-            rect = overlay.draw_line(point, point, brush=brush, offset=self.brush.center, step=self.step)
+            rect = layer.draw_line(point, point, brush=brush, offset=self.brush.center,
+                                     step=self.step, frame=self.drawing.frame)
             self.points[1] = point
             if rect:
                 self.rect = rect.unite(self.rect)
@@ -244,27 +251,29 @@ class RectangleTool(Tool):
     tool = ToolName.rectangle
     ephemeral = True
 
-    def start(self, overlay, point, buttons, modifiers):
-        super().start(overlay, point, buttons, modifiers)
+    def start(self, layer, point, buttons, modifiers):
+        super().start(layer, point, buttons, modifiers)
         self.points.append(point)
 
-    def draw(self, overlay, point, buttons, modifiers, pressure):
+    def draw(self, layer, point, buttons, modifiers, pressure):
         p0 = self.points[0]
         self.points[1] = point
         r = from_points([p0, point])
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-        self.rect = overlay.draw_rectangle(r.position, r.size, brush=brush,
-                                           offset=self.brush.center, fill=modifiers & window.key.MOD_SHIFT,
-                                           color=self.color)
+        self.rect = layer.draw_rectangle(r.position, r.size, brush=brush,
+                                           offset=self.brush.center,
+                                           fill=modifiers & window.key.MOD_SHIFT,
+                                           color=self.color, frame=self.drawing.frame)
 
-    def finish(self, overlay, point, buttons, modifiers):
+    def finish(self, layer, point, buttons, modifiers):
         if len(self.points) > 1:
             return
         p0 = self.points[0]
         r = from_points([p0, point])
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-        rect = overlay.draw_rectangle(r.position, r.size, brush=brush, offset=self.brush.center,
-                                      fill=modifiers & window.key.MOD_SHIFT, color=self.color)
+        rect = layer.draw_rectangle(r.position, r.size, brush=brush, offset=self.brush.center,
+                                      fill=modifiers & window.key.MOD_SHIFT, color=self.color,
+                                      frame=self.drawing.frame)
         if rect:
             self.rect = rect.unite(self.rect)
         self.points[1] = point
@@ -282,22 +291,23 @@ class EllipseTool(Tool):
     tool = ToolName.ellipse
     ephemeral = True
 
-    def start(self, overlay, point, buttons, modifiers):
-        super().start(overlay, point, buttons, modifiers)
+    def start(self, layer, point, buttons, modifiers):
+        super().start(layer, point, buttons, modifiers)
         self.points.append(point)
 
     @try_except_log
-    def draw(self, overlay, point, buttons, modifiers, pressure):
+    def draw(self, layer, point, buttons, modifiers, pressure):
         x0, y0 = self.points[0]
         self.points[1] = point
         x, y = point
         size = (int(abs(x - x0)), int(abs(y - y0)))
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-        self.rect = overlay.draw_ellipse((x0, y0), size, brush=brush,
+        self.rect = layer.draw_ellipse((x0, y0), size, brush=brush,
                                          offset=self.brush.center, color=self.color,
-                                         fill=modifiers & window.key.MOD_SHIFT)
+                                         fill=modifiers & window.key.MOD_SHIFT,
+                                         frame=self.drawing.frame)
 
-    def finish(self, overlay, point, buttons, modifiers):
+    def finish(self, layer, point, buttons, modifiers):
         self.points[1] = point
 
     def __repr__(self):
@@ -313,10 +323,11 @@ class FillTool(Tool):
     tool = ToolName.floodfill
     brush_preview = False
 
-    def finish(self, overlay, point, buttons, modifiers):
-        if point in overlay.rect:
+    def finish(self, layer, point, buttons, modifiers):
+        if point in layer.rect:
             source = self.drawing.current.get_data(self.drawing.frame)
-            self.rect = overlay.draw_fill(source, point, color=self.color)
+            self.rect = layer.draw_fill(source, point, color=self.color,
+                                          frame=self.drawing.frame)
             self.points = [point]
 
 
@@ -329,13 +340,13 @@ class SelectionTool(Tool):
     show_rect = True
     # restore_last = True
 
-    def start(self, overlay, point, buttons, modifiers):
-        super().start(overlay, point, buttons, modifiers)
+    def start(self, layer, point, buttons, modifiers):
+        super().start(layer, point, buttons, modifiers)
     
-    def draw(self, overlay, point, buttons, modifiers, pressure):
-        self.rect = overlay.rect.intersect(from_points([self.points[0], point]))
+    def draw(self, layer, point, buttons, modifiers, pressure):
+        self.rect = layer.rect.intersect(from_points([self.points[0], point]))
 
-    def finish(self, overlay, point, buttons, modifiers):
+    def finish(self, layer, point, buttons, modifiers):
         # self.drawing.make_brush(self.drawing.frame, self.rect, clear=buttons & window.mouse.RIGHT)
         self.drawing.selection = self.rect
         self.rect = None
@@ -357,7 +368,7 @@ class PickerTool(Tool):
         super().__init__(drawing, brush, color, initial)
         self.color = None
 
-    def _pick(self, overlay, point, buttons, modifiers, *args):
+    def _pick(self, layer, point, buttons, modifiers, *args):
         # Find the pixel that is visible at the given point.
         x, y = point
         pos = int(x), int(y)

@@ -116,12 +116,14 @@ class Drawing:
 
     def make_backup(self, rect=None):
         # TODO partial backup
-        self.backup = self.current.get_data().copy()
+        logger.debug("Make backup")
+        self.backup = self.current.get_data(self.frame).copy()
 
     def restore(self, rect=None):
         rect = rect or self.current.rect
         if rect:
-            self.current.blit(self.backup[rect.as_slice()], rect, alpha=False)
+            self.current.blit(self.backup[rect.as_slice()], rect, alpha=False,
+                              frame=self.frame)
 
     def with_backup(f):
         
@@ -354,16 +356,20 @@ class Drawing:
         frame = frame if frame is not None else self.frame
         edit = MoveFrameBackwardEdit.create(index=layer, frame=frame)
         self._make_edit(edit)
-        
+
+    @with_backup
     def next_frame(self):
         self.frame = (self.frame + 1) % self.n_frames
 
+    @with_backup        
     def prev_frame(self):
         self.frame = (self.frame - 1) % self.n_frames
 
+    @with_backup        
     def first_frame(self):
         self.frame = 0
 
+    @with_backup        
     def last_frame(self):
         self.frame = self.n_frames - 1
 
@@ -371,6 +377,7 @@ class Drawing:
         clock.schedule_interval(self._next_frame_callback, 1 / self.framerate)
         self.playing_animation = True
 
+    @with_backup
     def stop_animation(self):
         clock.unschedule(self._next_frame_callback)
         self.playing_animation = False
@@ -382,7 +389,7 @@ class Drawing:
             self.start_animation()
 
     def _next_frame_callback(self, dt):
-        self.next_frame()
+        self.frame = (self.frame + 1) % self.n_frames
         
     def add_layer(self, index=None, layer=None):
         layer = layer or Layer(size=self.size)
@@ -471,7 +478,7 @@ class Drawing:
         "Update a part of the layer, keeping track of the change as an 'undo'"
         
         layer = self.backup
-        new = self.current.get_data()
+        new = self.current.get_data(self.frame)
         frame = frame if frame is not None else self.frame
         edit = LayerEdit.create(self, layer, new, self.layers.index(), frame, rect, tool.value if tool else 0)
         self._make_edit(edit, perform=False)
