@@ -15,8 +15,6 @@ class Tool(metaclass=abc.ABCMeta):
     """
     Tools are various ways of mouse interaction.
     They can draw to the image, but also inspect it or change other aspects.
-    Usually they only draw to the overlay, at the end of the stroke the
-    tool's rect will be copied to the current layer.
     """
 
     tool = None  # Name of the tool (should correspond to an icon)

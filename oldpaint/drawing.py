@@ -592,6 +592,8 @@ class Drawing:
 
 class EditMaker():
 
+    """WIP"""
+    
     def __init__(self, drawing: Drawing):
         self.drawing = drawing
         self._rect = None
@@ -616,7 +618,7 @@ class EditMaker():
             # edit = MultiEdit(self.edits)
             # edit = LayerEdit.create(self.drawing, layer, overlay, self.drawing.frame, self._rect, 0)
             # self.drawing._make_edit(edit)
-            self.drawing.overlay.clear()
+            # self.drawing.overlay.clear()
             # self._rect = None
 
     def finish(self):

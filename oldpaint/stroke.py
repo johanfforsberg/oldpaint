@@ -1,7 +1,11 @@
+import logging
 from queue import Queue
 from time import sleep
 
 from .util import try_except_log
+
+
+logger = logging.getLogger(__name__)
 
 
 class Stroke:
@@ -15,7 +19,7 @@ class Stroke:
         self.drawing = drawing
         self.tool = tool
         self._event_queue = Queue()
-        print("starting stroke")
+        logger.debug("Start stroke: %s", type(tool).__name__)
 
     def queue_event(self, *event):
         self._event_queue.put(event)
