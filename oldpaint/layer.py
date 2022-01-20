@@ -128,6 +128,7 @@ class Layer:
         with self.lock:
             # breakpoint()
             # brush = np.array(brush, dtype=np.uint8)
+            print(brush.dtype, brush.mask.dtype)
             rect = draw_line(data, brush, brush.mask, p0, p1, step)
             if rect and set_dirty:
                 self.set_dirty(rect, frame)
@@ -289,7 +290,7 @@ class Layer:
         data = self.get_data(frame)
         from_rect = rect.intersect(self.rect)
         to_rect = self.rect.intersect(rect)
-        if not from_rect:
+        if not (from_rect and to_rect):
             return
         with self.lock:
             from_slc = from_rect.as_slice()
@@ -302,7 +303,7 @@ class Layer:
                 dest[:] = source
             self.dirty[frame] = self.rect.intersect(rect.unite(self.dirty.get(frame)))
         self.version += 1
-        return rect
+        return to_rect
     
     # def make_diff(self, other:np.ndarray, rect:Rectangle, alpha:bool=True, frame:int=0):
     #     data = self.get_data(frame)

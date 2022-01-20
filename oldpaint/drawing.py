@@ -131,6 +131,7 @@ class Drawing:
     def restore(self, rect=None):
         rect = rect or self.current.rect
         if rect:
+            print("restore", rect)
             self.current.blit(self.backup[rect.as_slice()], rect, alpha=False)
         
     @property
@@ -377,9 +378,11 @@ class Drawing:
 
     def next_layer(self):
         self.layers.cycle_forward()
+        self.make_backup()
 
     def prev_layer(self):
         self.layers.cycle_backward()
+        self.make_backup()        
 
     def move_layer_up(self):
         index1 = self.layers.get_current_index()
@@ -447,7 +450,7 @@ class Drawing:
         new = self.current.get_data()
         frame = frame if frame is not None else self.frame
         edit = LayerEdit.create(self, layer, new, self.layers.index(), frame, rect, tool.value if tool else 0)
-        self._make_edit(edit)
+        self._make_edit(edit, perform=False)
 
     @try_except_log
     def change_colors(self, *colors):
@@ -489,7 +492,7 @@ class Drawing:
             edit = LayerClearEdit.create(self, layer, frame, rect,
                                          color=self.palette.background)
             self._make_edit(edit)
-        brush = PicBrush(data=subimage)
+        brush = PicBrush(data=np.ma.masked_array(subimage, mask=subimage == 0, dtype=np.uint8))
         self.brushes.append(brush)
 
     def copy_layer(self, frame=None, layer=None):
@@ -497,13 +500,15 @@ class Drawing:
         layer = layer or self.current
         return layer.get_subimage(layer.rect, frame)
     
-    def _make_edit(self, edit):
+    def _make_edit(self, edit, perform=True):
         """ Perform an edit and insert it into the history, keeping track of things """
-        # edit.perform(self)
+        if perform:
+            edit.perform(self)
         if self._edits_index < -1:
             del self._edits[self._edits_index + 1:]
             self._edits_index = -1
         self._edits.append(edit)
+        self.make_backup()                
 
     @try_except_log
     def undo(self):

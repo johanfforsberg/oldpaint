@@ -132,8 +132,10 @@ class PicBrush(Brush):
         filled_pixels = self.data > 0
         if colorize:
             # Fill all non-transparent pixels with the same color
-            return (color + filled_pixels)  # * 2**24).astype(np.uint32)
+            return np.ma.masked_array(color * filled_pixels,
+                                      mask=self.data.mask,
+                                      dtype=np.uint8)
         else:
             # Otiginal brush data
-            return (self.data + filled_pixels)  # * 2**24).astype(np.uint32)
+            return (self.data * filled_pixels).astype(np.uint8)
 
