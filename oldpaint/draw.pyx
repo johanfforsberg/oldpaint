@@ -287,7 +287,7 @@ cpdef draw_rectangle(unsigned char[:, :] pic,
 @cython.wraparound(False)
 cpdef draw_ellipse(unsigned char[:, :] pic,
                    unsigned char[:, :] brush,
-                   np.ndarray[np.uint8_t, ndim=2] mask,
+                   unsigned char[:, :] mask,
                    (int, int) center, (int, int) size,
                    unsigned char color, bint fill=False):
 
