@@ -620,6 +620,7 @@ class EditMaker():
             # self.drawing._make_edit(edit)
             # self.drawing.overlay.clear()
             # self._rect = None
+            pass
 
     def finish(self):
         self._cleanup()
