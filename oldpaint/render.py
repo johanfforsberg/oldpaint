@@ -28,7 +28,8 @@ def render_drawing(drawing, highlighted_layer=None):
 
     offscreen_buffer = _get_offscreen_buffer(drawing.size)
 
-    colors = _get_colors(drawing.palette.as_tuple())
+    palette_tuple = drawing.palette.as_tuple()
+    colors = _get_colors(palette_tuple)
 
     with vao, offscreen_buffer, draw_program:
         w, h = offscreen_buffer.size

@@ -49,8 +49,8 @@ class Stroke:
                         finished = True
                     event_type, *args = self._event_queue.get()
             else:
-                sleep(tool.period)
-                while not event_queue.empty():
+                sleep(self.tool.period)
+                while not self._event_queue.empty():
                     if event_type == "mouse_up":
                         self.tool.finish(layer, *args)
                         finished = True

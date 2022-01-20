@@ -1,10 +1,11 @@
 from collections import OrderedDict
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from contextlib import contextmanager
 from functools import lru_cache, reduce
 import logging
 import os
 import operator
+import time
 
 import imgui
 import pyglet
@@ -66,7 +67,7 @@ class Drawings(Selectable):
 
 class OldpaintWindow(pyglet.window.Window):
 
-    def __init__(self, recent_files, drawing_specs, **kwargs):
+    def __init__(self, recent_files, drawing_specs, autosave_period=60, **kwargs):
  
         super().__init__(**kwargs, caption="Oldpaint", resizable=True, vsync=False)
 
@@ -92,6 +93,8 @@ class OldpaintWindow(pyglet.window.Window):
         self.highlighted_layer = None
         # self.show_selection = False
 
+        self.autosave_drawing = debounce(cooldown=autosave_period, wait=3)(self._autosave_drawing)
+
         # Some gl setup
         self.copy_program = Program(VertexShader("glsl/copy_vert.glsl"),
                                     FragmentShader("glsl/copy_frag.glsl"))
@@ -101,6 +104,7 @@ class OldpaintWindow(pyglet.window.Window):
 
         # All the drawing will happen in a thread, managed by this executor
         self.executor = ThreadPoolExecutor(max_workers=1)
+        self.autosave_executor = ProcessPoolExecutor(max_workers=1)
 
         # Current stroke, if any
         self.stroke = None
@@ -169,9 +173,7 @@ class OldpaintWindow(pyglet.window.Window):
         
         self._mru_cycling = False  # Whether Alt+Tabbing through drawings
 
-    # @property
-    # def overlay(self):
-    #     return self.drawings.current.overlay
+        self.ui = ui.UI(self)
 
     @property
     def drawing(self) -> Drawing:
@@ -394,6 +396,7 @@ class OldpaintWindow(pyglet.window.Window):
                 # self.overlay.clear()
                 self._mru_cycling = True
                 self.drawings.select_most_recent(update_mro=False)
+                self.overlay.clear()
             elif symbol in range(48, 58):
                 if symbol == 48:
                     index = 9
@@ -414,16 +417,16 @@ class OldpaintWindow(pyglet.window.Window):
                 else:
                     self.highlighted_layer = self.drawing.layers.current
 
-            elif symbol == key.W:
+            elif symbol == key.W or symbol == key.PAGEUP:
                 if modifiers & key.MOD_SHIFT:
                     self.drawing.move_layer_up()
                 else:
                     self.drawing.next_layer()
                     self.highlighted_layer = self.drawing.layers.current
-            elif symbol == key.S:
+            elif symbol == key.S or symbol == key.PAGEDOWN:
                 if modifiers & key.MOD_SHIFT:
                     self.drawing.move_layer_down()
-                elif modifiers & key.MOD_CTRL:
+                elif symbol == key.S and modifiers & key.MOD_CTRL:
                     self.drawing and self.save_drawing()
                 else:
                     self.drawing.prev_layer()
@@ -560,7 +563,7 @@ class OldpaintWindow(pyglet.window.Window):
         if not self.tablet.active:
             self._draw_mouse_cursor()
 
-        ui.draw_ui(self)
+        self.ui.render(self)
 
         gl.glFinish()  # No double buffering, to minimize latency (does this work?)
 
@@ -633,41 +636,44 @@ class OldpaintWindow(pyglet.window.Window):
         self.drawings.append(drawing)
 
     @try_except_log
-    def save_drawing(self, drawing=None, ask_for_path=False, auto=False):
+    def save_drawing(self, drawing=None, path=None, auto=False):
         """
         Save the drawing as ORA, asking for a file name if neccessary.
         This format preserves all the layers, frames and other metadata.
         """
         drawing = drawing or self.drawing
-        if not ask_for_path and drawing.path:
-            if drawing.path.endswith(".ora"):
-                drawing.save_ora()
+        path = path or drawing.path
+        if path:
+            if path.endswith(".ora"):
+                drawing.save_ora(path=path)
+                self.add_recent_file(path)
             else:
                 raise RuntimeError("Sorry; can only save drawing as ORA!")
         else:
-            last_dir = self.get_latest_dir()
-            # The point here is to not block the UI redraws while showing the
-            # dialog. May be a horrible idea but it seems to work...
-            fut = self.executor.submit(show_save_dialog,
-                                       title="Select file",
-                                       initialdir=last_dir,
-                                       filetypes=(("ORA files", "*.ora"),
-                                                  # ("PNG files", "*.png"),
-                                                  ("all files", "*.*")))
+            raise RuntimeError("Can't save without a path!")
+            # last_dir = self.get_latest_dir()
+            # # The point here is to not block the UI redraws while showing the
+            # # dialog. May be a horrible idea but it seems to work...
+            # fut = self.executor.submit(show_save_dialog,
+            #                            title="Select file",
+            #                            initialdir=last_dir,
+            #                            filetypes=(("ORA files", "*.ora"),
+            #                                       # ("PNG files", "*.png"),
+            #                                       ("all files", "*.*")))
 
-            def really_save_drawing(drawing, path):
-                try:
-                    if path:
-                        if path.endswith(".ora"):
-                            drawing.save_ora(path)
-                            self.add_recent_file(path)
-                        else:
-                            self._error = f"Sorry, can only save drawing as ORA!"
-                except OSError as e:
-                    self._error = f"Could not save:\n {e}"
+            # def really_save_drawing(drawing, path):
+            #     try:
+            #         if path:
+            #             if path.endswith(".ora"):
+            #                 drawing.save_ora(path)
+            #                 self.add_recent_file(path)
+            #             else:
+            #                 self._error = f"Sorry, can only save drawing as ORA!"
+            #     except OSError as e:
+            #         self._error = f"Could not save:\n {e}"
 
-            fut.add_done_callback(
-                lambda fut: really_save_drawing(drawing, fut.result()))
+            # fut.add_done_callback(
+            #     lambda fut: really_save_drawing(drawing, fut.result()))
 
     def export_drawing(self, drawing=None, ask_for_path=False):
         """
@@ -703,11 +709,20 @@ class OldpaintWindow(pyglet.window.Window):
 
             fut.add_done_callback(
                 lambda fut: really_export_drawing(drawing, fut.result()))
-    
-    @debounce(cooldown=60, wait=3)
-    def autosave_drawing(self):
-        fut = self.executor.submit(self.drawing.autosave)
-        fut.add_done_callback(lambda path: logger.info(f"Autosaved to '{path.result()}'"))
+
+    def _autosave_drawing(self):
+        t0 = time.time()
+        func, args, kwargs = self.drawing.get_autosave_args()
+        filename = args[-1]  # TODO...
+        fut = self.autosave_executor.submit(func, *args, **kwargs)
+
+        def done(f):
+            if f.done():
+                logger.info(f"Autosaved to '{filename}', took {time.time()-t0:.2} s.")
+            else:
+                logger.error(f"Failed to autosave to '{filename}'; {f.exception()}")
+
+        fut.add_done_callback(done)
 
     def load_drawing(self, path=None):
 

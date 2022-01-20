@@ -61,7 +61,7 @@ class Drawing:
                    (1024, 800),
            ]}
     }
-    
+
     def __init__(self, size, layers=None, palette=None, path=None, selection=None, framerate=10,
                  active_plugins=None, **kwargs):
         if kwargs:
@@ -75,7 +75,6 @@ class Drawing:
         
         # Animation related things
         self.frame = 0
-        self.n_frames = max(1, *(len(l.frames) for l in self.layers))
         self.framerate = framerate
         self.playing_animation = False
         
@@ -234,6 +233,9 @@ class Drawing:
         if not auto:
             self._latest_save_index = len(self._edits)
 
+    def _get_plugins(self):
+        return {name: p for name, p in self.active_plugins.items() if isinstance(p, dict)}
+            
     def _save_ora(self, path):
         """
         Save the drawing in a temporary file before moving it to the path
@@ -242,15 +244,19 @@ class Drawing:
         """
         tmp_path = path + ".tmp"
         selection = self.selection.as_dict() if self.selection else None
-        save_ora(self.size, self.layers, self.palette, self.flatten(frame=0), tmp_path,
-                 selection=selection, framerate=self.framerate, active_plugins=self.active_plugins)
+        layers = [(layer.frames, layer.visible) for layer in self.layers]
+        save_ora(self.size, layers, self.palette, self.flatten(frame=0), tmp_path,
+                 selection=selection, framerate=self.framerate, active_plugins=self._get_plugins())
         shutil.move(tmp_path, path)
 
-    def autosave(self):
+    def get_autosave_args(self):
         path = self.path or self.uuid
         auto_filename = get_autosave_filename(path)
-        self.save_ora(str(auto_filename), auto=True)
-        return auto_filename
+        selection = self.selection.as_dict() if self.selection else None
+        layers = [(layer.frames, layer.visible) for layer in self.layers]
+        return (save_ora,
+                (self.size, layers, self.palette, self.flatten(frame=0), auto_filename),
+                dict(selection=selection, framerate=self.framerate, active_plugins=self._get_plugins()))
 
     def get_autosaves(self):
         return reversed(sorted(get_autosaves(self.path or self.uuid)))
@@ -294,7 +300,15 @@ class Drawing:
     @property
     def is_animated(self):
         return self.n_frames > 1
-        
+
+    @property
+    def n_frames(self):
+        return self._n_frames()
+
+    @lru_cache(1)
+    def _n_frames(self):
+        return max(1, *(len(l.frames) for l in self.layers))
+
     def add_frame(self, frame=None, copy=False):
         frame = frame if frame is not None else self.frame + 1
         if copy:
@@ -310,6 +324,7 @@ class Drawing:
             ])
         self._make_edit(edit)         
         self.frame = frame
+        self._n_frames.cache_clear()
  
     def remove_frame(self, frame=None):
         frame = frame if frame is not None else self.frame
@@ -318,6 +333,7 @@ class Drawing:
             for i, layer in enumerate(self.layers)
         ])
         self._make_edit(edit)
+        self._n_frames.cache_clear()
 
     def move_frame_forward(self, layer=None, frame=None):
         layer = layer if layer is not None else self.layers.index()
@@ -562,6 +578,7 @@ class EditMaker():
     def __init__(self, drawing: Drawing):
         self.drawing = drawing
         self._rect = None
+        self.ops = []
         self.edits = []
 
     def _push_layer_edit(self, rect):
@@ -571,27 +588,35 @@ class EditMaker():
             self._rect = rect
 
     def _cleanup(self):
-        if self._rect:
-            layer = self.drawing.current
-            overlay = self.drawing.overlay
-            edit = LayerEdit.create(self.drawing, layer, overlay, self._rect, 0)
-            edit.perform(self.drawing)
-            self.edits.append(edit)
-            overlay.clear()
-            self._rect = None
+        for op, args in self.ops:
+            rect = op(*args)
+            if rect:
+                edit = LayerEdit.create(self.drawing, layer, self.drawing.overlay, self.drawing.frame, rect)
+        
+        if self.edits:
+            # layer = self.drawing.current
+            # overlay = self.drawing.overlay
+            # edit = MultiEdit(self.edits)
+            # edit = LayerEdit.create(self.drawing, layer, overlay, self.drawing.frame, self._rect, 0)
+            # self.drawing._make_edit(edit)
+            self.drawing.overlay.clear()
+            # self._rect = None
 
     def finish(self):
         self._cleanup()
 
     def draw_rectangle(self, position, size, brush, color=None, fill=False):
-        rect = self.drawing.overlay.draw_rectangle(position, size, brush.get_pic(color), brush.center,
-                                                   color=color, fill=fill)
-        self._push_layer_edit(rect)
+        self.ops.append((self.drawing.overlay.draw_rectangle,
+                         (position, size, brush.get_draw_data(color),
+                          brush.center, color, fill)))
+        # layer = self.drawing.current        
+        # 
+        # self.edits.append(edit)
+        # self.drawing.overlay.clear()        
 
     def flip_layer_horizontal(self):
-        self._cleanup()
-        edit = LayerFlipEdit(self.drawing.layers.index(), horizontal=True)
-        edit.perform(self.drawing)
-        self.edits.append(edit)
+        # edit = LayerFlipEdit(self.drawing.layers.index(), horizontal=True)
+        # self.edits.append(edit)
+        self.ops.append((self.drawing.flip_layer_horizontal, ()))
 
     # ...TODO...

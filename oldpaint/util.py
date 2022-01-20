@@ -1,8 +1,13 @@
 from functools import lru_cache, wraps
 import logging
 from copy import copy
+from inspect import isgeneratorfunction
 from time import time
-from tkinter import Tk, filedialog
+from tkinter import Tk
+try:
+    from tkfilebrowser import FileBrowser
+except ImportError:
+    from tkinter.filedialog import askopenfilename, asksaveasfilename
 from traceback import format_exc
 from weakref import proxy
 
@@ -296,14 +301,20 @@ def make_view_matrix_inverse(window_size, image_size, zoom, offset):
     return make_view_matrix(window_size, image_size, zoom, offset).inverse()
 
 
-def show_load_dialog(**args):
-    Tk().withdraw()  # disables TkInter GUI
-    return filedialog.askopenfilename(**args)
+def show_load_dialog(**kwargs):
+    root = Tk()
+    dialog = FileBrowser(parent=root, mode="openfile", multiple_selection=False,
+                         **kwargs)
+    root.withdraw()  # disables TkInter GUI
+    dialog.wait_window(dialog)
+    filename = dialog.get_result()
+    root.quit()
+    return filename
 
 
 def show_save_dialog(**args):
     Tk().withdraw()
-    return filedialog.asksaveasfilename(**args)
+    return asksaveasfilename(**args)
 
 
 def rgba_to_32bit(color):
@@ -359,3 +370,36 @@ class DefaultList(list):
             super().__setitem__(index, value)
             
         
+
+def stateful(f):
+
+    """
+    This decorates a function that is expected to be a generator function. Basically it
+    allows the function to be called repeatedly like a normal function, while it actually
+    just keeps iterating over the generator.
+
+    This enables a weird idiom which seems pretty useful for imgui use. The idea is that a
+    function decorated with this can keep its own state over time, initialized on the first
+    call, and then just loop forever or until it's done (the latter useful for dialogs and
+    things that have limited lifetime.) The point is that this way we can keep "local" state
+    such as open dialogs where appropriate and don't need to keep sending global state around.
+
+    This way, functions that keep state and functions that don't can be used the same.
+    """
+
+    assert isgeneratorfunction(f), "Sorry, only accepts generator functions!"
+
+    gen = None
+
+    def inner(*args, **kwargs):
+        nonlocal gen
+        if not gen:
+            gen = f(*args, **kwargs)
+            return next(gen)
+        try:
+            return gen.send(args)
+        except StopIteration:
+            gen = None  # TODO reinitialize directly instead?
+            return False
+
+    return inner

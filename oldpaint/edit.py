@@ -19,6 +19,7 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 import pickle
 from dataclasses import dataclass
 import struct
+from typing import TYPE_CHECKING
 import zlib
 
 import numpy as np
@@ -26,6 +27,9 @@ import numpy as np
 from .constants import ToolName
 from .layer import Layer
 from .rect import Rectangle
+if TYPE_CHECKING:
+    # Prevent a circular import
+    from .drawing import Drawing
 
 
 class Edit(metaclass=ABCMeta):
@@ -48,11 +52,11 @@ class Edit(metaclass=ABCMeta):
         return cls(index=index, rect=Rectangle(*rect), data=data), z.unused_data
 
     @abstractmethod
-    def perform(drawing: Drawing):
+    def perform(self, drawing: Drawing):
         pass
 
     @abstractmethod
-    def revert(drawing: Drawing):
+    def revert(self, drawing: Drawing):
         pass
     
     @abstractproperty
@@ -318,12 +322,12 @@ class PaletteEdit(Edit):
     def perform(self, drawing):
         for i, dr, dg, db, da in self.diffs:
             r0, g0, b0, a0 = drawing.palette.colors[i]
-            drawing.palette[i] = r0 + dr, g0 + dg, b0 + db, a0 + da
+            drawing.palette.set_color(i, r0 + dr, g0 + dg, b0 + db, a0 + da)
 
     def revert(self, drawing):
         for i, dr, dg, db, da in self.diffs:
             r0, g0, b0, a0 = drawing.palette.colors[i]
-            drawing.palette[i] = r0 - dr, g0 - dg, b0 - db, a0 - da
+            drawing.palette.set_color(i, r0 - dr, g0 - dg, b0 - db, a0 - da)
 
     @property
     def index_str(self):
@@ -456,14 +460,12 @@ class AddFrameEdit(Edit):
         layer.add_frame(self.frame, data)
         if self.frame <= drawing.frame:
             drawing.frame += 1
-        drawing.n_frames += 1
 
     def revert(self, drawing):
         layer = drawing.layers[self.index]
         layer.remove_frame(self.frame)
         if self.frame <= drawing.frame:
             drawing.frame -= 1
-        drawing.n_frames -= 1
 
     @property
     def index_str(self):
@@ -599,7 +601,8 @@ class SwapColorsEdit(Edit):
 
     def perform(self, drawing):
         palette = drawing.palette
-        palette[self.index1], palette[self.index2] = palette[self.index2], palette[self.index1]
+        #palette[self.index1], palette[self.index2] = palette[self.index2], palette[self.index1]
+        palette.swap_colors(self.index1, self.index2)
 
     revert = perform
 

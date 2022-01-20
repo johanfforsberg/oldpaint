@@ -174,7 +174,7 @@ class Layer:
             if rect and set_dirty:
                 self.set_dirty(rect, frame)
             self.version += 1
-            return rect
+        return rect
 
     def draw_fill(self, source: np.ndarray, point:Tuple[int, int], color:int, set_dirty:bool=True, frame:int=0):
         pic = self.get_data(frame)

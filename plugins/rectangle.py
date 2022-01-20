@@ -10,7 +10,9 @@ up the program state, in particular regarding undo, or even cause crashes.
 You've been warned.
 
 The "oldpaint" argument provides the whole package namespace, since you can't import
-it here. "drawing" and "brush" are the current active ones.
+it here. "drawing" and "brush" are the current active ones. "window" is the base
+application object. "imgui" may be useful for custom UI stuff, but be careful - you
+can easily mess up or crash the whole app by doing the wrong thing!
 
 For now only int, float, str and bool parameters are allowed. You must give default
 values for them.
@@ -21,7 +23,8 @@ Put your own custom plugins go in XDG_CONFIG_HOME/oldpaint/plugins, as .py files
 and oldpaint will find them.
 """
 
-def plugin(oldpaint, imgui, drawing, brush,  # These args are mandatory even if you don't need them
+def plugin(drawing, brush,  # Any of oldpaint/window/drawing/brush/imgui, as needed
+           *,  # The asterisk tells us that the rest of the arguments are plugin parameters
            offset: int=5, extra_width: int=0, fill: bool=False):  # Any number of parameter arguments.
     """
     This simple script plugin draws two symmetric rectangles based on the current selection.
