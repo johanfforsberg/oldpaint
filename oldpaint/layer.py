@@ -126,7 +126,9 @@ class Layer:
         p1 = (x1 - ox, y1 - oy)
         data = self.get_data(frame)
         with self.lock:
-            rect = draw_line(data, brush, p0, p1, step)
+            # breakpoint()
+            # brush = np.array(brush, dtype=np.uint8)
+            rect = draw_line(data, brush, brush.mask, p0, p1, step)
             if rect and set_dirty:
                 self.set_dirty(rect, frame)
             self.version += 1
@@ -151,7 +153,7 @@ class Layer:
             pos = (x0 - ox, y0 - oy)
         data = self.get_data(frame)
         with self.lock:
-            rect = draw_ellipse(data, brush, pos, size, fill=fill, **kwargs)
+            rect = draw_ellipse(data, brush, brush.mask, pos, size, fill=fill, **kwargs)
             if rect and set_dirty:
                 self.set_dirty(rect, frame)
             self.version += 1
@@ -166,7 +168,8 @@ class Layer:
             pos = (x0 - ox, y0 - oy)
         data = self.get_data(frame)
         with self.lock:
-            rect = draw_rectangle(data, brush, pos, size, color, fill=fill)
+            print(pos, size, color)
+            rect = draw_rectangle(data, brush, brush.mask, pos, size, color, fill=fill)
             if rect and set_dirty:
                 self.set_dirty(rect, frame)
             self.version += 1
@@ -293,31 +296,29 @@ class Layer:
             to_slc = to_rect.as_slice()
             dest = data[to_slc]            
             source = new_data[from_slc]
-            if alpha:
-                mask = source >> 24
-                dest[:] = np.where(mask, source, dest).astype(self.dtype)
+            if alpha and isinstance(source, np.ma.MaskedArray):
+                dest[:] = np.where(~source.mask, source, dest).astype(self.dtype)
             else:
                 dest[:] = source
             self.dirty[frame] = self.rect.intersect(rect.unite(self.dirty.get(frame)))
-            
         self.version += 1
         return rect
     
-    def make_diff(self, other:np.ndarray, rect:Rectangle, alpha:bool=True, frame:int=0):
-        data = self.get_data(frame)
-        data = data if data is not None else np.zeros(self.size, dtype=np.uint8)
-        # TODO this assumes that "other" is an overlay, not good.
-        new_data = other.get_data()
-        with self.lock:
-            slc = rect.as_slice()
-            mask = new_data[slc].astype(np.bool)
-            return np.subtract(new_data[slc], mask * data[slc], dtype=np.int16)
+    # def make_diff(self, other:np.ndarray, rect:Rectangle, alpha:bool=True, frame:int=0):
+    #     data = self.get_data(frame)
+    #     data = data if data is not None else np.zeros(self.size, dtype=np.uint8)
+    #     # TODO this assumes that "other" is an overlay, not good.
+    #     new_data = other.get_data()
+    #     with self.lock:
+    #         slc = rect.as_slice()
+    #         mask = new_data[slc].astype(np.bool)
+    #         return np.bitwise_xor(new_data[slc], mask * data[slc])
 
     def apply_diff(self, diff:np.ndarray, rect:Rectangle, invert:bool=False, frame:int=0):
         data = self.get_data(frame)
         slc = rect.as_slice()
         with self.lock:
-            data[slc] = np.add(data[slc], diff, casting="unsafe")
+            data[slc] = np.bitwise_xor(data[slc], diff)
             self.set_dirty(rect, frame)
         self.version += 1
 
@@ -329,9 +330,9 @@ class Layer:
         return hash((id(self), self.size, self.version))
 
 
-class TemporaryLayer(Layer):
+# class TemporaryLayer(Layer):
 
-    dtype = np.uint32
+#     dtype = np.uint32
     
-    def __hash__(self):
-        return hash((id(self), self.size))
+#     def __hash__(self):
+#         return hash((id(self), self.size))

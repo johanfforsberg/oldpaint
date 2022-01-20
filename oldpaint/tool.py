@@ -133,7 +133,7 @@ class InkTool(Tool):
         p2 = (x1 + dyn * w1, y1 - dxn * w1)
         p3 = (x1 - dyn * w1, y1 + dxn * w1)
         self._last_p = p2, p3
-        rect = overlay.draw_quad(p0, p1, p2, p3, self.brush_color + 255*2**24)
+        rect = overlay.draw_quad(p0, p1, p2, p3, self.brush_color)
         if rect:
             self.rect = rect.unite(self.rect)
         self.points.append(point)
@@ -255,7 +255,7 @@ class RectangleTool(Tool):
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
         self.rect = overlay.draw_rectangle(r.position, r.size, brush=brush,
                                            offset=self.brush.center, fill=modifiers & window.key.MOD_SHIFT,
-                                           color=self.color + 255*2**24)
+                                           color=self.color)
 
     def finish(self, overlay, point, buttons, modifiers):
         if len(self.points) > 1:
@@ -264,7 +264,7 @@ class RectangleTool(Tool):
         r = from_points([p0, point])
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
         rect = overlay.draw_rectangle(r.position, r.size, brush=brush, offset=self.brush.center,
-                                      fill=modifiers & window.key.MOD_SHIFT, color=self.color + 255*2**24)
+                                      fill=modifiers & window.key.MOD_SHIFT, color=self.color)
         if rect:
             self.rect = rect.unite(self.rect)
         self.points[1] = point
@@ -294,7 +294,7 @@ class EllipseTool(Tool):
         size = (int(abs(x - x0)), int(abs(y - y0)))
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
         self.rect = overlay.draw_ellipse((x0, y0), size, brush=brush,
-                                         offset=self.brush.center, color=self.color + 255*2**24,
+                                         offset=self.brush.center, color=self.color,
                                          fill=modifiers & window.key.MOD_SHIFT)
 
     def finish(self, overlay, point, buttons, modifiers):
@@ -316,7 +316,7 @@ class FillTool(Tool):
     def finish(self, overlay, point, buttons, modifiers):
         if point in overlay.rect:
             source = self.drawing.current.get_data(self.drawing.frame)
-            self.rect = overlay.draw_fill(source, point, color=self.color + 255*2**24)
+            self.rect = overlay.draw_fill(source, point, color=self.color)
             self.points = [point]
 
 

@@ -14,10 +14,12 @@ class Brush:
         if size:
             assert len(size) == 2
             self.size = size
-            self.data = np.ones(size, dtype=np.uint32)
+            self.data = np.ma.zeros(size, dtype=np.uint8)
         else:
-            self.data = data
             self.size = data.shape[:2]
+            assert isinstance(data, np.ma.MaskedArray)
+            assert isinstance(data.mask, np.ndarray)
+            self.data = data
     
     @property
     def center(self):
@@ -25,9 +27,12 @@ class Brush:
 
     @lru_cache(2)  
     def get_draw_data(self, color, colorize=None):
-        filled_pixels = self.data > 0
+        filled_pixels = ~self.data.mask
+        print("filled", filled_pixels)
         # Fill all non-transparent pixels with the same color
-        return (color + filled_pixels * 2**24).astype(np.uint32)
+        # return (color + filled_pixels * 2**24).astype(np.uint32)
+        return np.ma.masked_array(color * filled_pixels, dtype=np.uint8,
+                                  mask=self.data.mask)
     
     @lru_cache(1)
     def _get_center(self, size):
@@ -70,7 +75,8 @@ class RectangleBrush(Brush):
     def __init__(self, width: int = 1, height: int = 1):
         self.width = width
         self.height = height
-        data = np.ones((width, height), dtype=np.uint32)
+        data = np.ma.ones((width, height), dtype=np.uint8)
+        data.mask = data.data == 0
         super().__init__(data=data)
 
 
@@ -92,12 +98,13 @@ class EllipseBrush(Brush):
         self.r2 = r2
         d1 = 2 * r1
         d2 = 2 * r2
-        data = np.zeros((d1, d2), dtype=np.uint32)
-        brush = np.array([[1]], dtype=np.uint32)
-        draw_ellipse(data, brush,
+        data = np.ma.zeros((d1, d2), dtype=np.uint8)
+        brush = np.ma.masked_array([[1]], dtype=np.uint8, mask=[False])
+        draw_ellipse(data, brush, brush.mask,
                      center=(r1, r2),
                      size=(r1-1, r2-1),
                      color=1, fill=True)
+        data.mask = data.data == 0
         super().__init__(data=data)
 
 
@@ -125,8 +132,8 @@ class PicBrush(Brush):
         filled_pixels = self.data > 0
         if colorize:
             # Fill all non-transparent pixels with the same color
-            return (color + filled_pixels * 2**24).astype(np.uint32)
+            return (color + filled_pixels)  # * 2**24).astype(np.uint32)
         else:
             # Otiginal brush data
-            return (self.data + filled_pixels * 2**24).astype(np.uint32)
+            return (self.data + filled_pixels)  # * 2**24).astype(np.uint32)
 

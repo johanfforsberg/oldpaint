@@ -313,7 +313,7 @@ def rgba_to_32bit(color):
 
 def as_rgba(arr, colors):
     colors32 = [rgba_to_32bit(c) for c in colors]
-    return (np.array(colors32, dtype=np.uint32)[arr])
+    return (np.array(colors32, dtype=np.uint8)[arr])
 
 
 class DefaultList(list):

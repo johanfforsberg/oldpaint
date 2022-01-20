@@ -169,9 +169,9 @@ class OldpaintWindow(pyglet.window.Window):
         
         self._mru_cycling = False  # Whether Alt+Tabbing through drawings
 
-    @property
-    def overlay(self):
-        return self.drawings.current.overlay
+    # @property
+    # def overlay(self):
+    #     return self.drawings.current.overlay
 
     @property
     def drawing(self) -> Drawing:
@@ -240,7 +240,7 @@ class OldpaintWindow(pyglet.window.Window):
         tablet = self.tablet.active
         if (tablet and left) or ((not tablet) and (left or right)):
             if self.brush_preview_dirty:
-                self.overlay.clear(self.brush_preview_dirty, frame=0)
+                # self.overlay.clear(self.brush_preview_dirty, frame=0)
                 self.brush_preview_dirty = None
 
             x, y = self.to_image_coords(x, y)
@@ -256,7 +256,7 @@ class OldpaintWindow(pyglet.window.Window):
                 else:
                     brush_color = self.drawing.palette.foreground
             tool = self.tools.current(self.drawing, self.brush, color, brush_color)
-            self.stroke = Stroke(self.overlay, tool)
+            self.stroke = Stroke(self.drawing, tool)
             fut = self.executor.submit(self.stroke)
             fut.add_done_callback(lambda s: self.executor.submit(self._finish_stroke, s))
             self.stroke.queue_event("mouse_down", (x, y), buttons, modifiers)
@@ -313,11 +313,14 @@ class OldpaintWindow(pyglet.window.Window):
     def on_mouse_leave(self, x, y):
         self.mouse_position = None
         if self.brush_preview_dirty:
-            self.overlay.clear(self.brush_preview_dirty, frame=0)
+            # self.overlay.clear(self.brush_preview_dirty, frame=0)
+            pass
 
     @no_imgui_events
     def on_key_press(self, symbol, modifiers):
 
+        self._clear_brush_preview()
+        
         if symbol == key.Q and modifiers & key.MOD_CTRL:
             self._quit()
 
@@ -388,7 +391,7 @@ class OldpaintWindow(pyglet.window.Window):
 
             elif symbol == key.TAB and modifiers & key.MOD_ALT:
                 # TODO make this toggle to most-recently-used instead
-                self.overlay.clear()
+                # self.overlay.clear()
                 self._mru_cycling = True
                 self.drawings.select_most_recent(update_mro=False)
             elif symbol in range(48, 58):
@@ -457,10 +460,10 @@ class OldpaintWindow(pyglet.window.Window):
 
             elif symbol == key.ESCAPE:
                 self.drawing.brushes.current = None
-                self.overlay.clear()
+                # self.overlay.clear()
 
             elif symbol == key.LCTRL and not modifiers:
-                self.overlay.clear()
+                # self.overlay.clear()
                 self.tools.select(PickerTool)
 
     def on_key_release(self, symbol, modifiers):
@@ -604,15 +607,18 @@ class OldpaintWindow(pyglet.window.Window):
             tool = self.stroke.tool
             if tool.rect:
                 # If no rect is set, the tool is presumed to not have changed anything.
-                self.drawing.change_layer(self.overlay, tool.rect, tool.tool)
-                self.overlay.clear(tool.rect, frame=0)
+                self.drawing.change_layer(tool.rect, tool.tool)
+                # self.overlay.clear(tool.rect, frame=0)
+                self.drawing.make_backup()
             else:
-                self.overlay.clear(frame=0)
+                # self.overlay.clear(frame=0)
+                pass
             if tool.restore_last:
                 self.tools.restore()
         else:
             # The stroke was aborted
-            self.overlay.clear()
+            # self.overlay.clear()
+            pass
         self.stroke = None
         self.autosave_drawing()
 
@@ -779,11 +785,11 @@ class OldpaintWindow(pyglet.window.Window):
     def _get_offscreen_buffer(self, drawing):
         return FrameBuffer(drawing.size, textures=dict(color=Texture(drawing.size, unit=0)))
 
-    @lru_cache(1)
-    def _get_overlay_texture(self, overlay):
-        texture = Texture(overlay.size, unit=1)
-        texture.clear()
-        return texture
+    # @lru_cache(1)
+    # def _get_overlay_texture(self, overlay):
+    #     texture = Texture(overlay.size, unit=1)
+    #     texture.clear()
+    #     return texture
 
     @lru_cache(1)
     def to_image_coords(self, x, y):
@@ -849,10 +855,14 @@ class OldpaintWindow(pyglet.window.Window):
             ((xw0, yw1, 0),)
         ])
 
+    def _clear_brush_preview(self):
+        if self.brush_preview_dirty:
+            # self.overlay.clear(self.brush_preview_dirty, frame=0)
+            self.drawing.restore(self.brush_preview_dirty)
+        
     @try_except_log
     def _draw_brush_preview(self, x0, y0, x, y):
-        if self.brush_preview_dirty:
-            self.overlay.clear(self.brush_preview_dirty, frame=0)
+        self._clear_brush_preview()
         if self.drawing.locked:
             return
         self.brush_preview_dirty = None
@@ -864,20 +874,20 @@ class OldpaintWindow(pyglet.window.Window):
         ix0, iy0 = self.to_image_coords(x0, y0)
         ix, iy = self.to_image_coords(x, y)
         ix, iy = self.drawing.get_point(ix, iy)
-        overlay = self.overlay
+        # overlay = self.overlay
         brush = self.brush
         bw, bh = brush.size
         cx, cy = brush.center
         # Clear the previous brush preview
         # TODO when leaving the image, or screen, we also need to clear
         old_rect = Rectangle((ix0 - cx, iy0 - cy), brush.size)
-        overlay.clear(old_rect, frame=0)
+        # overlay.clear(old_rect, frame=0)
         rect = Rectangle((ix - cx, iy - cy), brush.size)
         color = None if isinstance(self.brush, PicBrush) else self.drawing.palette.foreground
         data = brush.get_draw_data(color)
-        rect = overlay.blit(data, rect, frame=0)
+        dirty_rect = self.drawing.current.blit(data, rect, frame=0)
 
-        self.brush_preview_dirty = rect
+        self.brush_preview_dirty = dirty_rect
 
     def _update_cursor(self, x, y):
         over_image = self._over_image(x, y)

@@ -18,7 +18,7 @@ from .edit import (LayerEdit, LayerClearEdit, DrawingCropEdit, LayerFlipEdit,
                    RemoveLayerEdit, SwapLayersEdit, MergeLayersEdit,
                    SwapColorsImageEdit, SwapColorsPaletteEdit,
                    MultiEdit)
-from .layer import Layer, TemporaryLayer
+from .layer import Layer  #, TemporaryLayer
 from .ora import load_ora, save_ora, load_png, save_png
 from .palette import Palette, PALETTES_DIR
 from .rect import Rectangle
@@ -72,7 +72,7 @@ class Drawing:
         else:
             self.layers = Selectable([Layer(size=self.size)])
         self.palette = palette if palette else Palette.from_file(PALETTES_DIR / "vga_palette.json", transparency=0)
-
+        
         # Animation related things
         self.frame = 0
         self.n_frames = max(1, *(len(l.frames) for l in self.layers))
@@ -102,6 +102,8 @@ class Drawing:
         self._export_path = None
         self.uuid = str(uuid4())
 
+        self.make_backup()
+
     @property
     def export_path(self):
         return self._get_export_path(self._export_path, self.path)
@@ -122,14 +124,15 @@ class Drawing:
         assert isinstance(layer, Layer)
         self.layers.set_item(layer)
 
-    @property
-    def overlay(self):
-        return self._get_overlay(self.size)
+    def make_backup(self, rect=None):
+        # TODO partial backup
+        self.backup = self.current.get_data().copy()
 
-    @lru_cache(1)
-    def _get_overlay(self, size):
-        return TemporaryLayer(size=size)
-    
+    def restore(self, rect=None):
+        rect = rect or self.current.rect
+        if rect:
+            self.current.blit(self.backup[rect.as_slice()], rect, alpha=False)
+        
     @property
     def visible_layers(self):
         if self.only_show_current_layer:
@@ -304,8 +307,7 @@ class Drawing:
                 AddFrameEdit.create(None, self.size, i, frame)
                 for i, layer in enumerate(self.layers)
             ])
-        self._make_edit(edit)
-         
+        self._make_edit(edit)         
         self.frame = frame
  
     def remove_frame(self, frame=None):
@@ -438,11 +440,13 @@ class Drawing:
         self.flip_layer(layer, False)
 
     @try_except_log
-    def change_layer(self, new, rect, tool=None, layer=None, frame=None):
+    def change_layer(self, rect, tool=None, layer=None, frame=None):
         "Update a part of the layer, keeping track of the change as an 'undo'"
-        layer = layer or self.current
+        
+        layer = self.backup
+        new = self.current.get_data()
         frame = frame if frame is not None else self.frame
-        edit = LayerEdit.create(self, layer, new, frame, rect, tool.value if tool else 0)
+        edit = LayerEdit.create(self, layer, new, self.layers.index(), frame, rect, tool.value if tool else 0)
         self._make_edit(edit)
 
     @try_except_log
@@ -495,7 +499,7 @@ class Drawing:
     
     def _make_edit(self, edit):
         """ Perform an edit and insert it into the history, keeping track of things """
-        edit.perform(self)
+        # edit.perform(self)
         if self._edits_index < -1:
             del self._edits[self._edits_index + 1:]
             self._edits_index = -1
@@ -506,7 +510,8 @@ class Drawing:
         "Restore the drawing to the state it was in before the current edit was made."
         if -self._edits_index <= len(self._edits):
             edit = self._edits[self._edits_index]
-            edit.revert(self)
+            rect = edit.revert(self)
+            self.make_backup(rect)
             self._edits_index -= 1
         else:
             logger.info("No more edits to undo!")
@@ -517,7 +522,8 @@ class Drawing:
         if self._edits_index < -1:
             self._edits_index += 1
             edit = self._edits[self._edits_index]
-            edit.perform(self)
+            rect = edit.perform(self)
+            self.make_backup(rect)
         else:
             logger.info("No more edits to redo!")
 

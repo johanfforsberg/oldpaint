@@ -18,7 +18,7 @@ cdef extern from "math.h":
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cpdef void paste(unsigned int[:, :] pic, unsigned int[:, :] brush, int x, int y) nogil:
+cpdef void paste(unsigned char[:, :] pic, unsigned char[:, :] brush, int x, int y) nogil:
     "Copy image data without caring about transparency"
     cdef int w, h, bw, bh
     w, h = pic.shape[:2]
@@ -39,7 +39,10 @@ cpdef void paste(unsigned int[:, :] pic, unsigned int[:, :] brush, int x, int y)
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cpdef Rectangle blit(unsigned int[:, :] pic, unsigned char[:, :] brush, int x, int y):
+cpdef Rectangle blit(unsigned char[:, :] pic,
+                     unsigned char[:, :] brush,
+                     unsigned char[:, :] mask,
+                     int x, int y):
     # TODO consider rewriting this to use numpy instead, see layer.blit.
     # Not sure if it would be faster but it's more general and it hurts a little
     # to have two ways of doing the same thing...
@@ -76,7 +79,10 @@ cpdef Rectangle blit(unsigned int[:, :] pic, unsigned char[:, :] brush, int x, i
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef void _cblit(unsigned int[:, :] pic, unsigned int[:, :] brush, int x, int y) nogil:
+cdef void _cblit(unsigned char[:, :] pic,
+                 unsigned char[:, :] brush,
+                 unsigned char[:, :] mask,
+                 int x, int y) nogil:
     "Draw a brush onto an image, skipping transparent pixels."
     # Faster version for internal use in this module.
     cdef int w, h, bw, bh, y1, x1, x2, y2
@@ -94,13 +100,16 @@ cdef void _cblit(unsigned int[:, :] pic, unsigned int[:, :] brush, int x, int y)
                 continue
             if (x2 >= w):
                 break
-            if brush[x1, y1] >> 24:  # Ignore 100% transparent pixels
+            # if brush[x1, y1] >> 24:  # Ignore 100% transparent pixels
+            if not mask[x1, y1]:
                 pic[x2, y2] = brush[x1, y1]
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cpdef draw_line(unsigned int[:, :] pic, unsigned int[:, :] brush,
+cpdef draw_line(unsigned char[:, :] pic,
+                unsigned char[:, :] brush,
+                unsigned char[:, :] mask,                
                 (int, int) p0, (int, int) p1, int step=1):
 
     "Draw a straight line from p0 to p1 using a brush."
@@ -122,13 +131,13 @@ cpdef draw_line(unsigned int[:, :] pic, unsigned int[:, :] brush,
     cdef int e2
 
     cdef int px0, px1, py0, py1, bx0, bx1, by0, by1
-    cdef unsigned int[:, :] src, dst
+    cdef unsigned char[:, :] src, dst
     cdef Rectangle r
 
     with nogil:
         while True:
             if i % step == 0:
-                _cblit(pic, brush, x, y)
+                _cblit(pic, brush, mask, x, y)
             if x == x1 and y == y1:
                 break
             e2 = 2*err
@@ -150,7 +159,9 @@ cpdef draw_line(unsigned int[:, :] pic, unsigned int[:, :] brush,
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef void cdraw_line(unsigned int[:, :] pic, unsigned int[:, :] brush,
+cdef void cdraw_line(unsigned char[:, :] pic,
+                     unsigned char[:, :] brush,
+                     unsigned char[:, :] mask,                     
                      (int, int) p0, (int, int) p1, int step=1) nogil:
 
     "Draw a straight line from p0 to p1 using a brush."
@@ -172,11 +183,11 @@ cdef void cdraw_line(unsigned int[:, :] pic, unsigned int[:, :] brush,
     cdef int e2
 
     cdef int px0, px1, py0, py1, bx0, bx1, by0, by1
-    cdef unsigned int[:, :] src, dst
+    cdef unsigned char[:, :] src, dst
 
     while True:
         if i % step == 0:
-            _cblit(pic, brush, x, y)
+            _cblit(pic, brush, mask, x, y)
         if x == x1 and y == y1:
             break
         e2 = 2*err
@@ -195,9 +206,9 @@ cdef void cdraw_line(unsigned int[:, :] pic, unsigned int[:, :] brush,
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cpdef draw_quad(unsigned int[:, :] pic,
+cpdef draw_quad(unsigned char[:, :] pic,
                 (float, float) p0, (float, float) p1, (float, float) p2, (float, float) p3,
-                unsigned int color):
+                unsigned char color):
 
     cdef int min_x, max_x, min_y, max_y, cols, rows;
     cdef float x0, y0, x1, y1, x2, y2, x3, y3
@@ -237,9 +248,11 @@ cpdef draw_quad(unsigned int[:, :] pic,
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cpdef draw_rectangle(unsigned int[:, :] pic, unsigned int[:, :] brush,
+cpdef draw_rectangle(unsigned char[:, :] pic,
+                     unsigned char[:, :] brush,
+                     unsigned char[:, :] mask,
                      (int, int) pos, (int, int) size,
-                     unsigned int color, bint fill=False):
+                     unsigned char color, bint fill=False):
     cdef int x0, y0, w0, h0, x, y, w, h, cols, rows, bw, bh
 
     x0, y0 = pos
@@ -259,10 +272,10 @@ cpdef draw_rectangle(unsigned int[:, :] pic, unsigned int[:, :] brush,
         if fill:
             pic[x:x+w, y:y+h] = color
         else:
-            cdraw_line(pic, brush, pos, (x0+w0, y0))
-            cdraw_line(pic, brush, (x0+w0, y0), (x0+w0, y0+h0))
-            cdraw_line(pic, brush, (x0+w0, y0+h0), (x0, y0+h0))
-            cdraw_line(pic, brush, (x0, y0+h0), pos)   
+            cdraw_line(pic, brush, mask, pos, (x0+w0, y0))
+            cdraw_line(pic, brush, mask, (x0+w0, y0), (x0+w0, y0+h0))
+            cdraw_line(pic, brush, mask, (x0+w0, y0+h0), (x0, y0+h0))
+            cdraw_line(pic, brush, mask, (x0, y0+h0), pos)   
 
     bw, bh = brush.shape[:2]
 
@@ -272,9 +285,11 @@ cpdef draw_rectangle(unsigned int[:, :] pic, unsigned int[:, :] brush,
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cpdef draw_ellipse(unsigned int[:, :] pic, unsigned int[:, :] brush,
+cpdef draw_ellipse(unsigned char[:, :] pic,
+                   unsigned char[:, :] brush,
+                   np.ndarray[np.uint8_t, ndim=2] mask,
                    (int, int) center, (int, int) size,
-                   unsigned int color, bint fill=False):
+                   unsigned char color, bint fill=False):
 
     cdef int w, h, a, b, x0, y0, a2, b2, error, x, y, stopx, stopy, hw, hh
 
@@ -303,17 +318,17 @@ cpdef draw_ellipse(unsigned int[:, :] pic, unsigned int[:, :] brush,
         if fill:
             lx = min(w-1, max(0, x0 - a))
             rx = max(0, min(w, x0 + a + 1))
-            cdraw_line(pic, brush, (lx, y0), (rx, y0), color)
+            cdraw_line(pic, brush, mask, (lx, y0), (rx, y0), color)
             rect = Rectangle((x0-a, y0), (2*a+1, 1))
         else:
-            rect = draw_line(pic, brush, (x0-a, y0), (x0+a+1, y0))
+            rect = draw_line(pic, brush, mask, (x0-a, y0), (x0+a+1, y0))
         return pic.rect.intersect(rect)
 
     if a == 0:
         if fill and color:
-            rect = draw_rectangle(pic, brush, (x0, y0-b), (1, 2*b+1), color=color, fill=True)
+            rect = draw_rectangle(pic, brush, mask, (x0, y0-b), (1, 2*b+1), color=color, fill=True)
         else:
-            rect = draw_line(pic, brush, (x0, y0-b), (x0, y0+b+1))
+            rect = draw_line(pic, brush, mask, (x0, y0-b), (x0, y0+b+1))
         return pic.rect.intersect(rect)
 
     with nogil:
@@ -328,10 +343,10 @@ cpdef draw_ellipse(unsigned int[:, :] pic, unsigned int[:, :] brush,
                 if boty < h:
                     pic[lx:rx, boty] = color
             else:
-                _cblit(pic, brush, x0 + x - hw, y0 + y - hh)
-                _cblit(pic, brush, x0 - x - hw, y0 + y - hh)
-                _cblit(pic, brush, x0 - x - hw, y0 - y - hh)
-                _cblit(pic, brush, x0 + x - hw, y0 - y - hh)
+                _cblit(pic, brush, mask, x0 + x - hw, y0 + y - hh)
+                _cblit(pic, brush, mask, x0 - x - hw, y0 + y - hh)
+                _cblit(pic, brush, mask, x0 - x - hw, y0 - y - hh)
+                _cblit(pic, brush, mask, x0 + x - hw, y0 - y - hh)
 
             x += 1
             error -= b2 * (x - 1)
@@ -358,10 +373,10 @@ cpdef draw_ellipse(unsigned int[:, :] pic, unsigned int[:, :] brush,
                 if boty < h:
                     pic[lx:rx, boty] = color
             else:
-                _cblit(pic, brush, x0 + x - hw, y0 + y - hh)
-                _cblit(pic, brush, x0 - x - hw, y0 + y - hh)
-                _cblit(pic, brush, x0 - x - hw, y0 - y - hh)
-                _cblit(pic, brush, x0 + x - hw, y0 - y - hh)           
+                _cblit(pic, brush, mask, x0 + x - hw, y0 + y - hh)
+                _cblit(pic, brush, mask, x0 - x - hw, y0 + y - hh)
+                _cblit(pic, brush, mask, x0 - x - hw, y0 - y - hh)
+                _cblit(pic, brush, mask, x0 + x - hw, y0 - y - hh)           
 
             y += 1
             error -= a2 * (y - 1)
@@ -377,8 +392,9 @@ cpdef draw_ellipse(unsigned int[:, :] pic, unsigned int[:, :] brush,
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cpdef draw_fill(unsigned char[:, :] pic, unsigned int[:, :] dest,
-                (int, int) point, unsigned int color):
+cpdef draw_fill(unsigned char[:, :] pic,
+                unsigned char[:, :] dest,
+                (int, int) point, unsigned char color):
 
     # TODO kind of slow, and requires the GIL.
 
