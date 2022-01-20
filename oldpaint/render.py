@@ -36,7 +36,7 @@ def render_drawing(drawing, highlighted_layer=None):
         gl.glViewport(0, 0, w, h)
 
         gl.glEnable(gl.GL_BLEND)
-        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+        gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)        
         gl.glClearBufferfv(gl.GL_COLOR, 0, EMPTY_COLOR)
 
         # layer = drawing.current
@@ -92,19 +92,9 @@ def render_drawing(drawing, highlighted_layer=None):
                 continue
 
             with layer_texture:
-                # if layer == drawing.current:
-                #     # The overlay is combined with the layer
-                #     with overlay_texture:
-                #         # TODO is it possible to send the palette without converting
-                #         # to float first?
-                #         gl.glUniform1f(1, 1)
-                #         gl.glUniform4fv(2, 256, colors)
-                #         gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
-                # else:
-                with _get_empty_texture(drawing.size):
-                    gl.glUniform1f(1, 1)
-                    gl.glUniform4fv(2, 256, colors)
-                    gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+                gl.glUniform1f(1, layer.alpha)
+                gl.glUniform4fv(2, 256, colors)
+                gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 
         gl.glDisable(gl.GL_BLEND)
     return offscreen_buffer
@@ -127,6 +117,7 @@ def _get_layer_texture(layer, frame):
 @lru_cache(1)
 def _get_overlay_texture(shape):
     texture = IntegerTexture(shape, unit=1)
+    
     texture.clear()
     return texture
 

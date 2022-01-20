@@ -211,25 +211,32 @@ class MainMenu:
 
                 if imgui.menu_item("Add", "l", False, True)[0]:
                     drawing.add_layer()
-                elif imgui.menu_item("Remove", None, False, True)[0]:
+                if imgui.menu_item("Remove", None, False, True)[0]:
                     drawing.remove_layer()
-                elif imgui.menu_item("Merge down", None, False, index > 0)[0]:
+                if imgui.menu_item("Merge down", None, False, index > 0)[0]:
                     drawing.merge_layer_down()
 
-                elif imgui.menu_item("Toggle visibility", "V", False, True)[0]:
+                if imgui.menu_item("Toggle visibility", "V", False, True)[0]:
                     layer.visible = not layer.visible
-                elif imgui.menu_item("Move up", "W", False, index < n_layers-1)[0]:
+                if imgui.begin_menu("Alpha...", True):
+                    changed, new_alpha = imgui.slider_float("Alpha value", layer.alpha,
+                                                            # change_speed=0.01,
+                                                            min_value=0, max_value=1)
+                    if changed:
+                        layer.alpha = new_alpha
+                    imgui.end_menu()
+                if imgui.menu_item("Move up", "W", False, index < n_layers-1)[0]:
                     drawing.move_layer_up()
-                elif imgui.menu_item("Move down", "S", False, index > 0)[0]:
+                if imgui.menu_item("Move down", "S", False, index > 0)[0]:
                     drawing.move_layer_down()
 
                 imgui.separator()
 
                 if imgui.menu_item("Flip horizontally", None, False, True)[0]:
                     drawing.flip_layer_horizontal()
-                elif imgui.menu_item("Flip vertically", None, False, True)[0]:
+                if imgui.menu_item("Flip vertically", None, False, True)[0]:
                     drawing.flip_layer_vertical()
-                elif imgui.menu_item("Clear", "Delete", False, True)[0]:
+                if imgui.menu_item("Clear", "Delete", False, True)[0]:
                     drawing.clear_layer()
 
                 imgui.separator()
@@ -256,7 +263,7 @@ class MainMenu:
                             pw = int(max_size * aspect)
                             ph = max_size
                             imgui.image(texture.name, pw, ph, border_color=(.25, .25, .25, 1))
-                            imgui.end_tooltip()
+                        imgui.end_tooltip()
 
                 window.highlighted_layer = hovered_layer
 

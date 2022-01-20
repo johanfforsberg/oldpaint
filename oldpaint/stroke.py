@@ -14,7 +14,8 @@ class Stroke:
     def __init__(self, drawing, tool):
         self.drawing = drawing
         self.tool = tool
-        self._event_queue = Queue()        
+        self._event_queue = Queue()
+        print("starting stroke")
 
     def queue_event(self, *event):
         self._event_queue.put(event)

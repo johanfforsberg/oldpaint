@@ -122,6 +122,7 @@ class Drawing:
     def current(self, layer):
         assert isinstance(layer, Layer)
         self.layers.set_item(layer)
+        self.make_backup()
 
     def make_backup(self, rect=None):
         # TODO partial backup
@@ -130,7 +131,6 @@ class Drawing:
     def restore(self, rect=None):
         rect = rect or self.current.rect
         if rect:
-            print("restore", rect)
             self.current.blit(self.backup[rect.as_slice()], rect, alpha=False)
         
     @property

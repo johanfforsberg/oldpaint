@@ -55,6 +55,7 @@ class Layer:
         }
 
         self.visible = visible
+        self.alpha = 1.0
 
     # def get_pic(self, frame=0):
     #     return self.frames[frame]
@@ -126,9 +127,6 @@ class Layer:
         p1 = (x1 - ox, y1 - oy)
         data = self.get_data(frame)
         with self.lock:
-            # breakpoint()
-            # brush = np.array(brush, dtype=np.uint8)
-            print(brush.dtype, brush.mask.dtype)
             rect = draw_line(data, brush, brush.mask, p0, p1, step)
             if rect and set_dirty:
                 self.set_dirty(rect, frame)
