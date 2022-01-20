@@ -175,11 +175,13 @@ class LayerClearEdit(Edit):
     def perform(self, drawing):
         layer = drawing.layers[self.index]
         layer.clear(self.rect, value=self.color, frame=self.frame)
+        return self.rect
 
     def revert(self, drawing):
         layer = drawing.layers[self.index]
         data = np.frombuffer(zlib.decompress(self.data), dtype=np.uint8).reshape(self.rect.size)
         layer.apply_diff(data, self.rect, frame=self.frame)
+        return self.rect
 
     @property
     def index_str(self):
@@ -212,10 +214,12 @@ class LayerCropEdit(Edit):
     def perform(self, drawing):
         layer = drawing.layers[self.index]
         drawing.layers[self.index] = layer.crop(self.rect)
+        return self.rect
 
     def revert(self, drawing):
         data = zlib.decompress(self.data)
         drawing.layers[self.index] = Layer(data, self.rect.size)
+        return self.rect
 
     @property
     def index_str(self):
@@ -240,11 +244,14 @@ class DrawingCropEdit(MultiEdit):
 
     def perform(self, drawing):
         super().perform(drawing)
-        drawing.size = self.edits[0].rect.size
+        rect = self.edits[0].rect
+        drawing.size = rect.size
+        return rect
 
     def revert(self, drawing):
         super().revert(drawing)
         drawing.size = self.edits[0].orig_size
+        return self.edits[0].rect
         
     @property
     def index_str(self):
@@ -269,6 +276,7 @@ class LayerFlipEdit(Edit):
             layer.flip_horizontal()
         else:
             layer.flip_vertical()
+        return layer.rect
 
     revert = perform  # Mirroring is it's own inverse!
 
@@ -297,6 +305,7 @@ class DrawingFlipEdit(Edit):
                 layer.flip_horizontal()
             else:
                 layer.flip_vertical()
+        return layer.rect
 
     revert = perform  # Mirroring is it's own inverse!
 
@@ -395,10 +404,12 @@ class AddLayerEdit(Edit):
         frames = pickle.loads(zlib.decompress(self.data))
         layer = Layer(frames=frames, size=self.size)
         drawing.layers.add(layer, index=self.index)
+        return layer.rect
 
     def revert(self, drawing):
         layer = drawing.layers[self.index]
         drawing.layers.remove(layer)
+        return layer.rect
 
     @property
     def index_str(self):
@@ -410,7 +421,6 @@ class AddLayerEdit(Edit):
 
     def __repr__(self):
         return f"{__class__}(index={self.index}, data={len(self.data)}B, size={self.size})"
-
 
 
 @dataclass(frozen=True)
@@ -460,12 +470,14 @@ class AddFrameEdit(Edit):
         layer.add_frame(self.frame, data)
         if self.frame <= drawing.frame:
             drawing.frame += 1
+        return layer.rect
 
     def revert(self, drawing):
         layer = drawing.layers[self.index]
         layer.remove_frame(self.frame)
         if self.frame <= drawing.frame:
             drawing.frame -= 1
+        return layer.rect
 
     @property
     def index_str(self):
@@ -514,8 +526,10 @@ class SwapFramesEdit(Edit):
     frame2: int
 
     def perform(self, drawing):
-        drawing.layers[self.index].swap_frames(self.frame1, self.frame2)
+        layer = drawing.layers[self.index]
+        layer.swap_frames(self.frame1, self.frame2)
         drawing.frame = self.frame2
+        return layer.rect
 
     revert = perform
 
@@ -560,6 +574,7 @@ class SwapLayersEdit(Edit):
 
     def perform(self, drawing):
         drawing.layers.swap(self.index1, self.index2)
+        return 
 
     @property
     def index_str(self):

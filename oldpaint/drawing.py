@@ -114,16 +114,6 @@ class Drawing:
         elif path and path.endswith(".png"):
             return path
 
-    @property
-    def current(self) -> Layer:
-        return self.layers.current
-
-    @current.setter
-    def current(self, layer):
-        assert isinstance(layer, Layer)
-        self.layers.set_item(layer)
-        self.make_backup()
-
     def make_backup(self, rect=None):
         # TODO partial backup
         self.backup = self.current.get_data().copy()
@@ -132,7 +122,25 @@ class Drawing:
         rect = rect or self.current.rect
         if rect:
             self.current.blit(self.backup[rect.as_slice()], rect, alpha=False)
+
+    def with_backup(f):
         
+        def inner(self, *args, **kwargs):
+            f(self, *args, **kwargs)
+            self.make_backup()
+            
+        return inner
+
+    @property
+    def current(self) -> Layer:
+        return self.layers.current
+
+    @current.setter
+    @with_backup
+    def current(self, layer):
+        assert isinstance(layer, Layer)
+        self.layers.set_item(layer)
+    
     @property
     def visible_layers(self):
         if self.only_show_current_layer:
@@ -392,13 +400,13 @@ class Drawing:
         edit = RemoveLayerEdit.create(self, layer)
         self._make_edit(edit)
 
+    @with_backup        
     def next_layer(self):
         self.layers.cycle_forward()
-        self.make_backup()
 
+    @with_backup        
     def prev_layer(self):
         self.layers.cycle_backward()
-        self.make_backup()        
 
     def move_layer_up(self):
         index1 = self.layers.get_current_index()
@@ -515,16 +523,17 @@ class Drawing:
         frame = frame if frame is not None else self.frame
         layer = layer or self.current
         return layer.get_subimage(layer.rect, frame)
-    
+
     def _make_edit(self, edit, perform=True):
         """ Perform an edit and insert it into the history, keeping track of things """
         if perform:
-            edit.perform(self)
+            rect = edit.perform(self)
+            if rect:
+                self.make_backup(rect)
         if self._edits_index < -1:
             del self._edits[self._edits_index + 1:]
             self._edits_index = -1
         self._edits.append(edit)
-        self.make_backup()                
 
     @try_except_log
     def undo(self):
@@ -532,7 +541,8 @@ class Drawing:
         if -self._edits_index <= len(self._edits):
             edit = self._edits[self._edits_index]
             rect = edit.revert(self)
-            self.make_backup(rect)
+            if rect:
+                self.make_backup(rect)
             self._edits_index -= 1
         else:
             logger.info("No more edits to undo!")

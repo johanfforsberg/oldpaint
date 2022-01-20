@@ -23,7 +23,6 @@ class MainMenu:
     def __init__(self):
 
         self.new_drawing_size = (320, 256)
-        self.animation_settings_open = False
         self.show_edit_history = False
         self.show_metrics = False
         self.new_drawing_palette = 0
@@ -31,8 +30,7 @@ class MainMenu:
     def render(self, window):
 
         w, h = window.get_size()
-        drawing = window.drawing  # if window.drawing and not window.drawing.playing_animation else False
-        # self.animation_settings_open = state.self.animation_settings_open
+        drawing = window.drawing 
 
         popup = None
 
@@ -40,7 +38,6 @@ class MainMenu:
             if imgui.begin_menu("File", True):
                 clicked_load, selected_load = imgui.menu_item("Load", "o", False, True)
                 if clicked_load:
-                    # window.load_drawing()
                     popup = "load-drawing"
 
                 if imgui.begin_menu("Load recent...", window.recent_files):
@@ -78,7 +75,6 @@ class MainMenu:
 
                 clicked_save_as, selected_save = imgui.menu_item("Save as", None, False, window.drawing)
                 if clicked_save_as:
-                    # window.save_drawing(ask_for_path=True)
                     popup = "save-drawing"
 
                 imgui.separator()
@@ -106,10 +102,12 @@ class MainMenu:
             if imgui.begin_menu("Drawing", True):
 
                 if imgui.begin_menu("New", True):
-                    _, self.new_drawing_size = imgui.drag_int2("Size", *self.new_drawing_size,
-                                                               min_value=1, max_value=2048)
+                    _, self.new_drawing_size = imgui.drag_int2(
+                        "Size", *self.new_drawing_size,
+                        min_value=1, max_value=2048)
 
-                    clicked, current = imgui.combo("##preset shapes", 0, list(Drawing.PREDEFINED_SIZES.keys()))
+                    clicked, current = imgui.combo(
+                        "##preset shapes", 0, list(Drawing.PREDEFINED_SIZES.keys()))
                     if clicked and current:
                         self.new_drawing_size = list(Drawing.PREDEFINED_SIZES.values())[current]
 
@@ -117,7 +115,8 @@ class MainMenu:
                     custom_palettes = get_custom_palettes()
                     palettes = builtin_palettes + custom_palettes
                     palette_names = [p.stem for p in palettes]
-                    clicked, self.new_drawing_palette = imgui.combo("Palette", self.new_drawing_palette, palette_names)
+                    clicked, self.new_drawing_palette = imgui.combo(
+                        "Palette", self.new_drawing_palette, palette_names)
 
                     if imgui.button("OK"):
                         palette = Palette.from_file(palettes[self.new_drawing_palette])
@@ -133,7 +132,8 @@ class MainMenu:
 
                 if drawing and drawing.unsaved:
                     if imgui.begin_menu("Close unsaved...", window.recent_files):
-                        clicked, _ = imgui.menu_item("Really? You can't undo this.", None, False, True)
+                        clicked, _ = imgui.menu_item("Really? You can't undo this.",
+                                                     None, False, True)
                         if clicked:
                             window.close_drawing(unsaved=True)
                             imgui.menu_item("No way!", None, False, True)
@@ -303,9 +303,6 @@ class MainMenu:
 
                 imgui.separator()
 
-                # clicked, state = imgui.menu_item("Settings", None, self.animation_settings_open, True)
-                # if clicked:
-                #     # self.animation_settings_open = state
                 if imgui.begin_menu("Settings...", True):
                     render_animation_settings(window)
                     imgui.end_menu()
@@ -469,16 +466,10 @@ class MainMenu:
 
             imgui.end_main_menu_bar()
 
-        # if new_drawing_open:
-        #     new_drawing_open = render_new_drawing_popup(window)
-
         if self.show_edit_history:
             self.show_edit_history = render_edits(window.drawing)
 
         return popup
-    # if self.animation_settings_open != state.self.animation_settings_open:
-    #     return update_state(state, self.animation_settings_open=self.animation_settings_open)
-    # return state
 
 
 def render_animation_settings(window):

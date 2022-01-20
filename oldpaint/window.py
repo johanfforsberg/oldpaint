@@ -31,8 +31,9 @@ from .tablet import TabletStateHandler
 from .tool import (PencilTool, InkTool, PointsTool, SprayTool,
                    LineTool, RectangleTool, EllipseTool,
                    SelectionTool, PickerTool, FillTool)
-from .util import (Selectable, Selectable2, make_view_matrix, show_load_dialog, show_save_dialog,
-                   cache_clear, debounce, as_rgba)
+from .util import (Selectable, Selectable2, make_view_matrix,
+                   show_load_dialog, show_save_dialog, cache_clear,
+                   debounce, as_rgba)
 from . import ui
 
 
@@ -150,16 +151,6 @@ class OldpaintWindow(pyglet.window.Window):
             "metrics": False
         }
 
-        # TODO this works, but figure out a way to exit automatically when the application closes.
-        # @contextmanager
-        # def blah():
-        #     yield self.overlay
-        #     rect = self.overlay.dirty
-        #     self.drawing.update(self.overlay, rect)
-        #     self.overlay.clear(rect, frame=0)
-        # Thread(target=start_ipython,
-        #        kwargs=dict(colors="neutral", user_ns={"drawing": self.drawing, "blah": blah})).start()
-
         self.plugins = {}
         init_plugins(self)
 
@@ -242,7 +233,6 @@ class OldpaintWindow(pyglet.window.Window):
         tablet = self.tablet.active
         if (tablet and left) or ((not tablet) and (left or right)):
             if self.brush_preview_dirty:
-                # self.overlay.clear(self.brush_preview_dirty, frame=0)
                 self.brush_preview_dirty = None
 
             x, y = self.to_image_coords(x, y)
@@ -315,8 +305,7 @@ class OldpaintWindow(pyglet.window.Window):
     def on_mouse_leave(self, x, y):
         self.mouse_position = None
         if self.brush_preview_dirty:
-            # self.overlay.clear(self.brush_preview_dirty, frame=0)
-            pass
+            self.drawing.restore(self.brush_preview_dirty)
 
     @no_imgui_events
     def on_key_press(self, symbol, modifiers):
@@ -388,15 +377,10 @@ class OldpaintWindow(pyglet.window.Window):
                 self.change_offset(0, h // 2)
 
             # # Drawings
-            # elif symbol == key.D and modifiers & key.MOD_SHIFT:
-            #     self.new_drawing()
-
             elif symbol == key.TAB and modifiers & key.MOD_ALT:
                 # TODO make this toggle to most-recently-used instead
-                # self.overlay.clear()
                 self._mru_cycling = True
                 self.drawings.select_most_recent(update_mro=False)
-                self.overlay.clear()
             elif symbol in range(48, 58):
                 if symbol == 48:
                     index = 9
@@ -463,10 +447,8 @@ class OldpaintWindow(pyglet.window.Window):
 
             elif symbol == key.ESCAPE:
                 self.drawing.brushes.current = None
-                # self.overlay.clear()
 
             elif symbol == key.LCTRL and not modifiers:
-                # self.overlay.clear()
                 self.tools.select(PickerTool)
 
     def on_key_release(self, symbol, modifiers):
@@ -611,25 +593,16 @@ class OldpaintWindow(pyglet.window.Window):
             if tool.rect:
                 # If no rect is set, the tool is presumed to not have changed anything.
                 self.drawing.change_layer(tool.rect, tool.tool)
-                # self.overlay.clear(tool.rect, frame=0)
                 self.drawing.make_backup()
-            else:
-                # self.overlay.clear(frame=0)
-                pass
             if tool.restore_last:
                 self.tools.restore()
         else:
             # The stroke was aborted
-            # self.overlay.clear()
-            pass
+            self.drawing.restore(self.stroke.tool.rect)
         self.stroke = None
         self.autosave_drawing()
 
     # === Helper functions ===
-
-    def new_drawing(self, default_size=(640, 480)):
-        size = self.drawing.size if self.drawing else default_size
-        # self.ui_state = ui.update_state(self.ui_state, new_drawing_size=size)
 
     def create_drawing(self, size, palette):
         drawing = Drawing(size=size, palette=palette)
@@ -651,35 +624,13 @@ class OldpaintWindow(pyglet.window.Window):
                 raise RuntimeError("Sorry; can only save drawing as ORA!")
         else:
             raise RuntimeError("Can't save without a path!")
-            # last_dir = self.get_latest_dir()
-            # # The point here is to not block the UI redraws while showing the
-            # # dialog. May be a horrible idea but it seems to work...
-            # fut = self.executor.submit(show_save_dialog,
-            #                            title="Select file",
-            #                            initialdir=last_dir,
-            #                            filetypes=(("ORA files", "*.ora"),
-            #                                       # ("PNG files", "*.png"),
-            #                                       ("all files", "*.*")))
-
-            # def really_save_drawing(drawing, path):
-            #     try:
-            #         if path:
-            #             if path.endswith(".ora"):
-            #                 drawing.save_ora(path)
-            #                 self.add_recent_file(path)
-            #             else:
-            #                 self._error = f"Sorry, can only save drawing as ORA!"
-            #     except OSError as e:
-            #         self._error = f"Could not save:\n {e}"
-
-            # fut.add_done_callback(
-            #     lambda fut: really_save_drawing(drawing, fut.result()))
 
     def export_drawing(self, drawing=None, ask_for_path=False):
         """
         'Exporting' means saving as a flat image format - for now, only PNG is supported.
         What is saved is what is currently visible.
-        *This does not preserve layers or other metadata and should not be used for persisting your work.*
+        *This does not preserve layers or other metadata and should not be used for
+        persisting your work.*
         """
         drawing = drawing or self.drawing
         if not ask_for_path and drawing.export_path:
@@ -800,12 +751,6 @@ class OldpaintWindow(pyglet.window.Window):
     def _get_offscreen_buffer(self, drawing):
         return FrameBuffer(drawing.size, textures=dict(color=Texture(drawing.size, unit=0)))
 
-    # @lru_cache(1)
-    # def _get_overlay_texture(self, overlay):
-    #     texture = Texture(overlay.size, unit=1)
-    #     texture.clear()
-    #     return texture
-
     @lru_cache(1)
     def to_image_coords(self, x, y):
         "Convert window coordinates to image coordinates."
@@ -872,7 +817,6 @@ class OldpaintWindow(pyglet.window.Window):
 
     def _clear_brush_preview(self):
         if self.brush_preview_dirty:
-            # self.overlay.clear(self.brush_preview_dirty, frame=0)
             self.drawing.restore(self.brush_preview_dirty)
         
     @try_except_log
@@ -889,14 +833,12 @@ class OldpaintWindow(pyglet.window.Window):
         ix0, iy0 = self.to_image_coords(x0, y0)
         ix, iy = self.to_image_coords(x, y)
         ix, iy = self.drawing.get_point(ix, iy)
-        # overlay = self.overlay
         brush = self.brush
         bw, bh = brush.size
         cx, cy = brush.center
         # Clear the previous brush preview
         # TODO when leaving the image, or screen, we also need to clear
         old_rect = Rectangle((ix0 - cx, iy0 - cy), brush.size)
-        # overlay.clear(old_rect, frame=0)
         rect = Rectangle((ix - cx, iy - cy), brush.size)
         color = None if isinstance(self.brush, PicBrush) else self.drawing.palette.foreground
         data = brush.get_draw_data(color)

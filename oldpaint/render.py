@@ -39,31 +39,6 @@ def render_drawing(drawing, highlighted_layer=None):
         gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)        
         gl.glClearBufferfv(gl.GL_COLOR, 0, EMPTY_COLOR)
 
-        # layer = drawing.current
-        # overlay_texture = _get_overlay_texture(overlay.size)
-
-        # if overlay.dirty.get(0) and overlay.lock.acquire(timeout=0.01):
-        #     # Since we're drawing in a separate thread, we need to be very careful
-        #     # when accessing the overlay, otherwise we can get nasty problems.
-        #     # While we have the lock, the thread won't draw, so we can safely copy data.
-        #     # The acquire timeout is a compromise; on one hand, we don't wait
-        #     # so long that the user feels stutter, on the other hand,
-        #     # if we never wait, and the draw thread is very busy, we might
-        #     # not get to update for a long time.
-        #     rect = overlay.dirty[0]
-        #     subimage = overlay.get_subimage(rect)
-        #     data = subimage.tobytes("F")  # TODO Is this making another copy?
-
-        #     # Now update the texture with the changed part of the layer.
-        #     try:
-        #         gl.glTextureSubImage2D(overlay_texture.name, 0, *rect.points,
-        #                                gl.GL_RGBA_INTEGER, gl.GL_UNSIGNED_BYTE, data)
-
-        #         overlay.dirty.pop(0)
-        #         overlay.lock.release()  # Allow layer to change again.
-        #     except gl.lib.GLException as e:
-        #         logging.error(str(e))
-
         frame = drawing.frame
         for layer in drawing.layers:
 
@@ -111,14 +86,6 @@ def _get_layer_texture(layer, frame):
     if not texture:
         layer_texture_cache[layer_key] = texture = ByteIntegerTexture(layer.size)
         texture.clear()
-    return texture
-
-
-@lru_cache(1)
-def _get_overlay_texture(shape):
-    texture = IntegerTexture(shape, unit=1)
-    
-    texture.clear()
     return texture
 
 
