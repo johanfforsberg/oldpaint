@@ -138,11 +138,12 @@ class Drawing:
         return self.layers.current
 
     @current.setter
-    @with_backup
     def current(self, layer):
         assert isinstance(layer, Layer)
-        self.layers.set_item(layer)
-    
+        if layer != self.current:
+            self.layers.select(layer)
+            self.make_backup()
+        
     @property
     def visible_layers(self):
         if self.only_show_current_layer:

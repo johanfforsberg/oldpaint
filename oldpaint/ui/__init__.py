@@ -188,7 +188,7 @@ def render_layers(window):
             _, selected = imgui.selectable(str(i), layer == drawing.current,
                                            imgui.SELECTABLE_SPAN_ALL_COLUMNS)
             if selected:
-                drawing.layers.current = layer
+                drawing.current = layer
             if imgui.is_item_hovered():
                 hovered = layer
 
