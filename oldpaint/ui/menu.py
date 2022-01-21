@@ -254,15 +254,7 @@ class MainMenu:
                         texture = window.get_layer_preview_texture(layer,
                                                                    colors=drawing.palette.as_tuple())
                         lw, lh = texture.size
-                        aspect = w / h
-                        max_size = 256
-                        if aspect > 1:
-                            pw = max_size
-                            ph = int(max_size / aspect)
-                        else:
-                            pw = int(max_size * aspect)
-                            ph = max_size
-                            imgui.image(texture.name, pw, ph, border_color=(.25, .25, .25, 1))
+                        imgui.image(texture.name, lw, lh, border_color=(.25, .25, .25, 1))
                         imgui.end_tooltip()
 
                 window.highlighted_layer = hovered_layer
