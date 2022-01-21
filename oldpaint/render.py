@@ -20,16 +20,22 @@ draw_program = Program(VertexShader("glsl/palette_vert.glsl"),
                        FragmentShader("glsl/palette_frag.glsl"))
 
 
+logger = logging.getLogger(__name__)
+
+
 def render_drawing(drawing, highlighted_layer=None):
 
     """
     This function has the job of rendering a drawing to a framebuffer.
     """
-
+    
+    global layer_texture_cache
+    
     offscreen_buffer = _get_offscreen_buffer(drawing.size)
 
     palette_tuple = drawing.palette.as_tuple()
     colors = _get_colors(palette_tuple)
+    frame = drawing.frame
 
     with vao, offscreen_buffer, draw_program:
         w, h = offscreen_buffer.size
@@ -39,7 +45,6 @@ def render_drawing(drawing, highlighted_layer=None):
         gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)        
         gl.glClearBufferfv(gl.GL_COLOR, 0, EMPTY_COLOR)
 
-        frame = drawing.frame
         for layer in drawing.layers:
 
             if highlighted_layer and highlighted_layer != layer:
@@ -51,20 +56,23 @@ def render_drawing(drawing, highlighted_layer=None):
             # number of textures in GPU memory.
             # Assumes the non-current textures don't change though.
 
-            layer_texture = _get_layer_texture(layer, frame)
-            if layer.dirty.get(frame) and layer.lock.acquire(timeout=0.03):
-                rect = layer.dirty[frame]
+            if not layer.visible and highlighted_layer != layer:
+                continue
+            
+            needs_redraw, layer_texture = _get_layer_texture(layer, frame)
+            if needs_redraw:
+                rect = layer.rect
+                logger.debug("redraw texture for layer %r, frame %d: %r", layer, frame, rect)
+            else:
+                rect = layer.dirty.pop(frame, None)
+            if rect and layer.lock.acquire(timeout=0.03):
                 subimage = layer.get_subimage(rect, frame)
                 data = subimage.tobytes("F")
                 gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)  # Needed for writing 8bit data  
                 gl.glTextureSubImage2D(layer_texture.name, 0, *rect.points,
                                        gl.GL_RED_INTEGER, gl.GL_UNSIGNED_BYTE, data)
                 gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 4)
-                layer.dirty.pop(frame)
                 layer.lock.release()
-
-            if not layer.visible and highlighted_layer != layer:
-                continue
 
             with layer_texture:
                 gl.glUniform1f(1, layer.alpha)
@@ -72,21 +80,37 @@ def render_drawing(drawing, highlighted_layer=None):
                 gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 
         gl.glDisable(gl.GL_BLEND)
+    if len(layer_texture_cache) > len(drawing.layers):
+        new_layer_texture_cache = {}
+        for layer in drawing.layers:
+            key = make_layer_cache_key(layer, frame)
+            texture = layer_texture_cache.get(key)
+            if texture:
+                new_layer_texture_cache[key] = texture
+        logger.debug("evicting %d textures from layer texture cache",
+                     len(layer_texture_cache) - len(drawing.layers))
+        layer_texture_cache = new_layer_texture_cache
     return offscreen_buffer
 
 
-# TODO this needs to be limited
 layer_texture_cache = {}
+
+
+def make_layer_cache_key(layer, frame):
+    return id(layer), layer.size, id(layer.frames[frame])
+
 
 def _get_layer_texture(layer, frame):
     # TODO This key is pretty ugly... we're using ids so that adding/removing
     # frames does not confuse the cache. But it's not pretty.
-    layer_key = (id(layer), layer.size, id(layer.frames[frame]))
+    layer_key = make_layer_cache_key(layer, frame)
     texture = layer_texture_cache.get(layer_key)
+    if texture:
+        return False, texture
     if not texture:
         layer_texture_cache[layer_key] = texture = ByteIntegerTexture(layer.size)
         texture.clear()
-    return texture
+        return True, texture
 
 
 @lru_cache(1)

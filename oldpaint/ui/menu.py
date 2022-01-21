@@ -419,6 +419,8 @@ class MainMenu:
             if imgui.begin_menu("Info", drawing):
                 _, self.show_edit_history = imgui.menu_item("Edit history", None, self.show_edit_history, True)
                 _, self.show_metrics = imgui.menu_item("ImGui Metrics", None, self.show_metrics, True)
+                if imgui.begin_menu("Backup", drawing):
+                    imgui.image(texture.name, w*2, h*2, border_color=(.25, .25, .25, 1))
                 imgui.end_menu()
 
             if imgui.begin_menu("Plugins", drawing):

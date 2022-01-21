@@ -335,6 +335,7 @@ class Drawing:
         self._make_edit(edit)         
         self.frame = frame
         self._n_frames.cache_clear()
+        self.make_backup()
  
     def remove_frame(self, frame=None):
         frame = frame if frame is not None else self.frame
@@ -344,6 +345,7 @@ class Drawing:
         ])
         self._make_edit(edit)
         self._n_frames.cache_clear()
+        self.make_backup()        
 
     def move_frame_forward(self, layer=None, frame=None):
         layer = layer if layer is not None else self.layers.index()
@@ -357,21 +359,29 @@ class Drawing:
         edit = MoveFrameBackwardEdit.create(index=layer, frame=frame)
         self._make_edit(edit)
 
-    @with_backup
     def next_frame(self):
+        old_frame = self.frame
         self.frame = (self.frame + 1) % self.n_frames
+        if self.frame != old_frame:
+            self.make_backup()
 
-    @with_backup        
     def prev_frame(self):
+        old_frame = self.frame        
         self.frame = (self.frame - 1) % self.n_frames
+        if self.frame != old_frame:
+            self.make_backup()
 
-    @with_backup        
     def first_frame(self):
+        old_frame = self.frame        
         self.frame = 0
+        if self.frame != old_frame:
+            self.make_backup()
 
-    @with_backup        
     def last_frame(self):
+        old_frame = self.frame                
         self.frame = self.n_frames - 1
+        if self.frame != old_frame:
+            self.make_backup()
 
     def start_animation(self):
         clock.schedule_interval(self._next_frame_callback, 1 / self.framerate)
@@ -475,11 +485,10 @@ class Drawing:
 
     @try_except_log
     def change_layer(self, rect, tool=None, layer=None, frame=None):
-        "Update a part of the layer, keeping track of the change as an 'undo'"
-        
+        "Update a part of the layer, keeping track of the change as an 'undo'"        
         layer = self.backup
-        new = self.current.get_data(self.frame)
         frame = frame if frame is not None else self.frame
+        new = self.current.get_data(frame)
         edit = LayerEdit.create(self, layer, new, self.layers.index(), frame, rect, tool.value if tool else 0)
         self._make_edit(edit, perform=False)
 
@@ -551,6 +560,7 @@ class Drawing:
             if rect:
                 self.make_backup(rect)
             self._edits_index -= 1
+            self._n_frames.cache_clear()
         else:
             logger.info("No more edits to undo!")
 
@@ -562,6 +572,7 @@ class Drawing:
             edit = self._edits[self._edits_index]
             rect = edit.perform(self)
             self.make_backup(rect)
+            self._n_frames.cache_clear()
         else:
             logger.info("No more edits to redo!")
 

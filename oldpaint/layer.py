@@ -63,7 +63,7 @@ class Layer:
     def save_png(self, path:str, palette=None, frame=None):
         save_png(self.frames[frame], path, palette)
 
-    def get_data(self, frame:int=0) -> np.ndarray:
+    def get_data(self, frame:int) -> np.ndarray:
         "Get the given frame, creating it if needed."
         data = self.frames[frame]
         if data is not None:
@@ -72,18 +72,18 @@ class Layer:
         self.frames[frame] = data
         return data
 
-    def set_data(self, data: np.ndarray, frame:int=0):
+    def set_data(self, data: np.ndarray, frame:int):
         self.frames[frame] = data
 
-    def get_dirty(self, frame: int=0):
+    def get_dirty(self, frame: int):
         return self.dirty.get(frame)
 
-    def set_dirty(self, rect: Rectangle, frame: int=0):
+    def set_dirty(self, rect: Rectangle, frame: int):
         if rect:
             self.dirty[frame] = dirty = rect.unite(self.dirty.get(frame))
             return dirty
 
-    def clear_dirty(self, frame: int=0):
+    def clear_dirty(self, frame: int):
         self.dirty.pop(frame, None)
         
     def add_frame(self, index:int, data:np.ndarray):
@@ -119,7 +119,8 @@ class Layer:
         return cls(pic), info["palette"]
 
     def draw_line(self, p0: Tuple[int, int], p1: Tuple[int, int], brush: np.ndarray,
-                  offset: Tuple[int, int], set_dirty:bool=True, frame:int=0, step: int=1, **kwargs):
+                  frame:int, 
+                  *, offset: Tuple[int, int], set_dirty:bool=True, step: int=1):
         ox, oy = offset
         x0, y0 = p0
         x1, y1 = p1
@@ -135,7 +136,8 @@ class Layer:
 
     def draw_quad(self, p0: Tuple[int, int], p1: Tuple[int, int],
                   p2: Tuple[int, int], p3: Tuple[int, int], color: int,
-                  set_dirty: bool=True, frame:int = 0):
+                  frame:int,
+                  set_dirty: bool=True):
         data = self.get_data(frame)
         with self.lock:
             rect = draw_quad(data, p0, p1, p2, p3, color)
@@ -145,22 +147,24 @@ class Layer:
         return rect
 
     def draw_ellipse(self, pos:Tuple[int, int], size:Tuple[int, int], brush:np.ndarray,
-                     offset:Tuple[int, int], set_dirty:bool=True, fill:bool=False, frame:int=0, **kwargs):
+                     frame:int, 
+                     color: int, offset:Tuple[int, int], set_dirty:bool=True, fill:bool=False):
         if not fill:
             x0, y0 = pos
             ox, oy = offset
             pos = (x0 - ox, y0 - oy)
         data = self.get_data(frame)
         with self.lock:
-            rect = draw_ellipse(data, brush, brush.mask, pos, size, fill=fill, **kwargs)
+            rect = draw_ellipse(data, brush, brush.mask, pos, size, color, fill=fill)
             if rect and set_dirty:
                 self.set_dirty(rect, frame)
             self.version += 1
         return rect
 
     def draw_rectangle(self, pos:Tuple[int, int], size:Tuple[int, int], brush:np.ndarray,
+                       frame:int=0,
                        offset:Tuple[int, int]=(0, 0), set_dirty:bool=True, color:int=0,
-                       fill:bool=False, frame:int=0, **kwargs):
+                       fill:bool=False):
         if not fill:
             x0, y0 = pos
             ox, oy = offset
@@ -174,7 +178,8 @@ class Layer:
             self.version += 1
         return rect
 
-    def draw_fill(self, source: np.ndarray, point:Tuple[int, int], color:int, set_dirty:bool=True, frame:int=0):
+    def draw_fill(self, source: np.ndarray, point:Tuple[int, int], color:int, frame:int,
+                  set_dirty:bool=True):
         pic = self.get_data(frame)
         with self.lock:
             rect = draw_fill(source, pic, point, color)
@@ -248,7 +253,7 @@ class Layer:
     def toggle_visibility(self):
         self.visible = not self.visible
 
-    def clear(self, rect:Rectangle=None, value:int=0, set_dirty:bool=True, frame:int=0):
+    def clear(self, rect:Rectangle=None, frame:int=None, value:int=0, set_dirty:bool=True):
         rect = rect or self.rect
         rect = self.rect.intersect(rect)
         data = self.get_data(frame)
@@ -265,7 +270,7 @@ class Layer:
             return Layer([(f.astype(dtype=dtype, copy=True) if f is not None else None)
                           for f in self.frames])
 
-    def get_subimage(self, rect:Rectangle, frame:int=0) -> np.ndarray:
+    def get_subimage(self, rect:Rectangle, frame:int) -> np.ndarray:
         """
         Return a section of the layer.
         Note that this is a view, not a copy, so any changes to it happen in the original layer.
@@ -282,7 +287,7 @@ class Layer:
         return Layer([self.get_subimage(rect, i)
                       for i in range(len(self.frames))])
     
-    def blit(self, new_data:np.ndarray, rect:Rectangle, set_dirty:bool=True, alpha:bool=True, frame:int=0):
+    def blit(self, new_data:np.ndarray, rect:Rectangle, frame:int, set_dirty:bool=True, alpha:bool=True):
         if not rect:
             return
         data = self.get_data(frame)
@@ -313,7 +318,7 @@ class Layer:
     #         mask = new_data[slc].astype(np.bool)
     #         return np.bitwise_xor(new_data[slc], mask * data[slc])
 
-    def apply_diff(self, diff:np.ndarray, rect:Rectangle, invert:bool=False, frame:int=0):
+    def apply_diff(self, diff:np.ndarray, rect:Rectangle, frame: int):
         data = self.get_data(frame)
         slc = rect.as_slice()
         with self.lock:

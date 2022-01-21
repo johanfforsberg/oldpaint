@@ -77,8 +77,8 @@ class PencilTool(Tool):
             return
         p0 = tuple(self.points[-1])
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-        rect = layer.draw_line(p0, point, brush, self.brush.center,
-                                 frame=self.drawing.frame)
+        rect = layer.draw_line(p0, point, brush, self.drawing.frame,
+                               offset=self.brush.center)
         if rect:
             self.rect = rect.unite(self.rect)
         self.points.append(point)
@@ -86,8 +86,8 @@ class PencilTool(Tool):
     def finish(self, layer, point, buttons, modifiers):
         # Make sure we draw a point even if the mouse was never moved
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-        rect = layer.draw_line(self.points[-1], point, brush, self.brush.center,
-                                 frame=self.drawing.frame)
+        rect = layer.draw_line(self.points[-1], point, brush, self.drawing.frame,
+                               offset=self.brush.center)
         if rect:
             self.rect = rect.unite(self.rect)
 
@@ -133,7 +133,7 @@ class InkTool(Tool):
         p2 = (x1 + dyn * w1, y1 - dxn * w1)
         p3 = (x1 - dyn * w1, y1 + dxn * w1)
         self._last_p = p2, p3
-        rect = layer.draw_quad(p0, p1, p2, p3, self.brush_color, frame=self.drawing.frame)
+        rect = layer.draw_quad(p0, p1, p2, p3, self.brush_color, self.drawing.frame)
         if rect:
             self.rect = rect.unite(self.rect)
         self.points.append(point)
@@ -158,8 +158,8 @@ class PointsTool(Tool):
         self.points.append(point)
         if len(self.points) % self.step == 0:
             brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-            rect = layer.draw_line(point, point, brush, offset=self.brush.center,
-                                     frame=self.drawing.frame)
+            rect = layer.draw_line(point, point, brush, self.drawing.frame,
+                                   offset=self.brush.center)
             if rect:
                 self.rect = rect.unite(self.rect)
 
@@ -167,8 +167,8 @@ class PointsTool(Tool):
         # Make sure we draw a point if the mouse was never moved
         if len(self.points) == 1:
             brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-            rect = layer.draw_line(point, point, brush, offset=self.brush.center,
-                                     frame=self.drawing.frame)
+            rect = layer.draw_line(point, point, brush, self.drawing.frame,
+                                   offset=self.brush.center)
             if rect:
                 self.rect = rect.unite(self.rect)
 
@@ -200,8 +200,8 @@ class SprayTool(Tool):
                 yg = gauss(y, self.size)
                 p = (xg, yg)
                 brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-                rect = layer.draw_line(p, p, brush=brush, offset=self.brush.center,
-                                         frame=self.drawing.frame)
+                rect = layer.draw_line(p, p, brush, self.drawing.frame,
+                                       offset=self.brush.center)
                 if rect:
                     self.rect = rect.unite(self.rect)
 
@@ -224,14 +224,14 @@ class LineTool(Tool):
         self.points[1] = point
         p1 = point
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-        self.rect = layer.draw_line(p0, p1, brush=brush, offset=self.brush.center,
-                                      step=self.step, frame=self.drawing.frame)
+        self.rect = layer.draw_line(p0, p1, brush, self.drawing.frame,
+                                    offset=self.brush.center, step=self.step)
 
     def finish(self, layer, point, buttons, modifiers):
         if self.points[1] is None:
             brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-            rect = layer.draw_line(point, point, brush=brush, offset=self.brush.center,
-                                     step=self.step, frame=self.drawing.frame)
+            rect = layer.draw_line(point, point, brush, self.drawing.frame,
+                                   offset=self.brush.center, step=self.step)
             self.points[1] = point
             if rect:
                 self.rect = rect.unite(self.rect)
@@ -258,10 +258,10 @@ class RectangleTool(Tool):
         self.points[1] = point
         r = from_points([p0, point])
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-        self.rect = layer.draw_rectangle(r.position, r.size, brush=brush,
+        self.rect = layer.draw_rectangle(r.position, r.size, brush, self.drawing.frame,
                                            offset=self.brush.center,
                                            fill=modifiers & window.key.MOD_SHIFT,
-                                           color=self.color, frame=self.drawing.frame)
+                                           color=self.color)
 
     def finish(self, layer, point, buttons, modifiers):
         if len(self.points) > 1:
@@ -269,9 +269,9 @@ class RectangleTool(Tool):
         p0 = self.points[0]
         r = from_points([p0, point])
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-        rect = layer.draw_rectangle(r.position, r.size, brush=brush, offset=self.brush.center,
-                                      fill=modifiers & window.key.MOD_SHIFT, color=self.color,
-                                      frame=self.drawing.frame)
+        rect = layer.draw_rectangle(r.position, r.size, brush, self.drawing.frame,
+                                    offset=self.brush.center,
+                                    fill=modifiers & window.key.MOD_SHIFT, color=self.color)
         if rect:
             self.rect = rect.unite(self.rect)
         self.points[1] = point
@@ -300,10 +300,9 @@ class EllipseTool(Tool):
         x, y = point
         size = (int(abs(x - x0)), int(abs(y - y0)))
         brush = self.brush.get_draw_data(self.brush_color, colorize=buttons & window.mouse.RIGHT)
-        self.rect = layer.draw_ellipse((x0, y0), size, brush=brush,
-                                         offset=self.brush.center, color=self.color,
-                                         fill=modifiers & window.key.MOD_SHIFT,
-                                         frame=self.drawing.frame)
+        self.rect = layer.draw_ellipse((x0, y0), size, brush, self.drawing.frame,
+                                       offset=self.brush.center, color=self.color,
+                                       fill=modifiers & window.key.MOD_SHIFT)
 
     def finish(self, layer, point, buttons, modifiers):
         self.points[1] = point
@@ -324,8 +323,7 @@ class FillTool(Tool):
     def finish(self, layer, point, buttons, modifiers):
         if point in layer.rect:
             source = self.drawing.current.get_data(self.drawing.frame)
-            self.rect = layer.draw_fill(source, point, color=self.color,
-                                          frame=self.drawing.frame)
+            self.rect = layer.draw_fill(source, point, self.color, self.drawing.frame)
             self.points = [point]
 
 

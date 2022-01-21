@@ -76,12 +76,16 @@ class MultiEdit:
     edits: list
 
     def perform(self, drawing):
+        rect = None
         for edit in self.edits:
-            edit.perform(drawing)
+            rect = edit.perform(drawing) or rect
+        return rect
 
     def revert(self, drawing):
+        rect = None        
         for edit in reversed(self.edits):
-            edit.revert(drawing)
+            rect = edit.revert(drawing) or rect
+        return rect
 
     @property
     def index_str(self):
@@ -121,14 +125,17 @@ class LayerEdit(Edit):
     def perform(self, drawing):
         layer = drawing.layers[self.index]
         diff_data = np.frombuffer(zlib.decompress(self.data), dtype=np.uint8).reshape(self.rect.size)
-        layer.apply_diff(diff_data, self.rect, False, frame=self.frame)
+        layer.apply_diff(diff_data, self.rect, self.frame)
         return self.rect
 
-    def revert(self, drawing):
-        layer = drawing.layers[self.index]
-        diff_data = np.frombuffer(zlib.decompress(self.data), dtype=np.uint8).reshape(self.rect.size)
-        layer.apply_diff(diff_data, self.rect, True, frame=self.frame)
-        return self.rect
+    # Since we're storing the diff as XOR, applying and reverting is the same!
+    revert = perform
+
+    # def revert(self, drawing):
+    #     layer = drawing.layers[self.index]
+    #     diff_data = np.frombuffer(zlib.decompress(self.data), dtype=np.uint8).reshape(self.rect.size)
+    #     layer.apply_diff(diff_data, self.rect, self.frame)
+    #     return self.rect
 
     # @classmethod
     # def merge(self, edits):
