@@ -18,7 +18,7 @@ from .edit import (LayerEdit, LayerClearEdit, DrawingCropEdit, LayerFlipEdit,
                    RemoveLayerEdit, SwapLayersEdit, MergeLayersEdit,
                    SwapColorsImageEdit, SwapColorsPaletteEdit,
                    MultiEdit)
-from .layer import Layer  #, TemporaryLayer
+from .layer import Layer, BackupLayer
 from .ora import load_ora, save_ora, load_png, save_png
 from .palette import Palette, PALETTES_DIR
 from .rect import Rectangle
@@ -110,6 +110,7 @@ class Drawing:
         self._export_path = None
         self.uuid = str(uuid4())
 
+        self.backup = BackupLayer(size=self.size)
         self.make_backup()
 
     @property
@@ -125,14 +126,17 @@ class Drawing:
 
     def make_backup(self, rect=None):
         # TODO partial backup
-        logger.debug("Make backup")
-        self.backup = self.current.get_data(self.frame).copy()
-
-    def restore(self, rect=None):
-        rect = rect or self.current.rect
-        if rect:
-            self.current.blit(self.backup[rect.as_slice()], rect, alpha=False,
-                              frame=self.frame)
+        logger.debug("Make backup: %r", rect)
+        with self.current.lock:
+            if rect:
+                orig = self.current.get_data(0)
+                self.backup.blit(orig[rect.as_slice()], rect, alpha=False,
+                                 frame=0)
+            else:
+                data = self.current.get_data(self.frame)
+                self.backup.set_data(data.copy(), 0)
+        self.backup.touched = False
+        logger.debug("Backup done")
 
     def with_backup(f):
         
@@ -410,14 +414,14 @@ class Drawing:
 
     def _next_frame_callback(self, dt):
         self.frame = (self.frame + 1) % self.n_frames
-        
+
     def add_layer(self, index=None, layer=None):
         layer = layer or Layer(size=self.size)
         index = (index if index is not None else self.layers.get_current_index()) + 1
 
         edit = AddLayerEdit.create(self, layer, index)
         self._make_edit(edit)
-        self.layers.select_index(index)
+        self.current = self.layers[index]
 
     def remove_layer(self, index=None):
         if len(self.layers) == 1:
@@ -496,11 +500,11 @@ class Drawing:
     @try_except_log
     def change_layer(self, rect, tool=None, layer=None, frame=None):
         "Update a part of the layer, keeping track of the change as an 'undo'"        
-        layer = self.backup
+        backup = self.backup.get_data(0)
         frame = frame if frame is not None else self.frame
-        new = self.current.get_data(frame)
-        edit = LayerEdit.create(self, layer, new, self.layers.index(), frame, rect, tool.value if tool else 0)
-        self._make_edit(edit, perform=False)
+        layer = self.current.get_data(frame)
+        edit = LayerEdit.create(self, layer, backup, self.layers.index(), frame, rect, tool.value if tool else 0)
+        self._make_edit(edit)
 
     @try_except_log
     def change_colors(self, *colors):

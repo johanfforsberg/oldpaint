@@ -28,7 +28,6 @@ class Brush:
     @lru_cache(2)  
     def get_draw_data(self, color, colorize=None):
         filled_pixels = ~self.data.mask
-        print("filled", filled_pixels)
         # Fill all non-transparent pixels with the same color
         # return (color + filled_pixels * 2**24).astype(np.uint32)
         return np.ma.masked_array(color * filled_pixels, dtype=np.uint8,

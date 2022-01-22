@@ -19,7 +19,6 @@ class Stroke:
         self.drawing = drawing
         self.tool = tool
         self._event_queue = Queue()
-        logger.debug("Start stroke: %s", type(tool).__name__)
 
     def queue_event(self, *event):
         self._event_queue.put(event)
@@ -32,7 +31,9 @@ class Stroke:
         a mouse_up event. It's expected to be running in a thread.
         """
 
-        layer = self.drawing.current
+        logger.debug("Start stroke: %s", type(self.tool).__name__)
+        
+        layer = self.drawing.backup
 
         # self.drawing.restore()
 
@@ -73,10 +74,11 @@ class Stroke:
                     # By taking the lock here we can prevent flickering.
                     if self.tool.ephemeral and self.tool.rect:
                         #self.layer.clear(self.tool.rect)
-                        self.drawing.restore(self.tool.rect)
+                        self.drawing.make_backup(self.tool.rect)
                     self.tool.draw(layer, *args)
             elif event_type == "mouse_up":
                 self.tool.finish(layer, *args)
                 finished = True
 
+        logger.debug("End stroke: %s", type(self.tool).__name__)                
         return finished

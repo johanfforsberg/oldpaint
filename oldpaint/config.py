@@ -18,7 +18,7 @@ def load_config():
     config = {}
     
     if "logging" in config_file:
-        level = config_file["logging"].get("level", "DEBUG")
+        level = config_file["logging"].get("level", "INFO")
         logging.basicConfig(level=getattr(logging, level))
     else:
         # TODO Change this default when oldpaint is more stable.

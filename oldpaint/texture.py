@@ -14,3 +14,7 @@ class IntegerTexture(Texture):
 class ByteIntegerTexture(IntegerTexture):
 
     _type = gl.GL_R8UI
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fresh = True

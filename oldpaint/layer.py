@@ -74,6 +74,7 @@ class Layer:
 
     def set_data(self, data: np.ndarray, frame:int):
         self.frames[frame] = data
+        self.dirty[frame] = self.rect
 
     def get_dirty(self, frame: int):
         return self.dirty.get(frame)
@@ -117,77 +118,6 @@ class Layer:
     def load_png(cls, path:str):
         pic, info = load_png(path)
         return cls(pic), info["palette"]
-
-    def draw_line(self, p0: Tuple[int, int], p1: Tuple[int, int], brush: np.ndarray,
-                  frame:int, 
-                  *, offset: Tuple[int, int], set_dirty:bool=True, step: int=1):
-        ox, oy = offset
-        x0, y0 = p0
-        x1, y1 = p1
-        p0 = (x0 - ox, y0 - oy)
-        p1 = (x1 - ox, y1 - oy)
-        data = self.get_data(frame)
-        with self.lock:
-            rect = draw_line(data, brush, brush.mask, p0, p1, step)
-            if rect and set_dirty:
-                self.set_dirty(rect, frame)
-            self.version += 1
-        return rect
-
-    def draw_quad(self, p0: Tuple[int, int], p1: Tuple[int, int],
-                  p2: Tuple[int, int], p3: Tuple[int, int], color: int,
-                  frame:int,
-                  set_dirty: bool=True):
-        data = self.get_data(frame)
-        with self.lock:
-            rect = draw_quad(data, p0, p1, p2, p3, color)
-            if rect and set_dirty:
-                self.set_dirty(rect, frame)
-            self.version += 1
-        return rect
-
-    def draw_ellipse(self, pos:Tuple[int, int], size:Tuple[int, int], brush:np.ndarray,
-                     frame:int, 
-                     color: int, offset:Tuple[int, int], set_dirty:bool=True, fill:bool=False):
-        if not fill:
-            x0, y0 = pos
-            ox, oy = offset
-            pos = (x0 - ox, y0 - oy)
-        data = self.get_data(frame)
-        with self.lock:
-            rect = draw_ellipse(data, brush, brush.mask, pos, size, color, fill=fill)
-            if rect and set_dirty:
-                self.set_dirty(rect, frame)
-            self.version += 1
-        return rect
-
-    def draw_rectangle(self, pos:Tuple[int, int], size:Tuple[int, int], brush:np.ndarray,
-                       frame:int=0,
-                       offset:Tuple[int, int]=(0, 0), set_dirty:bool=True, color:int=0,
-                       fill:bool=False):
-        if not fill:
-            x0, y0 = pos
-            ox, oy = offset
-            pos = (x0 - ox, y0 - oy)
-        data = self.get_data(frame)
-        with self.lock:
-            print(pos, size, color)
-            rect = draw_rectangle(data, brush, brush.mask, pos, size, color, fill=fill)
-            if rect and set_dirty:
-                self.set_dirty(rect, frame)
-            self.version += 1
-        return rect
-
-    def draw_fill(self, source: np.ndarray, point:Tuple[int, int], color:int, frame:int,
-                  set_dirty:bool=True):
-        pic = self.get_data(frame)
-        with self.lock:
-            rect = draw_fill(source, pic, point, color)
-            if rect and set_dirty:
-                # self.dirty[frame] = rect.unite(self.dirty.get(frame))
-                self.set_dirty(rect, frame)
-            self.version += 1
-        return rect
 
     def flip(self, frame, axis):
         if frame is not None:
@@ -304,19 +234,10 @@ class Layer:
                 dest[:] = np.where(~source.mask, source, dest).astype(self.dtype)
             else:
                 dest[:] = source
-            self.dirty[frame] = self.rect.intersect(rect.unite(self.dirty.get(frame)))
+            rect = self.rect.intersect(rect.unite(self.dirty.get(frame)))
+            self.set_dirty(rect, frame)
         self.version += 1
         return to_rect
-    
-    # def make_diff(self, other:np.ndarray, rect:Rectangle, alpha:bool=True, frame:int=0):
-    #     data = self.get_data(frame)
-    #     data = data if data is not None else np.zeros(self.size, dtype=np.uint8)
-    #     # TODO this assumes that "other" is an overlay, not good.
-    #     new_data = other.get_data()
-    #     with self.lock:
-    #         slc = rect.as_slice()
-    #         mask = new_data[slc].astype(np.bool)
-    #         return np.bitwise_xor(new_data[slc], mask * data[slc])
 
     def apply_diff(self, diff:np.ndarray, rect:Rectangle, frame: int):
         data = self.get_data(frame)
@@ -334,9 +255,81 @@ class Layer:
         return hash((id(self), self.size, self.version))
 
 
-# class TemporaryLayer(Layer):
+class BackupLayer(Layer):
 
-#     dtype = np.uint32
-    
-#     def __hash__(self):
-#         return hash((id(self), self.size))
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.touched = True
+
+    def set_dirty(self, rect: Rectangle, frame: int):
+        super().set_dirty(rect, 0)
+        if rect:
+            self.touched = True
+        
+    def draw_line(self, p0: Tuple[int, int], p1: Tuple[int, int], brush: np.ndarray,
+                  *, offset: Tuple[int, int], set_dirty:bool=True, step: int=1):
+        ox, oy = offset
+        x0, y0 = p0
+        x1, y1 = p1
+        p0 = (x0 - ox, y0 - oy)
+        p1 = (x1 - ox, y1 - oy)
+        data = self.get_data(0)
+        with self.lock:
+            rect = draw_line(data, brush, brush.mask, p0, p1, step)
+            if rect and set_dirty:
+                self.set_dirty(rect, 0)
+            self.version += 1
+        return rect
+
+    def draw_quad(self, p0: Tuple[int, int], p1: Tuple[int, int],
+                  p2: Tuple[int, int], p3: Tuple[int, int], *,
+                  color: int, set_dirty: bool=True):
+        data = self.get_data(0)
+        with self.lock:
+            rect = draw_quad(data, p0, p1, p2, p3, color)
+            if rect and set_dirty:
+                self.set_dirty(rect, 0)
+            self.version += 1
+        return rect
+
+    def draw_ellipse(self, pos:Tuple[int, int], size:Tuple[int, int], brush:np.ndarray,
+                     *, color: int, offset:Tuple[int, int], set_dirty:bool=True, fill:bool=False):
+        if not fill:
+            x0, y0 = pos
+            ox, oy = offset
+            pos = (x0 - ox, y0 - oy)
+        data = self.get_data(0)
+        with self.lock:
+            rect = draw_ellipse(data, brush, brush.mask, pos, size, color, fill=fill)
+            if rect and set_dirty:
+                self.set_dirty(rect, 0)
+            self.version += 1
+        return rect
+
+    def draw_rectangle(self, pos:Tuple[int, int], size:Tuple[int, int], brush:np.ndarray,
+                       *, offset:Tuple[int, int]=(0, 0), set_dirty:bool=True, color:int=0,
+                       fill:bool=False):
+        if not fill:
+            x0, y0 = pos
+            ox, oy = offset
+            pos = (x0 - ox, y0 - oy)
+        data = self.get_data(0)
+        with self.lock:
+            print(pos, size, color)
+            rect = draw_rectangle(data, brush, brush.mask, pos, size, color, fill=fill)
+            if rect and set_dirty:
+                self.set_dirty(rect, 0)
+            self.version += 1
+        return rect
+
+    def draw_fill(self, source: np.ndarray, point:Tuple[int, int],
+                  *, color:int, set_dirty:bool=True):
+        pic = self.get_data(0)
+        with self.lock:
+            rect = draw_fill(source, pic, point, color)
+            if rect and set_dirty:
+                # self.dirty[frame] = rect.unite(self.dirty.get(frame))
+                self.set_dirty(rect, 0)
+            self.version += 1
+        return rect
+

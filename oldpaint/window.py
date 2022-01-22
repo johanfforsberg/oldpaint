@@ -305,7 +305,7 @@ class OldpaintWindow(pyglet.window.Window):
     def on_mouse_leave(self, x, y):
         self.mouse_position = None
         if self.brush_preview_dirty:
-            self.drawing.restore(self.brush_preview_dirty)
+            self.drawing.make_backup(self.brush_preview_dirty)
 
     @no_imgui_events
     def on_key_press(self, symbol, modifiers):
@@ -486,7 +486,7 @@ class OldpaintWindow(pyglet.window.Window):
             w, h = self.drawing.size
 
             vm = (gl.GLfloat*16)(*make_view_matrix(window_size, self.drawing.size, self.zoom, self.offset))
-            offscreen_buffer = render_drawing(self.drawing, self.highlighted_layer)
+            offscreen_buffer = render_drawing(self.drawing, self.stroke, self.highlighted_layer)
 
             ww, wh = window_size
             gl.glViewport(0, 0, int(ww), int(wh))
@@ -593,12 +593,11 @@ class OldpaintWindow(pyglet.window.Window):
             if tool.rect:
                 # If no rect is set, the tool is presumed to not have changed anything.
                 self.drawing.change_layer(tool.rect, tool.tool)
-                self.drawing.make_backup()
             if tool.restore_last:
                 self.tools.restore()
         else:
             # The stroke was aborted
-            self.drawing.restore(self.stroke.tool.rect)
+            self.drawing.make_backup(self.stroke.tool.rect)
         self.stroke = None
         self.autosave_drawing()
 
@@ -665,7 +664,8 @@ class OldpaintWindow(pyglet.window.Window):
         t0 = time.time()
         func, args, kwargs = self.drawing.get_autosave_args()
         filename = args[-1]  # TODO...
-        fut = self.autosave_executor.submit(func, *args, **kwargs)
+        with self.drawing.current.lock:
+            fut = self.autosave_executor.submit(func, *args, **kwargs)
 
         def done(f):
             if f.done():
@@ -817,7 +817,7 @@ class OldpaintWindow(pyglet.window.Window):
 
     def _clear_brush_preview(self):
         if self.brush_preview_dirty:
-            self.drawing.restore(self.brush_preview_dirty)
+            self.drawing.make_backup(self.brush_preview_dirty)
         
     @try_except_log
     def _draw_brush_preview(self, x0, y0, x, y):
@@ -842,7 +842,7 @@ class OldpaintWindow(pyglet.window.Window):
         rect = Rectangle((ix - cx, iy - cy), brush.size)
         color = None if isinstance(self.brush, PicBrush) else self.drawing.palette.foreground
         data = brush.get_draw_data(color)
-        dirty_rect = self.drawing.current.blit(data, rect, frame=self.drawing.frame)
+        dirty_rect = self.drawing.backup.blit(data, rect, frame=self.drawing.frame)
 
         self.brush_preview_dirty = dirty_rect
 

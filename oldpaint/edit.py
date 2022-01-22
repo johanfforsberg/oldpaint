@@ -114,12 +114,10 @@ class LayerEdit(Edit):
     data: bytes
 
     @classmethod
-    def create(cls, drawing, orig_layer, edit_layer, index, frame, rect, tool=0) -> LayerEdit:
+    def create(cls, drawing, orig_layer, edited_layer, index, frame, rect, tool=0) -> LayerEdit:
         "Helper to handle compressing the data."
-        # data = orig_layer.make_diff(edit_layer, rect, alpha=False, frame=frame).tobytes()
         slc = rect.as_slice()
-        data = np.bitwise_xor(orig_layer[slc], edit_layer[slc])
-        # index = drawing.layers.index(orig_layer)
+        data = np.bitwise_xor(orig_layer[slc], edited_layer[slc])
         return cls(frame=frame, index=index, tool=tool, data=zlib.compress(data), rect=rect)
 
     def perform(self, drawing):
@@ -130,12 +128,6 @@ class LayerEdit(Edit):
 
     # Since we're storing the diff as XOR, applying and reverting is the same!
     revert = perform
-
-    # def revert(self, drawing):
-    #     layer = drawing.layers[self.index]
-    #     diff_data = np.frombuffer(zlib.decompress(self.data), dtype=np.uint8).reshape(self.rect.size)
-    #     layer.apply_diff(diff_data, self.rect, self.frame)
-    #     return self.rect
 
     # @classmethod
     # def merge(self, edits):
