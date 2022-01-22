@@ -218,9 +218,9 @@ cpdef draw_quad(unsigned char[:, :] pic,
     x3, y3 = p3
     cols, rows = pic.shape[:2]
     min_x = int(floor(max(0, min(x0, min(x1, min(x2, x3))))))
-    max_x = int(ceil(min(cols - 1, max(x0, max(x1, max(x2, x3))))))
+    max_x = int(ceil(min(cols, max(x0, max(x1, max(x2, x3))))))
     min_y = int(floor(max(0, min(y0, min(y1, min(y2, y3))))))
-    max_y = int(ceil(min(rows - 1, max(y0, max(y1, max(y2, y3))))))
+    max_y = int(ceil(min(rows, max(y0, max(y1, max(y2, y3))))))
 
     cdef int x
     cdef int y = min_y
