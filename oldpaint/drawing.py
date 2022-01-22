@@ -31,8 +31,7 @@ logger = logging.getLogger(__name__)
 
 class Drawing:
 
-    """
-    The "drawing" is a bunch of images with the same size and palette,
+    """The "drawing" is a bunch of images with the same size and palette,
     stacked on top of each other (from the bottom). They are referred to as
     "layers".
 
@@ -45,6 +44,16 @@ class Drawing:
     IMPORTANT! It's a bad idea to directly modify the layers! Always
     use the corresponding methods in this class instead. Otherwise you will
     mess up the undo history beyond repair.
+
+    An important thing to be aware of when changing stuff is that the layer
+    must be backed up before the operation starts. This is neccessary for the
+    undo system.
+
+    Since the backup operation is potentially slow, it's typically
+    done at the end of operations instead of before.  Only the current
+    frame of the current layer is backed up, so we need to make sure
+    that the current layer is always backed up after any operation
+    that changes it, switches layer or frame etc.
     """
 
     # TODO Allow configuration
