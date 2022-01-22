@@ -448,7 +448,7 @@ class OldpaintWindow(pyglet.window.Window):
             elif symbol == key.ESCAPE:
                 self.drawing.brushes.current = None
 
-            elif symbol == key.LCTRL and not modifiers:
+            elif symbol == key.LCTRL:
                 self.tools.select(PickerTool)
 
     def on_key_release(self, symbol, modifiers):
