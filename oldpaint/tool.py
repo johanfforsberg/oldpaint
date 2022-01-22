@@ -372,14 +372,15 @@ class PickerTool(Tool):
 
         if modifiers & window.key.MOD_SHIFT:
             # Select the layer
-            self.drawing.layers.select(layer)
+            self.drawing.current = layer
         else:
             # Select the color
-            index = layer.get_data()[pos]
+            data = layer.get_data(self.drawing.frame)
+            color_index = data[pos]
             if buttons == window.mouse.LEFT:
-                self.drawing.palette.foreground = index
+                self.drawing.palette.foreground = color_index
             elif buttons == window.mouse.RIGHT:
-                self.drawing.palette.background = index
+                self.drawing.palette.background = color_index
 
     start = _pick
     draw = _pick

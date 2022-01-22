@@ -205,7 +205,7 @@ class MainMenu:
 
             if imgui.begin_menu("Layer", bool(drawing)):
 
-                layer = drawing.layers.current
+                layer = drawing.current
                 index = drawing.layers.index(layer)
                 n_layers = len(drawing.layers)
 
@@ -243,10 +243,10 @@ class MainMenu:
 
                 hovered_layer = None
                 for i, layer in enumerate(reversed(drawing.layers)):
-                    selected = drawing.layers.current == layer
+                    selected = drawing.current == layer
                     index = n_layers - i - 1
                     if imgui.menu_item(f"{index} {'v' if layer.visible else ''}", str(index), selected, True)[1]:
-                        drawing.layers.select(layer)
+                        drawing.current = layer
                     if imgui.is_item_hovered():
                         hovered_layer = layer
 

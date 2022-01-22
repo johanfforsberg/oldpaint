@@ -36,6 +36,7 @@ def render_drawing(drawing, highlighted_layer=None):
     palette_tuple = drawing.palette.as_tuple()
     colors = _get_colors(palette_tuple)
     frame = drawing.frame
+    current_layer = drawing.current
 
     with vao, offscreen_buffer, draw_program:
         w, h = offscreen_buffer.size
@@ -58,6 +59,9 @@ def render_drawing(drawing, highlighted_layer=None):
 
             if not layer.visible and highlighted_layer != layer:
                 continue
+
+            if layer == current_layer:
+                
             
             needs_redraw, layer_texture = _get_layer_texture(layer, frame)
             if needs_redraw:
