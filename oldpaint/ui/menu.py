@@ -121,6 +121,7 @@ class MainMenu:
                     if imgui.button("OK"):
                         palette = Palette.from_file(palettes[self.new_drawing_palette])
                         window.create_drawing(self.new_drawing_size, palette)
+                        imgui.close_current_popup()
                     imgui.same_line()
                     if imgui.button("Cancel"):
                         imgui.close_current_popup()
