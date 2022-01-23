@@ -244,7 +244,7 @@ class PaletteColors:
             else:
                 imgui.color_button(f"no color", 0, 0, 0, 1, 0, 25, 25)
 
-            if i % width != width - 1:
+            if width > 0 and i % width != width - 1:
                 imgui.same_line()
 
         imgui.pop_style_color(1)
