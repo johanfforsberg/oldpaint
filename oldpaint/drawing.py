@@ -4,6 +4,7 @@ import logging
 import os
 import shutil
 from uuid import uuid4
+import weakref
 
 import numpy as np
 from pyglet import clock
@@ -125,18 +126,22 @@ class Drawing:
             return path
 
     def make_backup(self, rect=None):
-        # TODO partial backup
         logger.debug("Make backup: %r", rect)
-        with self.current.lock:
-            if rect:
-                orig = self.current.get_data(0)
-                self.backup.blit(orig[rect.as_slice()], rect, alpha=False,
-                                 frame=0)
-            else:
-                data = self.current.get_data(self.frame)
-                self.backup.set_data(data.copy(), 0)
-        self.backup.touched = False
-        logger.debug("Backup done")
+        try:
+            layer = self.current
+            with layer.lock:
+                if rect:
+                    orig = self.current.get_data(0)
+                    self.backup.blit(orig[rect.as_slice()], rect, alpha=False,
+                                     frame=0)
+                else:
+                    data = self.current.get_data(self.frame)
+                    self.backup.set_data(data.copy(), 0)
+            self.backup.touched = False
+            logger.debug("Backup done")
+        except ReferenceError:
+            # Looks like the layer has been deleted, never mind.
+            return
 
     def with_backup(f):
         
