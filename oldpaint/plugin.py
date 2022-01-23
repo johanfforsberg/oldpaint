@@ -66,6 +66,9 @@ def render_plugins_ui(window):
     deactivated = set()
     for name, args in window.drawing.active_plugins.items():
         plugin, sig = window.plugins[name]
+        window_size = getattr(plugin, "window_size")
+        if window_size:
+            imgui.set_next_window_size(*window_size)
         _, opened = imgui.begin(f"{ name } ##{ drawing.path or drawing.uuid }", True)
         if not opened:
             deactivated.add(name)
