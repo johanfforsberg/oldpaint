@@ -305,7 +305,7 @@ class OldpaintWindow(pyglet.window.Window):
     def on_mouse_leave(self, x, y):
         self.mouse_position = None
         if self.brush_preview_dirty:
-            self.drawing.make_backup(self.brush_preview_dirty)
+            self._clear_brush_preview()
 
     @no_imgui_events
     def on_key_press(self, symbol, modifiers):
