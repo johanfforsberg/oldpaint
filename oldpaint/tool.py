@@ -133,7 +133,7 @@ class InkTool(Tool):
         p2 = (x1 + dyn * w1, y1 - dxn * w1)
         p3 = (x1 - dyn * w1, y1 + dxn * w1)
         self._last_p = p2, p3
-        rect = layer.draw_quad(p0, p1, p2, p3, self.brush_color)
+        rect = layer.draw_quad(p0, p1, p2, p3, color=self.brush_color)
         if rect:
             self.rect = rect.unite(self.rect)
         self.points.append(point)

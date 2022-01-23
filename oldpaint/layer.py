@@ -282,8 +282,8 @@ class BackupLayer(Layer):
         return rect
 
     def draw_quad(self, p0: Tuple[int, int], p1: Tuple[int, int],
-                  p2: Tuple[int, int], p3: Tuple[int, int], *,
-                  color: int, set_dirty: bool=True):
+                  p2: Tuple[int, int], p3: Tuple[int, int], color: int,
+                  set_dirty: bool=True):
         data = self.get_data(0)
         with self.lock:
             rect = draw_quad(data, p0, p1, p2, p3, color)
@@ -293,7 +293,7 @@ class BackupLayer(Layer):
         return rect
 
     def draw_ellipse(self, pos:Tuple[int, int], size:Tuple[int, int], brush:np.ndarray,
-                     *, color: int, offset:Tuple[int, int], set_dirty:bool=True, fill:bool=False):
+                     color: int, offset:Tuple[int, int], set_dirty:bool=True, fill:bool=False):
         if not fill:
             x0, y0 = pos
             ox, oy = offset
