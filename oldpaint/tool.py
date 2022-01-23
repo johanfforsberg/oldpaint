@@ -323,7 +323,7 @@ class FillTool(Tool):
     def finish(self, layer, point, buttons, modifiers):
         if point in layer.rect:
             source = self.drawing.current.get_data(0)
-            self.rect = layer.draw_fill(source, point, self.color)
+            self.rect = layer.draw_fill(source, point, color=self.color)
             self.points = [point]
 
 

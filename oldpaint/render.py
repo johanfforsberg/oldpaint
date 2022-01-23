@@ -12,7 +12,7 @@ from fogl.vao import VertexArrayObject
 from .texture import IntegerTexture, ByteIntegerTexture
 
 
-EMPTY_COLOR = (gl.GLfloat * 4)(0, 0, 0, 0)
+EMPTY_COLOR = (gl.GLfloat * 4)(0.7, 0.7, 0.7, 1)
 
 vao = VertexArrayObject()
 
@@ -37,14 +37,18 @@ def render_drawing(drawing, stroke, highlighted_layer=None):
     colors = _get_colors(palette_tuple)
     frame = drawing.frame
     current_layer = drawing.current
+    bg_color = drawing.palette.get_color_as_float(drawing.palette.colors[0])
+    # print(bg_color)
 
     with vao, offscreen_buffer, draw_program:
         w, h = offscreen_buffer.size
         gl.glViewport(0, 0, w, h)
 
         gl.glEnable(gl.GL_BLEND)
-        gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)        
-        gl.glClearBufferfv(gl.GL_COLOR, 0, EMPTY_COLOR)
+        gl.glBlendEquation(gl.GL_FUNC_ADD)
+        gl.glClearColor(*bg_color[:3], 0)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+        gl.glClearBufferfv(gl.GL_COLOR, 0, (gl.GLfloat * 4)(*bg_color[:3], 1))
 
         backup = drawing.backup
         
