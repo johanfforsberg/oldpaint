@@ -23,7 +23,7 @@ from fogl.vertex import SimpleVertices
 
 from .brush import PicBrush, RectangleBrush, EllipseBrush, CircleBrush, SquareBrush
 from .drawing import Drawing
-from .plugin import init_plugins
+from .plugin import init_plugins, check_plugin_keys
 from .rect import Rectangle
 from .render import render_drawing
 from .stroke import Stroke
@@ -309,8 +309,11 @@ class OldpaintWindow(pyglet.window.Window):
 
     @no_imgui_events
     def on_key_press(self, symbol, modifiers):
-
+        
         self._clear_brush_preview()
+
+        if check_plugin_keys(self, symbol, modifiers):
+            return
         
         if symbol == key.Q and modifiers & key.MOD_CTRL:
             self._quit()

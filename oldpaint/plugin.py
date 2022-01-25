@@ -43,7 +43,7 @@ def init_plugins(window):
                 params = dict(islice(sig.parameters.items(), 1, None))
                 window.plugins[plugin_name] = plugin.Plugin, params
         except Exception:
-            logger.error("Problem initializing plugin {plugin_name}: {format_exc()}")
+            logger.error(f"Problem initializing plugin {plugin_name}: {format_exc()}")
 
 
 def activate_plugin(window, drawing, plugin_name, args):
@@ -66,7 +66,7 @@ def render_plugins_ui(window):
     deactivated = set()
     for name, args in window.drawing.active_plugins.items():
         plugin, sig = window.plugins[name]
-        window_size = getattr(plugin, "window_size")
+        window_size = getattr(plugin, "window_size", None)
         if window_size:
             imgui.set_next_window_size(*window_size)
         _, opened = imgui.begin(f"{ name } ##{ drawing.path or drawing.uuid }", True)
@@ -162,3 +162,15 @@ def render_plugins_ui(window):
         imgui.end()
     for name in deactivated:
         window.drawing.active_plugins.pop(name, None)
+
+
+def check_plugin_keys(window, symbol, modifiers):
+    if not window.drawing:
+        return
+
+    drawing = window.drawing
+
+    deactivated = set()
+    for name, plugin in window.drawing.active_plugins.items():
+        if plugin.on_key_press(symbol, modifiers):
+            return True
