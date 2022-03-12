@@ -11,16 +11,27 @@ from oldpaint.util import as_rgba
 
 class Plugin:
 
-    def __init__(self):
-        self.size = (32, 32)
-        self.row0 = 0
-        self.col0 = 0
-        self.rows = 8
-        self.cols = 8
-        self.col = 0
-        self.row = 0
+    def __init__(self, size=(32, 32), row0=0, col0=0, rows=8, cols=8, col=0, row=0):
+        self.size = size
+        self.row0 = row0
+        self.col0 = col0
+        self.rows = rows
+        self.cols = cols
+        self.col = col
+        self.row = row
         self._layer_version = None
         self._refresh = False
+
+    def to_json(self):
+        return dict(
+            size=self.size,
+            row0=self.row0,
+            col0=self.col0,
+            rows=self.rows,
+            cols=self.cols,
+            col=self.col,
+            row=self.row,
+        )
     
     def __call__(self, drawing):
         w, h = self.size
@@ -76,6 +87,8 @@ class Plugin:
         return texture
 
     def on_key_press(self, symbol, modifiers):
+        # if not modifiers.MOD_CAPSLOCK:
+        #     return
         if symbol == key.A:
             self.col = (self.col - 1) % self.cols
             self._refresh = True

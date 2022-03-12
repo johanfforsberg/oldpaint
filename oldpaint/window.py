@@ -23,7 +23,7 @@ from fogl.vertex import SimpleVertices
 
 from .brush import PicBrush, RectangleBrush, EllipseBrush, CircleBrush, SquareBrush
 from .drawing import Drawing
-from .plugin import init_plugins, check_plugin_keys
+from .plugin import init_plugins, check_plugin_keys, activate_plugin
 from .rect import Rectangle
 from .render import render_drawing
 from .stroke import Stroke
@@ -156,6 +156,8 @@ class OldpaintWindow(pyglet.window.Window):
 
         # ways to directly access current keys and mouse buttons
         self.keys = key.KeyStateHandler()
+        self.keys.clear()
+        print(self.keys)
         self.push_handlers(self.keys)
         self.mousebuttons = mouse.MouseStateHandler()
         self.push_handlers(self.mousebuttons)
@@ -263,13 +265,14 @@ class OldpaintWindow(pyglet.window.Window):
             
     @no_imgui_events
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
-        if self.keys[key.LSHIFT]:
-            if scroll_y > 0:
-                self.drawing.next_layer()
+        if self.drawing:
+            if self.keys[key.LSHIFT]:
+                if scroll_y > 0:
+                    self.drawing.next_layer()
+                else:
+                    self.drawing.prev_layer()
             else:
-                self.drawing.prev_layer()
-        else:
-            self.change_zoom(scroll_y, (x, y))
+                self.change_zoom(scroll_y, (x, y))
 
     def on_mouse_motion(self, x, y, dx, dy):
         "Callback for mouse motion without buttons held"
@@ -685,12 +688,15 @@ class OldpaintWindow(pyglet.window.Window):
                 try:
                     if path.endswith(".ora"):
                         drawing = Drawing.from_ora(path)
+                        for name, args in drawing.active_plugins.items():
+                            activate_plugin(self, drawing, name, args)
                     elif path.endswith(".png"):
                         drawing = Drawing.from_png(path)
                     self.drawings.append(drawing)
                     self.drawings.select(drawing)
                     self.add_recent_file(path)
                 except Exception as e:
+                    logger.exception("Failed to load ORA")
                     self._error = f"Could not load:\n\n  {e}"
 
         if path:

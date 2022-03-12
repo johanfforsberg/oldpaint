@@ -36,8 +36,9 @@ class UI:
 
         self.renderer = PygletRenderer(window)
         io = imgui.get_io()
+        #config = imgui.core.FontConfig(merge_mode=True)
         self.font = io.fonts.add_font_from_file_ttf(
-            "ttf/Topaznew.ttf", 16, io.fonts.get_glyph_ranges_latin()
+            "./ttf/Topaznew.ttf", 16, glyph_ranges=io.fonts.get_glyph_ranges_latin()
         )
         self.renderer.refresh_font_texture()
 

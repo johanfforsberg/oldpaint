@@ -608,7 +608,7 @@ class MergeLayersEdit(MultiEdit):
 @dataclass(frozen=True)
 class SwapColorsEdit(Edit):
 
-    "A swap between two colors in the palette, also affecting the image."
+    "A swap between two colors in the palette only."
 
     index1: int
     index2: int
@@ -632,7 +632,7 @@ class SwapColorsEdit(Edit):
 @dataclass(frozen=True)
 class SwapColorsImageEdit(Edit):
 
-    "A swap between two colors in the image."
+    "A swap between two colors in the image only."
 
     index1: int
     index2: int
@@ -640,6 +640,7 @@ class SwapColorsImageEdit(Edit):
     def perform(self, drawing):
         for layer in drawing.layers:
             layer.swap_colors(self.index1, self.index2)
+        return layer.rect
 
     revert = perform
 

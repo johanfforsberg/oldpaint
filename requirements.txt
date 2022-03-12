@@ -1,7 +1,7 @@
 appdirs
 Cython
 euclid3
-imgui
+git+https://github.com/pyimgui/pyimgui.git@dev/version-2.0
 numpy
 pluginbase
 pypng

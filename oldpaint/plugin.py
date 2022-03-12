@@ -10,6 +10,7 @@ import inspect
 from logging import getLogger
 from time import time
 from traceback import format_exc
+from typing import Tuple, get_args, get_origin
 
 import imgui
 import oldpaint
@@ -39,20 +40,22 @@ def init_plugins(window):
             elif hasattr(plugin, "Plugin"):
                 # Class plugin
                 assert inspect.isclass(plugin.Plugin), "'Plugin' with capital P should be a class"
+                assert hasattr(plugin.Plugin, "__call__"), "Class plugins must have a __call__ method"
                 sig = inspect.signature(plugin.Plugin.__call__)
                 params = dict(islice(sig.parameters.items(), 1, None))
                 window.plugins[plugin_name] = plugin.Plugin, params
         except Exception:
-            logger.error(f"Problem initializing plugin {plugin_name}: {format_exc()}")
+            logger.exception(f"Problem initializing plugin {plugin_name}")
 
 
+@try_except_log            
 def activate_plugin(window, drawing, plugin_name, args):
-    active_plugins = window.drawing.active_plugins
+    active_plugins = drawing.active_plugins
     plugin, params = window.plugins[plugin_name]
     if inspect.isclass(plugin):
-        active_plugins[plugin_name] = plugin(**args)
+        active_plugins[plugin_name] = (plugin(**args), {})
     else:
-        active_plugins[plugin_name] = args
+        active_plugins[plugin_name] = (plugin, args)
 
 
 @try_except_log
@@ -64,8 +67,8 @@ def render_plugins_ui(window):
     drawing = window.drawing
 
     deactivated = set()
-    for name, args in window.drawing.active_plugins.items():
-        plugin, sig = window.plugins[name]
+    for name, (plugin, args) in window.drawing.active_plugins.items():
+        plugin_base, sig = window.plugins[name]
         window_size = getattr(plugin, "window_size", None)
         if window_size:
             imgui.set_next_window_size(*window_size)
@@ -79,11 +82,7 @@ def render_plugins_ui(window):
                 continue
             imgui.text(param_name)
             imgui.next_column()
-            default_value = args.get(param_name)
-            if default_value is not None:
-                value = default_value
-            else:
-                value = param_sig.default
+            default_value = args.get(param_name, param_sig.default)
             label = f"##{param_name}_val"
             if param_sig.annotation == int:
                 changed, args[param_name] = imgui.drag_int(label, value)
@@ -93,6 +92,14 @@ def render_plugins_ui(window):
                 changed, args[param_name] = imgui.input_text(label, value, 20)
             elif param_sig.annotation == bool:
                 changed, args[param_name] = imgui.checkbox(label, value)
+            elif get_origin(param_sig.annotation) == tuple:
+                param_args = get_args(param_sig.annotation)
+                if all(arg == int for arg in param_args):
+                    if len(param_args) == 2:
+                        changed, args[param_name] = imgui.input_int2(label, *value)
+                    elif len(param_args) == 3:
+                        changed, args[param_name] = imgui.input_int3(label, *value)
+                
             imgui.next_column()
         imgui.columns(1)
 
@@ -104,52 +111,27 @@ def render_plugins_ui(window):
             scale = max(1, (ww - 10) // w)
             imgui.image(texture.name, w*scale, h*scale, border_color=(1, 1, 1, 1))
 
-        if hasattr(args, "__call__"):
-            sig = inspect.signature(args.__call__)
-            available_args = {
-                "oldpaint": oldpaint,
-                "window": window,
-                "drawing": window.drawing,
-                "brush": window.brush,
-                "imgui": imgui,
-            }
-            inject_args = {
-                name: value
-                for name, value in available_args.items()
-                if name in sig.parameters
-            }
-            args(**inject_args)
-        elif callable(plugin):
-            last_run = getattr(plugin, "last_run", 0)
-            period = getattr(plugin, "period", None)
-            t = time()
-            # TODO I've seen more readable if-statements in my days...
-            if (period and t > last_run + period) or (not period and imgui.button("Execute")):
-                plugin.last_run = t
-                try:
-                    sig = inspect.signature(plugin)
-                    available_args = {
-                        "oldpaint": oldpaint,
-                        "window": window,
-                        "drawing": window.drawing,
-                        "brush": window.brush,
-                        "imgui": imgui,
-                    }
-                    inject_args = {
-                        name: value
-                        for name, value in available_args.items()
-                        if name in sig.parameters
-                    }
-                    result = plugin(**inject_args, **args)
-                    if result:
-                        args.update(result)
-                except Exception:
-                    # We don't want crappy plugins to ruin everything
-                    # Still probably probably possible to crash opengl though...
-                    logger.error(f"Plugin {name}: {format_exc()}")
-        else:
-            logger.error(f"Plugin {name}: invalid! Must be callable.")
-            deactivated.add(name)
+        if not inspect.isfunction(plugin) or imgui.button("Execute"):
+            try:
+                available_args = {
+                    "oldpaint": oldpaint,
+                    "window": window,
+                    "drawing": window.drawing,
+                    "brush": window.brush,
+                    "imgui": imgui,
+                }
+                inject_args = {
+                    name: value
+                    for name, value in available_args.items()
+                    if name in sig
+                }
+                result = plugin(**inject_args, **args)
+                if result:
+                    args.update(result)
+            except Exception:
+                # We don't want crappy plugins to ruin everything
+                # Still probably probably possible to crash opengl though...
+                logger.error(f"Plugin {name}: {format_exc()}")
 
         imgui.button("Help")
         if imgui.begin_popup_context_item("Help", mouse_button=0):
@@ -171,6 +153,9 @@ def check_plugin_keys(window, symbol, modifiers):
     drawing = window.drawing
 
     deactivated = set()
-    for name, plugin in window.drawing.active_plugins.items():
-        if plugin.on_key_press(symbol, modifiers):
-            return True
+    for name, (plugin, _) in window.drawing.active_plugins.items():
+        try:
+            return plugin.on_key_press(symbol, modifiers)
+        except AttributeError:
+            pass
+                

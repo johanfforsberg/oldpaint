@@ -234,6 +234,7 @@ class Drawing:
         palette = Palette(info["palette"], transparency=0)
         layers = [Layer(frames, visible=visibility)
                   for frames, visibility in layer_pics]
+        print(kwargs)
         return cls(size=layers[0].size, layers=layers, palette=palette, path=path, **kwargs)
 
     def load_ora(self, path):
@@ -263,7 +264,16 @@ class Drawing:
             self._latest_save_index = len(self._edits)
 
     def _get_plugins(self):
-        return {name: p for name, p in self.active_plugins.items() if isinstance(p, dict)}
+        plugin_data = {}
+        for name, plugin in self.active_plugins.items():
+            if isinstance(plugin, dict):
+                plugin_data[name] = plugin
+            else:
+                try:
+                    plugin_data[name] = plugin.to_json()
+                except AttributeError:
+                    logger.warning("Couldn't save settings for plugin %r", name)
+        return plugin_data
             
     def _save_ora(self, path):
         """
