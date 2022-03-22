@@ -228,7 +228,8 @@ class OldpaintWindow(pyglet.window.Window):
     def on_mouse_press(self, x, y, buttons, modifiers):
         if not self.drawing or self.drawing.locked or self.selection:
             return
-        if self.stroke:
+        if self.stroke or self.mousebuttons[mouse.MIDDLE]:
+            # Ignore presses when we are already drawing, or panning
             return
         left = buttons & mouse.LEFT
         right = buttons & mouse.RIGHT
@@ -297,6 +298,8 @@ class OldpaintWindow(pyglet.window.Window):
             x, y = self.drawing.get_point(x, y)
             ipos = x, y
             if self.tablet.active:
+                # TODO seems something strange happens to pressure when some stylus
+                # buttons are held. Look into this!
                 pressure = self.tablet["pressure"]
             else:
                 pressure = 1
