@@ -69,12 +69,12 @@ class Stroke:
                 finished = False
 
             # Now use the tool appropriately
-            if event_type == "mouse_drag":
+            elif event_type == "mouse_drag":
                 with layer.lock:
                     # By taking the lock here we can prevent flickering.
                     if self.tool.ephemeral and self.tool.rect:
-                        #self.layer.clear(self.tool.rect)
                         self.drawing.make_backup(self.tool.rect)
+                        # self.layer.clear(self.tool.rect)
                     self.tool.draw(layer, *args)
             elif event_type == "mouse_up":
                 self.tool.finish(layer, *args)

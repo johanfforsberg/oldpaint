@@ -24,7 +24,7 @@ class TabletStateHandler:
                 self.active = False
             
             @canvas.event
-            def on_motion(cursor, x, y, pressure, tilt_x, tilt_y):
+            def on_motion(cursor, x, y, pressure, tilt_x, tilt_y, *_):
                 self.data["x"] = x
                 self.data["y"] = y
                 self.data["pressure"] = pressure

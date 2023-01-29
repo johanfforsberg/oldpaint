@@ -10,6 +10,7 @@ from fogl.texture import Texture
 from fogl.vao import VertexArrayObject
 
 from .texture import IntegerTexture, ByteIntegerTexture
+from .rect import Rectangle
 
 
 EMPTY_COLOR = (gl.GLfloat * 4)(0.7, 0.7, 0.7, 1)
@@ -51,6 +52,8 @@ def render_drawing(drawing, stroke, highlighted_layer=None):
         gl.glClearBufferfv(gl.GL_COLOR, 0, (gl.GLfloat * 4)(*bg_color[:3], 1))
 
         backup = drawing.backup
+        empty_rect = Rectangle()
+        backup_rect = empty_rect
         
         for layer in drawing.layers:
 
@@ -69,7 +72,7 @@ def render_drawing(drawing, stroke, highlighted_layer=None):
             # If the user is drawing, we'll draw the backup layer instead of the
             # current layer as that's where things are changing.
             if layer == current_layer and (backup.dirty or backup.touched):
-                backup_rect = backup.dirty.pop(0, None)
+                backup_rect = backup_rect.unite(backup.dirty.pop(0, None))
                 # Since we're drawing in a separate thread, we need to be very careful
                 # when accessing the backup, otherwise we can get nasty problems.
                 # While we have the lock, the thread won't draw, so we can safely copy data.
@@ -94,6 +97,7 @@ def render_drawing(drawing, stroke, highlighted_layer=None):
 
                     except gl.lib.GLException as e:
                         logging.error(str(e))
+                    backup_rect = empty_rect
                     backup.lock.release()  # Allow backup to change again.
 
                 with backup_texture:

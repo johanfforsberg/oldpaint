@@ -23,13 +23,18 @@ def get_custom_palettes():
 def load_colors(path):
     with open(path) as f:
         colors = json.load(f)
-        rgba_colors = []
-        for i, color in enumerate(colors):
-            if len(color) == 4:
-                rgba_colors.append(tuple(color))
-            else:
-                rgba_colors.append((*color, 255 * (i != 0)))
-        return rgba_colors
+        return ensure_colors(colors)
+
+
+def ensure_colors(colors):
+    "Make sure all the colors are tuples of length 4"
+    rgba_colors = []
+    for i, color in enumerate(colors):
+        if len(color) == 4:
+            rgba_colors.append(tuple(color))
+        else:
+            rgba_colors.append((*color, 255 * (i != 0)))
+    return rgba_colors
 
 
 class Palette:
@@ -43,9 +48,9 @@ class Palette:
 
         if colors:
             color0 = colors[0]
-            self.colors = ([color0]
-                           + [(*c[:3], 255) for c in colors[1:]]
-                           + [(0, 0, 0, 255)] * (self.size - len(colors)))
+            self.colors = ensure_colors([color0]
+                                        + [(*c[:3], 255) for c in colors[1:]]
+                                        + [(0, 0, 0, 255)] * (self.size - len(colors)))
         else:
             default_colors = load_colors(get_builtin_palettes()[0])
             self.colors = default_colors + [(0, 0, 0, 255)] * (self.size - len(default_colors))

@@ -156,7 +156,7 @@ class OldpaintWindow(pyglet.window.Window):
 
         # ways to directly access current keys and mouse buttons
         self.keys = key.KeyStateHandler()
-        self.keys.clear()
+        # self.keys.clear()
         print(self.keys)
         self.push_handlers(self.keys)
         self.mousebuttons = mouse.MouseStateHandler()

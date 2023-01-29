@@ -126,7 +126,7 @@ class Drawing:
             return path
 
     def make_backup(self, rect=None):
-        logger.debug("Make backup: %r", rect)
+        # logger.debug("Make backup: %r", rect)
         try:
             layer = self.current
             with layer.lock:
@@ -138,7 +138,7 @@ class Drawing:
                     data = self.current.get_data(self.frame)
                     self.backup.set_data(data.copy(), 0)
             self.backup.touched = False
-            logger.debug("Backup done")
+            # logger.debug("Backup done")
         except ReferenceError:
             # Looks like the layer has been deleted, never mind.
             return
@@ -326,7 +326,7 @@ class Drawing:
         for layer in self.layers[1:]:
             if layer.visible:
                 data = layer.get_data(self.frame)
-                mask = data.astype(np.bool)
+                mask = data.astype(np.bool_)
                 # TODO Should be doable without copying
                 combined = np.where(mask, data, combined)
         return combined
