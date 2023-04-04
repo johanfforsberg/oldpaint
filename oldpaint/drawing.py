@@ -131,7 +131,7 @@ class Drawing:
             layer = self.current
             with layer.lock:
                 if rect:
-                    orig = self.current.get_data(0)
+                    orig = self.current.get_data(self.frame)
                     self.backup.blit(orig[rect.as_slice()], rect, alpha=False,
                                      frame=0)
                 else:

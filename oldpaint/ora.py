@@ -89,7 +89,7 @@ def save_ora(size: Tuple[int, int],
         else:
             # Animated layer
             layer_el = ET.SubElement(stack_el, "stack", name=f"layer{i}",
-                                     visibility=visibility)
+                                     visibility="visible" if visibility else "hidden")
             for j, frame in reversed(list(enumerate(frames))):
                 if frame is not None:
                     ET.SubElement(layer_el, "layer", name=f"layer{i}_frame{j}",

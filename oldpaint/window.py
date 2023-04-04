@@ -854,7 +854,7 @@ class OldpaintWindow(pyglet.window.Window):
         rect = Rectangle((ix - cx, iy - cy), brush.size)
         color = None if isinstance(self.brush, PicBrush) else self.drawing.palette.foreground
         data = brush.get_draw_data(color)
-        dirty_rect = self.drawing.backup.blit(data, rect, frame=self.drawing.frame)
+        dirty_rect = self.drawing.backup.blit(data, rect, frame=0)
 
         self.brush_preview_dirty = dirty_rect
 
