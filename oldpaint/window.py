@@ -751,6 +751,29 @@ class OldpaintWindow(pyglet.window.Window):
         fut.add_done_callback(
             lambda fut: really_export_palette(palette, fut.result()))
 
+    def import_png(self, path=None):
+
+        def really_import_png(path):
+            try:
+                self.drawing.load_png(path)
+            except Exception as e:
+                logger.exception("Failed to import PNG")
+                self._error = f"Could not load:\n\n  {e}"
+
+        if path:
+            really_import_png(path)
+        else:
+            last_dir = self.get_latest_dir()
+            fut = self.executor.submit(show_load_dialog,
+                                       title="Select file",
+                                       initialdir=last_dir,
+                                       filetypes=(
+                                                  ("All image files", "*.png"),
+                                                  ("PNG files", "*.png"),
+                                                  ))
+            fut.add_done_callback(
+                lambda fut: really_import_png(fut.result()))
+
 
     def _quit(self):
         unsaved = [d for d in self.drawings if d.unsaved]

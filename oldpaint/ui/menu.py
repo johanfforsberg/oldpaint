@@ -91,6 +91,14 @@ class MainMenu:
 
                 imgui.separator()
 
+                # Import image
+                clicked_import, selected_import = imgui.menu_item("Import PNG", None, False,
+                                                                  window.drawing)
+                if clicked_import:
+                    popup = "import-png"
+
+                imgui.separator()
+
                 clicked_quit, _ = imgui.menu_item(
                     "Quit", 'Cmd+q', False, True
                 )

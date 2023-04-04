@@ -68,6 +68,10 @@ class UI:
             if file_to_load is not None:
                 window.load_drawing(file_to_load)
 
+            file_to_import = render_file_browser(window, "import-png")
+            if file_to_import is not None:
+                window.import_png(file_to_import)
+
             file_to_save = render_file_browser(window, "save-drawing", edit_filename=True)
             if file_to_save:
                 window.save_drawing(path=file_to_save)

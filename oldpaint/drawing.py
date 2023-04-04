@@ -249,7 +249,18 @@ class Drawing:
             *(AddLayerEdit.create(self, l, i) for i, l in enumerate(layers)),
         ])
         self._make_edit(edit)
-    
+
+    def load_png(self, path):
+        """Replace current layer frame with contents of a PNG file"""
+        pic, info = load_png(path)
+        pic = pic.copy(order='C')  # Needed for edit to work...
+        size = pic.shape[:2]
+        if size != self.size:
+            raise ValueError("Imported image size must match drawing's")
+        layer = self.current.get_data(self.frame)
+        edit = LayerEdit.create(self, layer, pic, self.layers.index(), self.frame, self.current.rect, 0)
+        self._make_edit(edit)
+
     def save_ora(self, path=None, auto=False):
         """Save in ORA format, which keeps all layers intact."""
         if path is None and self.path:
@@ -365,6 +376,7 @@ class Drawing:
         self.frame = frame
         self._n_frames.cache_clear()
         self.make_backup()
+        return frame
  
     def remove_frame(self, frame=None):
         frame = frame if frame is not None else self.frame
