@@ -117,7 +117,7 @@ class LayerEdit(Edit):
     def create(cls, drawing, orig_layer, edited_layer, index, frame, rect, tool=0) -> LayerEdit:
         "Helper to handle compressing the data."
         slc = rect.as_slice()
-        data = np.bitwise_xor(orig_layer[slc], edited_layer[slc])
+        data = np.bitwise_xor(orig_layer[slc], edited_layer[slc]).copy(order='C')
         return cls(frame=frame, index=index, tool=tool, data=zlib.compress(data), rect=rect)
 
     def perform(self, drawing):
@@ -589,11 +589,13 @@ class SwapLayersEdit(Edit):
 class MergeLayersEdit(MultiEdit):
 
     @classmethod
-    def create(cls, drawing, source_layer, destination_layer, frame):
+    def create(cls, drawing, data, source_index, dest_index, frame):
         # source_layer.pic.fix_alpha(set(drawing.palette.transparent_colors))
+        source = drawing.layers[source_index]
+        dest = drawing.layers[dest_index]
         return cls([
-            LayerEdit.create(drawing, destination_layer, source_layer, frame, source_layer.rect),
-            RemoveLayerEdit.create(drawing, source_layer)
+            LayerEdit.create(drawing, dest.get_data(frame), data, dest_index, frame, dest.rect),
+            RemoveLayerEdit.create(drawing, source)
         ])
 
     @property

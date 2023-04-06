@@ -125,7 +125,7 @@ def render_drawing(drawing, stroke, highlighted_layer=None):
                     gl.glUniform4fv(2, 256, colors)
                     gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 
-    if len(layer_texture_cache) > len(drawing.layers):
+    if len(layer_texture_cache) > len(drawing.layers) * len(drawing.layers[0].frames):
         new_layer_texture_cache = {}
         for layer in drawing.layers:
             key = make_layer_cache_key(layer, frame)
@@ -159,7 +159,7 @@ def _get_layer_texture(layer, frame):
         return True, texture
 
 
-@lru_cache(1)
+@lru_cache(10)  # TODO what is a good size here? Would be good if it covered an average animation
 def _get_backup_texture(size, layer_id, frame):
     texture = ByteIntegerTexture(size)
     logging.debug("Created new backup texture")

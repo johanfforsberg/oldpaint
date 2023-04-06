@@ -488,18 +488,23 @@ class Drawing:
         self._make_edit(edit)
 
     @try_except_log
-    def merge_layers(self, layer1, layer2, frame):
-        edit = MergeLayersEdit.create(self, layer1, layer2, frame)
+    def merge_layers(self, source_index, dest_index, frame):
+        source = self.layers[source_index]
+        self.current = self.layers[dest_index]
+        self.make_backup()
+        data = source.get_data(frame)
+        # TODO handles only one transparent color!
+        data = np.ma.masked_array(data, mask=data == self.palette.transparent_colors[0])
+        self.backup.blit(data, source.rect, alpha=True, frame=0)
+        edit = MergeLayersEdit.create(self, self.backup.get_data(0), source_index, dest_index, frame)
         self._make_edit(edit)
 
     def merge_layer_down(self, layer=None, frame=None):
         "Combine a layer with the layer below it, by superpositioning."
-        layer1 = layer or self.layers.current
-        index = self.layers.index(layer1)
+        index = self.layers.index(layer)
         frame = frame if frame is not None else self.frame
         if index > 0:
-            layer2 = self.layers[index - 1]
-            self.merge_layers(layer1, layer2, frame)
+            self.merge_layers(index, index - 1, frame)
 
     def flip(self, horizontal):
         "Mirror all layers."
