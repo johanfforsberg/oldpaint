@@ -1,5 +1,6 @@
 import abc
 from functools import lru_cache
+from math import floor
 from random import gauss
 
 from pyglet import window
@@ -239,7 +240,7 @@ class LineTool(Tool):
     def __repr__(self):
         x0, y0 = self.points[0]
         x1, y1 = self.points[-1]
-        return f"{abs(x1 - x0) + 1}, {abs(y1 - y0) + 1}"
+        return f"{abs(floor(x1) - floor(x0)) + 1}, {abs(floor(y1) - floor(y0)) + 1}"
 
 
 class RectangleTool(Tool):
@@ -279,7 +280,7 @@ class RectangleTool(Tool):
     def __repr__(self):
         x0, y0 = self.points[0]
         x1, y1 = self.points[1]
-        return f"{abs(x1 - x0) + 1}, {abs(y1 - y0) + 1}"
+        return f"{abs(floor(x1) - floor(x0)) + 1}, {abs(floor(y1) - floor(y0)) + 1}"
 
 
 class EllipseTool(Tool):
@@ -310,7 +311,7 @@ class EllipseTool(Tool):
     def __repr__(self):
         x0, y0 = self.points[0]
         x1, y1 = self.points[-1]
-        return f"{abs(x1-x0) * 2 + 1}, {abs(y1-y0) * 2 + 1}"
+        return f"{abs(floor(x1)-floor(x0)) * 2 + 1}, {abs(floor(y1)-floor(y0)) * 2 + 1}"
 
 
 class FillTool(Tool):

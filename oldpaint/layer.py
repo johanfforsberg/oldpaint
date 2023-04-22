@@ -315,7 +315,6 @@ class BackupLayer(Layer):
             pos = (x0 - ox, y0 - oy)
         data = self.get_data(0)
         with self.lock:
-            print(pos, size, color)
             rect = draw_rectangle(data, brush, brush.mask, pos, size, color, fill=fill)
             if rect and set_dirty:
                 self.set_dirty(rect, 0)
