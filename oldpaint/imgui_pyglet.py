@@ -371,7 +371,17 @@ class PygletMixin(object):
         if code in self.REVERSE_KEY_MAP:
             self.io.keys_down[self.REVERSE_KEY_MAP[code]] = True
         io = imgui.get_io()
-        io.key_shift = code & key.MOD_SHIFT
+        # io.key_shift = code & key.MOD_SHIFT
+        # io.key_alt = code & key.MOD_ALT
+        # io.key_ctrl = code & key.MOD_CTRL
+        io.key_ctrl = (mods & key.MOD_CTRL or
+                       code in (key.LCTRL, key.RCTRL))
+        io.key_super = (mods & key.MOD_COMMAND or
+                        code in (key.LCOMMAND, key.RCOMMAND))
+        io.key_alt = (mods & key.MOD_ALT or
+                      code in (key.LALT, key.RALT))
+        io.key_shift = (mods & key.MOD_SHIFT or
+                        code in (key.LSHIFT, key.RSHIFT))
 
     def on_key_release(self, code, mods):
         if code in self.REVERSE_KEY_MAP:

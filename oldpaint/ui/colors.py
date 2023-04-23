@@ -186,8 +186,8 @@ class PaletteColors:
         for i, c in enumerate(chain.from_iterable(zip(*ranges))):
             index = start_color + c
             if index < len(colors):
-                color = palette.overlayed_color(index)
-                color = as_float(color)
+                palette_color = palette.overlayed_color(index)
+                color = as_float(palette_color)
 
                 is_foreground = index == fg
                 is_background = (index == bg) * 2
@@ -227,7 +227,7 @@ class PaletteColors:
                     draw_list.add_rect_filled(x+15, y+2, x+23, y+10, imgui.get_color_u32_rgba(0, 0, 0, 1))
                     draw_list.add_rect(x+15, y+2, x+23, y+10, imgui.get_color_u32_rgba(1, 1, 1, 1))
                     
-                # Drag and drop (currently does not accomplish anything though)
+                # Drag and drop
                 if imgui.begin_drag_drop_source():
                     imgui.set_drag_drop_payload('start_index', c.to_bytes(1, sys.byteorder))
                     imgui.color_button(f"color {c}", *color[:3], 1, 0, 20, 20)
@@ -237,8 +237,12 @@ class PaletteColors:
                     if start_index is not None:
                         start_index = int.from_bytes(start_index, sys.byteorder)
                         io = imgui.get_io()
-                        image_only = io.key_shift
-                        drawing.swap_colors(start_index, index, image_only=image_only)
+                        if io.key_shift:
+                            drawing.swap_colors(start_index, index, image_only=True)
+                        elif io.key_ctrl:
+                            drawing.change_colors([index, palette.overlayed_color(start_index)])
+                        else:
+                            drawing.swap_colors(start_index, index)
                         palette.clear_overlay()
                     imgui.end_drag_drop_target()
             else:
