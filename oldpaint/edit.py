@@ -352,7 +352,7 @@ class PaletteAdd(Edit):
     colors: list
     index: int
 
-    def perform(self, drawing):
+    def perform(self, drawing: "Drawing"):
         drawing.palette.add_colors(self.colors, self.index)
 
     def revert(self, drawing):
