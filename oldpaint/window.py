@@ -335,6 +335,11 @@ class OldpaintWindow(pyglet.window.Window):
                 if modifiers & key.MOD_CTRL:
                     self.load_drawing()
 
+            elif symbol == key.S and modifiers & key.MOD_CTRL:
+                self.save_drawing()
+            elif symbol == key.E and modifiers & key.MOD_CTRL:
+                self.export_drawing()
+
             elif symbol == key.Z:
                 self.drawing.undo()
                 self.get_layer_preview_texture.cache_clear()
@@ -419,8 +424,6 @@ class OldpaintWindow(pyglet.window.Window):
             elif symbol == key.S or symbol == key.PAGEDOWN:
                 if modifiers & key.MOD_SHIFT:
                     self.drawing.move_layer_down()
-                elif symbol == key.S and modifiers & key.MOD_CTRL:
-                    self.drawing and self.save_drawing()
                 else:
                     self.drawing.prev_layer()
                     self.highlighted_layer = self.drawing.layers.current
