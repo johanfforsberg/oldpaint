@@ -159,9 +159,12 @@ class Selectable:
 
     def select_most_recent(self, update_mro=True):
         if len(self.mro) > 1:
-            index = (self.mro.index(self.current) + 1) % len(self.mro)
-            print(index)
-            self.select(self.mro[index], update_mro)
+            try:
+                index = (self.mro.index(self.current) + 1) % len(self.mro)
+                self.select(self.mro[index], update_mro)
+            except ReferenceError:
+                print("Current item no longer exists?")
+                pass
 
 
 class Selectable2:
