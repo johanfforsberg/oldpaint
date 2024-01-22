@@ -9,6 +9,7 @@ import os
 import sys
 from time import time
 from typing import Tuple, NamedTuple
+from importlib import resources as impresources
 
 import imgui
 import pyglet
@@ -25,6 +26,7 @@ from ..util import show_save_dialog, throttle, stateful
 from .file_browser import render_file_browser
 from .colors import PaletteColors
 from .menu import MainMenu
+from .. import ttf
 
 
 logger = logging.getLogger(__name__)
@@ -38,7 +40,7 @@ class UI:
         io = imgui.get_io()
         #config = imgui.core.FontConfig(merge_mode=True)
         self.font = io.fonts.add_font_from_file_ttf(
-            "./ttf/Topaznew.ttf", 16, glyph_ranges=io.fonts.get_glyph_ranges_latin()
+            str(impresources.files(ttf) / "Topaznew.ttf"), 16, glyph_ranges=io.fonts.get_glyph_ranges_latin()
         )
         self.renderer.refresh_font_texture()
 

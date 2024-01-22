@@ -2,6 +2,7 @@ from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from contextlib import contextmanager
 from functools import lru_cache, reduce
+from importlib import resources as impresources
 import logging
 import os
 import operator
@@ -34,7 +35,7 @@ from .tool import (PencilTool, InkTool, PointsTool, SprayTool,
 from .util import (Selectable, Selectable2, make_view_matrix,
                    show_load_dialog, show_save_dialog, cache_clear,
                    debounce, as_rgba)
-from . import ui
+from . import ui, glsl, icons
 
 
 logger = logging.getLogger(__name__)
@@ -97,10 +98,10 @@ class OldpaintWindow(pyglet.window.Window):
         self.autosave_drawing = debounce(cooldown=autosave_period, wait=3)(self._autosave_drawing)
 
         # Some gl setup
-        self.copy_program = Program(VertexShader("glsl/copy_vert.glsl"),
-                                    FragmentShader("glsl/copy_frag.glsl"))
-        self.line_program = Program(VertexShader("glsl/triangle_vert.glsl"),
-                                    FragmentShader("glsl/triangle_frag.glsl"))
+        self.copy_program = Program(VertexShader(impresources.files(glsl) / "copy_vert.glsl"),
+                                    FragmentShader(impresources.files(glsl) / "copy_frag.glsl"))
+        self.line_program = Program(VertexShader(impresources.files(glsl) / "triangle_vert.glsl"),
+                                    FragmentShader(impresources.files(glsl) / "triangle_frag.glsl"))
         self.vao = VertexArrayObject()
 
         # All the drawing will happen in a thread, managed by this executor
@@ -111,7 +112,7 @@ class OldpaintWindow(pyglet.window.Window):
         self.stroke = None
 
         # Mouse cursor setup
-        self.mouse_texture = ImageTexture(*load_png("icons/cursor.png"))
+        self.mouse_texture = ImageTexture(*load_png(impresources.files(icons) / "cursor.png"))
         self.mouse_position = None
         self.brush_preview_dirty = None  # A hacky way to keep brush preview dirt away
 
@@ -120,7 +121,7 @@ class OldpaintWindow(pyglet.window.Window):
 
         # UI stuff
         self.icons = {
-            name: ImageTexture(*load_png(f"icons/{name}.png"))
+            name: ImageTexture(*load_png(impresources.files(icons) / f"{name}.png"))
             for name in ["selection", "ellipse", "floodfill", "line", "spray",
                          "pencil", "picker", "points", "rectangle", "ink"]
         }

@@ -1,4 +1,5 @@
 from functools import lru_cache
+from importlib import resources as impresources
 from itertools import chain
 import logging
 
@@ -11,14 +12,15 @@ from fogl.vao import VertexArrayObject
 
 from .texture import IntegerTexture, ByteIntegerTexture
 from .rect import Rectangle
+from . import glsl
 
 
 EMPTY_COLOR = (gl.GLfloat * 4)(0.7, 0.7, 0.7, 1)
 
 vao = VertexArrayObject()
 
-draw_program = Program(VertexShader("glsl/palette_vert.glsl"),
-                       FragmentShader("glsl/palette_frag.glsl"))
+draw_program = Program(VertexShader(impresources.files(glsl) / "palette_vert.glsl"),
+                       FragmentShader(impresources.files(glsl) / "palette_frag.glsl"))
 
 
 logger = logging.getLogger(__name__)
