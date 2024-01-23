@@ -1,0 +1,36 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+    "setuptools>=69",
+    "setuptools-scm>=8.0"]
+
+[project]
+name = "oldpaint"
+description = "An oldschool drawing program inspired by Deluxe Paint"
+authors = [
+    {name="Johan Forsberg", email="johan@slentrian.org"}
+]
+keywords = ['drawing', 'graphics', 'pixel']
+dynamic = ["version"]
+dependencies = [
+    "Cython",
+    "pyglet",
+    "imgui[pyglet]",
+    "numpy",
+    "euclid3",
+    "appdirs",
+    "pluginbase",
+    "pypng",
+]
+
+[tool.setuptools.package-dir]
+oldpaint = "oldpaint"
+fogl = "fogl/fogl"
+oldpaint_plugins = "plugins"
+
+[project.scripts]
+oldpaint = "oldpaint:run"
+
+[tool.setuptools_scm]
+version_file = "oldpaint/_version.py"
+
